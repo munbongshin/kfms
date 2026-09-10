@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kfms-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kfms
+      # C 로케일로 초기화해야 서버 메시지가 ASCII로 나온다.
+      # 한글 로케일 서버는 psycopg2/asyncpg 연결 단계에서 디코딩 오류를 일으킴.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      LANG: C
+    ports:
+      - "5434:5432"
+    volumes:
+      - kfms_pgdata:/var/lib/postgresql/data
+      - ./docker/init:/docker-entrypoint-initdb.d:ro
+      - ./scripts/retail_sales_data.csv:/data/retail_sales_data.csv:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kfms"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  kfms_pgdata:
