@@ -1,11 +1,13 @@
 <template>
   <div class="database-view">
     <DatabaseManager />
+    <ExcelUpload />
   </div>
 </template>
 
 <script setup lang="ts">
 import DatabaseManager from '../components/database/DatabaseManager.vue'
+import ExcelUpload from '../components/excel/ExcelUpload.vue'
 </script>
 
 <style scoped>

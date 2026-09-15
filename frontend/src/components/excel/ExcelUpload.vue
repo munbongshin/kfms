@@ -80,7 +80,8 @@
                 <template #reference>
                   <el-button size="small" type="danger">
                     <el-icon><Delete /></el-icon>
-                  </template>
+                  </el-button>
+                </template>
               </el-popconfirm>
             </template>
           </el-table-column>
