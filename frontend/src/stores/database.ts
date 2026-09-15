@@ -7,11 +7,21 @@ import { ref, computed } from 'vue'
 import { api, type DatabaseConnection, type DatabaseConnectionCreate } from '../services/api'
 import { ElMessage } from 'element-plus'
 
+export interface ColumnInfo {
+  name: string
+  type: string
+  nullable: boolean
+  default: string | null
+}
+
 export const useDatabaseStore = defineStore('database', () => {
   // State
   const connections = ref<DatabaseConnection[]>([])
   const activeConnectionId = ref<number | null>(null)
   const loading = ref(false)
+  const schemas = ref<Record<number, Record<string, ColumnInfo[]>>>({})
+  const schemaLoading = ref<Record<number, boolean>>({})
+  const schemaError = ref<Record<number, string | null>>({})
 
   // Computed
   const activeConnection = computed(() => {
@@ -93,6 +103,7 @@ export const useDatabaseStore = defineStore('database', () => {
     loading.value = true
     try {
       await api.databases.delete(connectionId)
+      invalidateSchema(connectionId)
 
       // Remove from local state
       const index = connections.value.findIndex(conn => conn.id === connectionId)
@@ -121,11 +132,44 @@ export const useDatabaseStore = defineStore('database', () => {
     }
   }
 
+  async function fetchSchema(connectionId: number, force = false) {
+    if (!force && schemas.value[connectionId]) {
+      return schemas.value[connectionId]
+    }
+
+    schemaLoading.value = { ...schemaLoading.value, [connectionId]: true }
+    schemaError.value = { ...schemaError.value, [connectionId]: null }
+
+    try {
+      const info = await api.databases.getSchema(connectionId)
+      schemas.value = { ...schemas.value, [connectionId]: info.schema as Record<string, ColumnInfo[]> }
+      return schemas.value[connectionId]
+    } catch (error: any) {
+      const message = error.response?.data?.detail || 'Failed to load schema'
+      schemaError.value = { ...schemaError.value, [connectionId]: message }
+      throw error
+    } finally {
+      schemaLoading.value = { ...schemaLoading.value, [connectionId]: false }
+    }
+  }
+
+  function invalidateSchema(connectionId: number) {
+    const { [connectionId]: _s, ...restSchemas } = schemas.value
+    const { [connectionId]: _l, ...restLoading } = schemaLoading.value
+    const { [connectionId]: _e, ...restError } = schemaError.value
+    schemas.value = restSchemas
+    schemaLoading.value = restLoading
+    schemaError.value = restError
+  }
+
   return {
     // State
     connections,
     activeConnectionId,
     loading,
+    schemas,
+    schemaLoading,
+    schemaError,
 
     // Computed
     activeConnection,
@@ -137,5 +181,7 @@ export const useDatabaseStore = defineStore('database', () => {
     testConnection,
     deleteConnection,
     setActiveConnection,
+    fetchSchema,
+    invalidateSchema,
   }
 })
