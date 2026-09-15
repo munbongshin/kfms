@@ -1,43 +1,30 @@
 <template>
   <div class="result-chart">
-    <el-card>
-      <template #header>
-        <div class="chart-header">
-          <div>
-            <h3>Data Visualization</h3>
-            <p v-if="recommendation" class="recommendation">
-              💡 {{ recommendation.reasoning }}
-            </p>
-          </div>
-          <div class="chart-controls">
-            <el-radio-group v-model="selectedChartType" size="small">
-              <el-radio-button value="bar">
-                <el-icon><Histogram /></el-icon>
-                Bar
-              </el-radio-button>
-              <el-radio-button value="line">
-                <el-icon><TrendCharts /></el-icon>
-                Line
-              </el-radio-button>
-              <el-radio-button value="pie">
-                <el-icon><PieChart /></el-icon>
-                Pie
-              </el-radio-button>
-            </el-radio-group>
-          </div>
-        </div>
-      </template>
+    <div class="chart-toolbar">
+      <p v-if="autoRecommendation?.reasoning" class="recommendation">
+        💡 {{ autoRecommendation.reasoning }}
+      </p>
+      <el-radio-group v-model="selectedChartType" size="small" class="chart-controls">
+        <el-radio-button value="bar">
+          <el-icon><Histogram /></el-icon>
+          Bar
+        </el-radio-button>
+        <el-radio-button value="line">
+          <el-icon><TrendCharts /></el-icon>
+          Line
+        </el-radio-button>
+        <el-radio-button value="pie">
+          <el-icon><PieChart /></el-icon>
+          Pie
+        </el-radio-button>
+      </el-radio-group>
+    </div>
 
-      <div v-if="chartOption" class="chart-container">
-        <v-chart
-          :option="chartOption"
-          :autoresize="true"
-          style="height: 500px"
-        />
-      </div>
+    <div v-if="chartOption" class="chart-container">
+      <v-chart :option="chartOption" :autoresize="true" style="height: 460px" />
+    </div>
 
-      <el-empty v-else description="Cannot generate chart for this data" />
-    </el-card>
+    <el-empty v-else description="Cannot generate chart for this data" />
   </div>
 </template>
 
@@ -101,15 +88,12 @@ const chartOption = computed(() => {
 </script>
 
 <style scoped>
-.chart-header {
+.chart-toolbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.chart-header h3 {
-  margin: 0 0 5px 0;
-  color: #303133;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .recommendation {
@@ -125,6 +109,6 @@ const chartOption = computed(() => {
 }
 
 .chart-container {
-  min-height: 500px;
+  min-height: 460px;
 }
 </style>

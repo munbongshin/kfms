@@ -1,82 +1,40 @@
 <template>
   <div class="result-table" v-if="results">
-    <el-card>
-      <template #header>
-        <div class="result-header">
-          <div>
-            <h3>Query Results</h3>
-            <p class="meta">
-              {{ results.row_count }} rows | {{ results.execution_time_ms }}ms
-            </p>
-          </div>
-          <div class="actions">
-            <el-button size="small" @click="exportToCSV">
-              <el-icon><Download /></el-icon>
-              Export CSV
-            </el-button>
-          </div>
-        </div>
-      </template>
-
-      <!-- Question & SQL Display -->
-      <el-collapse class="query-details">
-        <el-collapse-item title="View Query Details" name="1">
-          <div class="detail-section">
-            <strong>Question:</strong>
-            <p>{{ results.question }}</p>
-          </div>
-          <div class="detail-section">
-            <strong>SQL:</strong>
-            <pre class="sql-display">{{ results.sql }}</pre>
-          </div>
-          <div v-if="results.warnings && results.warnings.length > 0" class="detail-section">
-            <strong>Warnings:</strong>
-            <ul>
-              <li v-for="(warning, index) in results.warnings" :key="index">{{ warning }}</li>
-            </ul>
-          </div>
-        </el-collapse-item>
-      </el-collapse>
-
-      <!-- Results Table -->
-      <div class="table-container" v-if="results.results.length > 0">
-        <el-table
-          :data="paginatedResults"
-          stripe
-          border
-          max-height="600"
-          style="width: 100%"
-        >
-          <el-table-column
-            v-for="column in columns"
-            :key="column"
-            :prop="column"
-            :label="column"
-            :min-width="120"
-            show-overflow-tooltip
-          />
-        </el-table>
-
-        <!-- Pagination -->
-        <el-pagination
-          v-if="results.results.length > pageSize"
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[50, 100, 200, 500]"
-          :total="results.results.length"
-          layout="total, sizes, prev, pager, next, jumper"
-          class="pagination"
+    <div class="table-container" v-if="results.results.length > 0">
+      <el-table
+        :data="paginatedResults"
+        stripe
+        border
+        max-height="520"
+        style="width: 100%"
+      >
+        <el-table-column
+          v-for="column in columns"
+          :key="column"
+          :prop="column"
+          :label="column"
+          :min-width="120"
+          show-overflow-tooltip
         />
-      </div>
+      </el-table>
 
-      <el-empty v-else description="No results found" />
-    </el-card>
+      <el-pagination
+        v-if="results.results.length > pageSize"
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[50, 100, 200, 500]"
+        :total="results.results.length"
+        layout="total, sizes, prev, pager, next, jumper"
+        class="pagination"
+      />
+    </div>
+
+    <el-empty v-else description="No results found" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Download } from '@element-plus/icons-vue'
 import type { QueryResult } from '../../stores/query'
 
 const props = defineProps<{
@@ -111,20 +69,17 @@ function exportToCSV() {
   const cols = columns.value
   const rows = props.results.results
 
-  // Create CSV content
   const csvContent = [
-    cols.join(','), // Header
+    cols.join(','),
     ...rows.map(row =>
       cols.map(col => {
         const value = row[col]
-        // Escape quotes and wrap in quotes if contains comma
         const escaped = String(value).replace(/"/g, '""')
         return escaped.includes(',') ? `"${escaped}"` : escaped
       }).join(',')
     )
   ].join('\n')
 
-  // Download
   const blob = new Blob([csvContent], { type: 'text/csv' })
   const url = window.URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -133,69 +88,11 @@ function exportToCSV() {
   a.click()
   window.URL.revokeObjectURL(url)
 }
+
+defineExpose({ exportToCSV })
 </script>
 
 <style scoped>
-.result-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.result-header h3 {
-  margin: 0 0 5px 0;
-  color: #303133;
-}
-
-.meta {
-  margin: 0;
-  color: #909399;
-  font-size: 14px;
-}
-
-.query-details {
-  margin-bottom: 20px;
-}
-
-.detail-section {
-  margin-bottom: 15px;
-}
-
-.detail-section strong {
-  display: block;
-  margin-bottom: 5px;
-  color: #606266;
-}
-
-.detail-section p {
-  margin: 0;
-  padding: 10px;
-  background: #f5f7fa;
-  border-radius: 4px;
-}
-
-.sql-display {
-  margin: 0;
-  padding: 15px;
-  background: #f9fafb;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.6;
-  overflow-x: auto;
-}
-
-.detail-section ul {
-  margin: 0;
-  padding-left: 20px;
-  color: #e6a23c;
-}
-
-.table-container {
-  margin-top: 20px;
-}
-
 .pagination {
   margin-top: 20px;
   display: flex;

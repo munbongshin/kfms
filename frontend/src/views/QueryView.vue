@@ -3,12 +3,7 @@
     <QueryInput />
     <SQLPreview />
 
-    <ResultTable v-if="queryStore.queryResults" :results="queryStore.queryResults" />
-
-    <ResultChart
-      v-if="queryStore.queryResults && queryStore.queryResults.results.length > 0"
-      :data="queryStore.queryResults.results"
-    />
+    <ResultPanel v-if="queryStore.queryResults" :results="queryStore.queryResults" />
 
     <el-card v-if="!queryStore.queryResults" class="help-card">
       <template #header>
@@ -33,8 +28,7 @@
 import { useQueryStore } from '../stores/query'
 import QueryInput from '../components/query/QueryInput.vue'
 import SQLPreview from '../components/query/SQLPreview.vue'
-import ResultTable from '../components/results/ResultTable.vue'
-import ResultChart from '../components/results/ResultChart.vue'
+import ResultPanel from '../components/results/ResultPanel.vue'
 
 const queryStore = useQueryStore()
 </script>
