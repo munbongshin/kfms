@@ -1,12 +1,9 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
 
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
-    name: 'home',
-    component: HomeView,
-    meta: { title: 'KFMS - Home' }
+    redirect: '/query'
   },
   {
     path: '/query',
@@ -33,7 +30,6 @@ const router = createRouter({
   routes
 })
 
-// Update document title on route change
 router.beforeEach((to, _from, next) => {
   document.title = `${to.meta.title || 'KFMS'} - Knowledge Flow Management System`
   next()

@@ -1,11 +1,11 @@
 <template>
-  <div id="app" class="min-h-screen bg-gray-50">
+  <AppShell>
     <router-view />
-  </div>
+  </AppShell>
 </template>
 
 <script setup lang="ts">
-// Main application component
+import AppShell from './components/layout/AppShell.vue'
 </script>
 
 <style>

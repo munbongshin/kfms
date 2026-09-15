@@ -1,109 +1,46 @@
 <template>
   <div class="query-view">
-    <el-container>
-      <el-header height="60px" class="header">
-        <div class="header-content">
-          <h2>Natural Language Query</h2>
-          <router-link to="/" class="back-link">
-            <el-button><el-icon><HomeFilled /></el-icon> Home</el-button>
-          </router-link>
-        </div>
-      </el-header>
+    <QueryInput />
+    <SQLPreview />
 
-      <el-main>
-        <div class="content">
-          <!-- Query Input -->
-          <QueryInput />
+    <ResultTable v-if="queryStore.queryResults" :results="queryStore.queryResults" />
 
-          <!-- SQL Preview Dialog -->
-          <SQLPreview />
+    <ResultChart
+      v-if="queryStore.queryResults && queryStore.queryResults.results.length > 0"
+      :data="queryStore.queryResults.results"
+    />
 
-          <!-- Results Table -->
-          <ResultTable v-if="queryStore.queryResults" :results="queryStore.queryResults" />
-
-          <!-- Results Chart -->
-          <ResultChart
-            v-if="queryStore.queryResults && queryStore.queryResults.results.length > 0"
-            :data="queryStore.queryResults.results"
-          />
-
-          <!-- Help Section -->
-          <el-card v-if="!queryStore.queryResults" class="help-card">
-            <template #header>
-              <span>💡 Example Questions</span>
-            </template>
-            <ul class="examples">
-              <li>"Show me the top 10 customers by total revenue"</li>
-              <li>"What are the monthly sales for 2024?"</li>
-              <li>"List all products with price greater than $100"</li>
-              <li>"How many orders were placed last week?"</li>
-              <li>"Find customers who made more than 5 purchases"</li>
-            </ul>
-            <el-alert type="info" :closable="false" show-icon>
-              <template #title>
-                The system will generate SQL from your question and show it for review before execution.
-              </template>
-            </el-alert>
-          </el-card>
-        </div>
-      </el-main>
-    </el-container>
+    <el-card v-if="!queryStore.queryResults" class="help-card">
+      <template #header>
+        <span>💡 Example Questions</span>
+      </template>
+      <ul class="examples">
+        <li>"카테고리별 총 매출을 보여줘"</li>
+        <li>"월별 매출 추이를 보여줘"</li>
+        <li>"30대 고객의 총 구매 금액은?"</li>
+        <li>"가장 많이 구매한 고객 TOP 5"</li>
+      </ul>
+      <el-alert type="info" :closable="false" show-icon>
+        <template #title>
+          질문을 SQL로 변환한 뒤, 실행 전에 확인을 거칩니다.
+        </template>
+      </el-alert>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { HomeFilled } from '@element-plus/icons-vue'
 import { useQueryStore } from '../stores/query'
-import { useDatabaseStore } from '../stores/database'
 import QueryInput from '../components/query/QueryInput.vue'
 import SQLPreview from '../components/query/SQLPreview.vue'
 import ResultTable from '../components/results/ResultTable.vue'
 import ResultChart from '../components/results/ResultChart.vue'
 
 const queryStore = useQueryStore()
-const databaseStore = useDatabaseStore()
-
-onMounted(() => {
-  // Fetch database connections if not already loaded
-  if (databaseStore.connections.length === 0) {
-    databaseStore.fetchConnections(true)
-  }
-})
 </script>
 
 <style scoped>
 .query-view {
-  min-height: 100vh;
-  background-color: #f5f7fa;
-}
-
-.header {
-  background: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.header h2 {
-  margin: 0;
-  color: #303133;
-}
-
-.back-link {
-  text-decoration: none;
-}
-
-.content {
-  max-width: 1400px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -125,6 +62,5 @@ onMounted(() => {
   background: #f0f9ff;
   border-left: 3px solid #409eff;
   border-radius: 4px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 </style>
