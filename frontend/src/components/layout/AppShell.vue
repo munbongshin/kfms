@@ -14,7 +14,7 @@
         <FunctionTabs :collapsed="collapsed" />
 
         <div v-show="!collapsed" class="tree-area">
-          <!-- SchemaTree mount point (Task 3) -->
+          <SchemaTree />
         </div>
 
         <button class="collapse-toggle" :title="collapsed ? '펼치기' : '접기'" @click="toggle">
@@ -32,6 +32,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import FunctionTabs from './FunctionTabs.vue'
+import SchemaTree from './SchemaTree.vue'
 import { useDatabaseStore } from '../../stores/database'
 
 const STORAGE_KEY = 'kfms.sidebar.collapsed'
