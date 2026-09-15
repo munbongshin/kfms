@@ -184,6 +184,56 @@ export const useQueryStore = defineStore('query', () => {
     pendingExecution.value = null
   }
 
+  function insertIdentifier(name: string) {
+    const current = currentQuestion.value
+    if (!current) {
+      currentQuestion.value = name
+    } else if (current.endsWith(' ')) {
+      currentQuestion.value = `${current}${name}`
+    } else {
+      currentQuestion.value = `${current} ${name}`
+    }
+  }
+
+  function quoteIdentifier(name: string) {
+    return `"${name.replace(/"/g, '""')}"`
+  }
+
+  async function previewTable(tableName: string, databaseId: number) {
+    loading.value = true
+    const question = `[미리보기] ${tableName}`
+    const sql = `SELECT * FROM ${quoteIdentifier(tableName)} LIMIT 100`
+
+    try {
+      const result = await api.query.execute({
+        question,
+        sql,
+        database_id: databaseId,
+        validation_approved: true,
+      })
+
+      if (!result.success) {
+        throw new Error(result.error || 'Preview failed')
+      }
+
+      queryResults.value = {
+        question,
+        sql,
+        results: result.results || [],
+        row_count: result.row_count || 0,
+        execution_time_ms: result.execution_time_ms || 0,
+        history_id: result.history_id,
+        warnings: result.warnings,
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.detail || error.message || 'Failed to preview table'
+      ElMessage.error(message)
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
   function clearResults() {
     queryResults.value = null
     currentQuestion.value = ''
@@ -209,5 +259,7 @@ export const useQueryStore = defineStore('query', () => {
     directExecute,
     cancelExecution,
     clearResults,
+    insertIdentifier,
+    previewTable,
   }
 })

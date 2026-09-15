@@ -4,14 +4,13 @@
       <template #header>
         <div class="card-header">
           <span>Ask a Question</span>
-          <DatabaseSelector />
         </div>
       </template>
 
       <el-form>
         <el-form-item>
           <el-input
-            v-model="question"
+            v-model="queryStore.currentQuestion"
             type="textarea"
             :rows="4"
             placeholder="Example: Show me the top 10 customers by revenue this year"
@@ -25,7 +24,7 @@
               type="primary"
               @click="handleGenerate"
               :loading="queryStore.loading"
-              :disabled="!question.trim() || !databaseStore.activeConnectionId"
+              :disabled="!queryStore.currentQuestion.trim() || !databaseStore.activeConnectionId"
             >
               <el-icon><MagicStick /></el-icon>
               Generate SQL
@@ -35,7 +34,7 @@
               type="success"
               @click="handleExecute"
               :loading="queryStore.loading"
-              :disabled="!question.trim() || !databaseStore.activeConnectionId"
+              :disabled="!queryStore.currentQuestion.trim() || !databaseStore.activeConnectionId"
             >
               <el-icon><CaretRight /></el-icon>
               Generate & Execute
@@ -53,38 +52,30 @@
 
         <el-alert
           v-if="!databaseStore.activeConnectionId"
-          type="warning"
+          type="info"
           :closable="false"
           show-icon
-        >
-          <template #title>
-            Please select a database connection first.
-            <router-link to="/databases">Manage Databases</router-link>
-          </template>
-        </el-alert>
+          title="좌측 트리에서 연결을 선택하세요"
+        />
       </el-form>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import { MagicStick, CaretRight, RefreshLeft } from '@element-plus/icons-vue'
 import { useQueryStore } from '../../stores/query'
 import { useDatabaseStore } from '../../stores/database'
-import DatabaseSelector from '../database/DatabaseSelector.vue'
 
 const queryStore = useQueryStore()
 const databaseStore = useDatabaseStore()
-
-const question = ref('')
 
 async function handleGenerate() {
   if (!databaseStore.activeConnectionId) return
 
   try {
     await queryStore.generateSQL(
-      question.value,
+      queryStore.currentQuestion,
       databaseStore.activeConnectionId
     )
   } catch (error) {
@@ -97,7 +88,7 @@ async function handleExecute() {
 
   try {
     await queryStore.directExecute(
-      question.value,
+      queryStore.currentQuestion,
       databaseStore.activeConnectionId
     )
   } catch (error) {
@@ -106,7 +97,6 @@ async function handleExecute() {
 }
 
 function handleClear() {
-  question.value = ''
   queryStore.clearResults()
 }
 </script>

@@ -32,7 +32,7 @@
       @node-click="onNodeClick"
     >
       <template #default="{ data }">
-        <span class="node">
+        <span class="node" @dblclick="onNodeDblClick(data)">
           <span class="node-label" :class="data.kind">{{ data.label }}</span>
           <span v-if="data.meta" class="node-meta">{{ data.meta }}</span>
         </span>
@@ -43,9 +43,10 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { useDatabaseStore, type ColumnInfo } from '../../stores/database'
+import { useQueryStore } from '../../stores/query'
 
 export interface TreeNode {
   key: string
@@ -58,8 +59,10 @@ export interface TreeNode {
   retry?: boolean
 }
 
+const route = useRoute()
 const router = useRouter()
 const databaseStore = useDatabaseStore()
+const queryStore = useQueryStore()
 
 const treeRef = ref()
 const filterText = ref('')
@@ -155,12 +158,29 @@ function onNodeClick(data: TreeNode, node: any) {
     return
   }
 
+  if (data.kind === 'column') {
+    queryStore.insertIdentifier(data.label)
+    if (route.name !== 'query') router.push({ name: 'query' })
+    return
+  }
+
   if (data.kind === 'message' && data.retry) {
     // Re-expanding a lazy node only refetches once its loaded flag is cleared.
     const parent = node.parent
     databaseStore.invalidateSchema(data.connectionId)
     parent.loaded = false
     parent.expand()
+  }
+}
+
+async function onNodeDblClick(data: TreeNode) {
+  if (data.kind !== 'table') return
+  databaseStore.setActiveConnection(data.connectionId)
+  if (route.name !== 'query') await router.push({ name: 'query' })
+  try {
+    await queryStore.previewTable(data.label, data.connectionId)
+  } catch {
+    // Error surfaced by the store
   }
 }
 </script>
