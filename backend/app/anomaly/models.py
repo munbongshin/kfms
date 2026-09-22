@@ -23,6 +23,8 @@ class Finding:
     @property
     def fingerprint(self) -> str:
         # A reviewer's decision covers the transactions they saw. Hashing the
-        # count and total surfaces a group that gained rows after review.
-        raw = f"{len(self.transactions)}:{self.amount}"
+        # count, total, and transaction identities surfaces a group that
+        # gained rows or swapped rows (even at equal value) after review.
+        seqs = ",".join(sorted(str(int(t["seq"])) for t in self.transactions))
+        raw = f"{len(self.transactions)}:{self.amount}:{seqs}"
         return sha256(raw.encode()).hexdigest()
