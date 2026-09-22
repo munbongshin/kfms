@@ -116,6 +116,21 @@ def test_split_payment_flags_two_payments_at_one_merchant_on_one_day():
     assert sorted(m["seq"] for m in findings[0].transactions) == [Decimal("1"), Decimal("2")]
 
 
+def test_split_payment_handles_float_apprtot_from_live_pool():
+    # DatabaseConnectionPool.execute_query converts NUMERIC columns (Decimal) to
+    # float via _json_safe before rules ever see them, so apprtot arrives as a
+    # plain float on live data even though every other fixture here uses Decimal.
+    # Summing floats with a Decimal("0") seed used to raise TypeError; guard
+    # against that regressing silently.
+    rows = [
+        row(seq=Decimal("1"), apprtot=100000.0),
+        row(seq=Decimal("2"), apprtot=104000.0),
+    ]
+    findings = detect_split_payment(rows, SPLIT_PARAMS)
+    assert len(findings) == 1
+    assert findings[0].amount == Decimal("204000")
+
+
 def test_split_payment_ignores_a_single_payment():
     assert detect_split_payment([row()], SPLIT_PARAMS) == []
 

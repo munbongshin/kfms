@@ -28,6 +28,18 @@ def won(amount: Decimal) -> str:
     return f"{int(amount):,}원"
 
 
+def to_decimal(value: Any) -> Decimal:
+    """Normalise an amount to Decimal.
+
+    Unit-test fixtures pass apprtot as Decimal; DatabaseConnectionPool.execute_query
+    (via _json_safe) hands rules a float for the same NUMERIC column on live data.
+    Going through str() avoids mixing Decimal and float in arithmetic (which raises
+    TypeError) while keeping the value exact. A missing amount becomes Decimal("0")
+    rather than raising.
+    """
+    return Decimal(str(value)) if value is not None else Decimal("0")
+
+
 @dataclass(frozen=True)
 class Rule:
     code: str
@@ -51,7 +63,7 @@ def detect_high_amount(rows: List[Row], params: Dict[str, Any]) -> List[Finding]
                 severity="high",
                 summary=f"단건 {won(r['apprtot'])}",
                 transactions=[r],
-                amount=r["apprtot"],
+                amount=to_decimal(r["apprtot"]),
                 occurred_on=date.fromisoformat(r["transdate"]),
             )
         )
@@ -82,7 +94,7 @@ def detect_off_hours(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
                 severity="medium",
                 summary=f"{label} 결제 — {WEEKDAY_NAMES[occurred.weekday()]}요일 {r['transtime'][:5]}",
                 transactions=[r],
-                amount=r["apprtot"] or Decimal("0"),
+                amount=to_decimal(r["apprtot"]),
                 occurred_on=occurred,
             )
         )
@@ -103,7 +115,7 @@ def detect_watch_mcc(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
                 severity="high",
                 summary=f"주의 업종: {mcc}",
                 transactions=[r],
-                amount=r["apprtot"] or Decimal("0"),
+                amount=to_decimal(r["apprtot"]),
                 occurred_on=date.fromisoformat(r["transdate"]),
             )
         )
@@ -127,13 +139,7 @@ def detect_split_payment(rows: List[Row], params: Dict[str, Any]) -> List[Findin
     for (cardno, merchno, transdate), members in groups.items():
         if len(members) < min_count:
             continue
-        # apprtot arrives as Decimal from unit-test fixtures but as float from
-        # DatabaseConnectionPool.execute_query (which JSON-safes NUMERIC columns
-        # via _json_safe). Normalise through str() so summing never mixes types.
-        total = sum(
-            (Decimal(str(m["apprtot"])) if m.get("apprtot") is not None else Decimal("0") for m in members),
-            Decimal("0"),
-        )
+        total = sum((to_decimal(m.get("apprtot")) for m in members), Decimal("0"))
         findings.append(
             Finding(
                 rule_code="SPLIT_PAYMENT",
