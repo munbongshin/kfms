@@ -4,7 +4,7 @@ Defines database schema for query history, database connections, and Excel uploa
 """
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import Boolean, Integer, String, Text, TIMESTAMP, JSON
+from sqlalchemy import Boolean, Integer, String, Text, TIMESTAMP, JSON, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -135,3 +135,23 @@ class ExcelUpload(Base):
 
     def __repr__(self):
         return f"<ExcelUpload(id={self.id}, filename={self.filename}, table={self.table_name})>"
+
+
+class AnomalyReview(Base):
+    """Reviewer's decision on one anomaly finding."""
+
+    __tablename__ = "anomaly_review"
+    __table_args__ = (UniqueConstraint("database_id", "finding_key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    database_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    finding_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    rule_code: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, comment="confirmed or dismissed")
+    fingerprint: Mapped[str] = mapped_column(
+        String(64), nullable=False, comment="Finding content when reviewed; a mismatch reopens it"
+    )
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reviewed_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )

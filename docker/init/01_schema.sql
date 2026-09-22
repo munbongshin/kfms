@@ -23,6 +23,20 @@ CREATE INDEX idx_query_history_status ON query_history(status);
 CREATE INDEX idx_query_history_bookmarked ON query_history(is_bookmarked, created_at DESC)
     WHERE is_bookmarked;
 
+CREATE TABLE anomaly_review (
+    id           SERIAL PRIMARY KEY,
+    database_id  VARCHAR(255) NOT NULL,
+    finding_key  VARCHAR(200) NOT NULL,
+    rule_code    VARCHAR(40)  NOT NULL,
+    status       VARCHAR(20)  NOT NULL,
+    fingerprint  VARCHAR(64)  NOT NULL,
+    note         TEXT,
+    reviewed_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (database_id, finding_key)
+);
+
+CREATE INDEX idx_anomaly_review_lookup ON anomaly_review(database_id, rule_code);
+
 CREATE TABLE database_connections (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
