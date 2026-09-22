@@ -13,6 +13,16 @@ from app.anomaly.models import Finding
 
 Row = Dict[str, Any]
 
+# M1: the ONE source of truth for rule severity. Both the Rule catalogue below
+# and the Findings each detect function emits read from here, so editing a value
+# actually changes what the screen shows instead of silently doing nothing.
+RULE_SEVERITY: Dict[str, str] = {
+    "HIGH_AMOUNT": "high",
+    "OFF_HOURS": "medium",
+    "WATCH_MCC": "high",
+    "SPLIT_PAYMENT": "medium",
+}
+
 
 def approvals(rows: List[Row]) -> List[Row]:
     """Approvals only. class 'B' rows are cancellations of an earlier approval."""
@@ -44,23 +54,29 @@ def to_decimal(value: Any) -> Decimal:
 class Rule:
     code: str
     label: str
-    severity: str
     detect: Callable[[List[Row], Dict[str, Any]], List[Finding]]
     params: Dict[str, Any] = field(default_factory=dict)
     required_columns: Tuple[str, ...] = ()
+
+    @property
+    def severity(self) -> str:
+        """Read through to RULE_SEVERITY so catalogue and findings cannot drift."""
+        return RULE_SEVERITY[self.code]
 
 
 def detect_high_amount(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
     threshold: Decimal = params["threshold"]
     findings = []
     for r in approvals(rows):
+        if not r.get("transdate"):
+            continue
         if r["apprtot"] is None or r["apprtot"] < threshold:
             continue
         findings.append(
             Finding(
                 rule_code="HIGH_AMOUNT",
                 subject=seq_key(r),
-                severity="high",
+                severity=RULE_SEVERITY["HIGH_AMOUNT"],
                 summary=f"단건 {won(r['apprtot'])}",
                 transactions=[r],
                 amount=to_decimal(r["apprtot"]),
@@ -91,7 +107,7 @@ def detect_off_hours(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
             Finding(
                 rule_code="OFF_HOURS",
                 subject=seq_key(r),
-                severity="medium",
+                severity=RULE_SEVERITY["OFF_HOURS"],
                 summary=f"{label} 결제 — {WEEKDAY_NAMES[occurred.weekday()]}요일 {r['transtime'][:5]}",
                 transactions=[r],
                 amount=to_decimal(r["apprtot"]),
@@ -105,6 +121,8 @@ def detect_watch_mcc(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
     watch = set(params["watch_mcc"])
     findings = []
     for r in approvals(rows):
+        if not r.get("transdate"):
+            continue
         mcc = r.get("mccname")
         if mcc is None or mcc not in watch:
             continue
@@ -112,7 +130,7 @@ def detect_watch_mcc(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
             Finding(
                 rule_code="WATCH_MCC",
                 subject=seq_key(r),
-                severity="high",
+                severity=RULE_SEVERITY["WATCH_MCC"],
                 summary=f"주의 업종: {mcc}",
                 transactions=[r],
                 amount=to_decimal(r["apprtot"]),
@@ -144,7 +162,7 @@ def detect_split_payment(rows: List[Row], params: Dict[str, Any]) -> List[Findin
             Finding(
                 rule_code="SPLIT_PAYMENT",
                 subject=f"{cardno}|{merchno}|{transdate}",
-                severity="medium",
+                severity=RULE_SEVERITY["SPLIT_PAYMENT"],
                 summary=f"동일 가맹점 당일 {len(members)}건 {won(total)}",
                 transactions=members,
                 amount=total,
@@ -158,7 +176,6 @@ RULES: List[Rule] = [
     Rule(
         code="HIGH_AMOUNT",
         label="고액 결제",
-        severity="high",
         detect=detect_high_amount,
         params={"threshold": Decimal("500000")},
         required_columns=("seq", "class", "apprtot", "transdate"),
@@ -166,7 +183,6 @@ RULES: List[Rule] = [
     Rule(
         code="OFF_HOURS",
         label="시간 외 사용",
-        severity="medium",
         detect=detect_off_hours,
         params={"night_start": "23", "night_end": "06"},
         required_columns=("seq", "class", "transdate", "transtime"),
@@ -174,7 +190,6 @@ RULES: List[Rule] = [
     Rule(
         code="WATCH_MCC",
         label="주의 업종",
-        severity="high",
         detect=detect_watch_mcc,
         params={
             "watch_mcc": [
@@ -191,7 +206,6 @@ RULES: List[Rule] = [
     Rule(
         code="SPLIT_PAYMENT",
         label="분할결제 의심",
-        severity="medium",
         detect=detect_split_payment,
         params={"min_count": 2, "exclude_merchbizno": ["1018302925"]},
         required_columns=("seq", "class", "cardno", "merchno", "merchbizno", "transdate", "apprtot"),

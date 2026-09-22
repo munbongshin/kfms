@@ -257,16 +257,16 @@ export const api = {
       return response.data
     },
 
-    async review(findingKey: string, data: {
+    // finding_key goes in the body, not the path: a SPLIT_PAYMENT key contains a
+    // full card number, which must not reach proxy logs or browser history.
+    async review(data: {
       database_id: string
+      finding_key: string
       status: 'confirmed' | 'dismissed'
       fingerprint: string
       note?: string
     }) {
-      const response = await apiClient.patch(
-        `/anomaly/findings/${encodeURIComponent(findingKey)}/review`,
-        data
-      )
+      const response = await apiClient.patch('/anomaly/findings/review', data)
       return response.data
     },
   },

@@ -20,6 +20,15 @@
       />
 
       <template v-else>
+        <el-alert
+          v-if="store.caveat"
+          type="warning"
+          :closable="false"
+          show-icon
+          :title="store.caveat"
+          class="caveat"
+        />
+
         <div class="rules">
           <el-tag
             v-for="rule in store.rules"
@@ -103,7 +112,12 @@ function severityType(severity: string) {
 }
 
 function refresh() {
-  if (connectionId.value) store.fetchFindings(connectionId.value)
+  if (connectionId.value) {
+    store.fetchFindings(connectionId.value)
+  } else {
+    // No connection selected: don't leave the previous one's rows on screen.
+    store.reset()
+  }
 }
 
 watch(connectionId, refresh)
@@ -115,6 +129,10 @@ onMounted(refresh)
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.caveat {
+  margin-bottom: 16px;
 }
 
 .rules {

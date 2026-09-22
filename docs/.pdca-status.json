@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-09-22T07:29:03.431Z",
+  "lastUpdated": "2026-09-22T09:33:13.401Z",
   "activeFeatures": [
     "backend",
     "db",
@@ -19,7 +19,9 @@
     "composables",
     "history",
     "scripts",
-    "scratchpad"
+    "scratchpad",
+    "anomaly",
+    "layout"
   ],
   "primaryFeature": "backend",
   "features": {
@@ -32,9 +34,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-09-10T01:45:54.089Z",
-        "lastUpdated": "2026-09-22T06:13:47.880Z"
+        "lastUpdated": "2026-09-22T09:19:55.545Z"
       },
-      "lastFile": "C:\\kfms\\backend\\app\\utils\\sql_validator.py"
+      "lastFile": "C:\\kfms\\backend\\app\\main.py"
     },
     "db": {
       "phase": "do",
@@ -45,7 +47,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-09-10T01:46:18.941Z",
-        "lastUpdated": "2026-09-22T07:26:41.515Z"
+        "lastUpdated": "2026-09-22T09:08:42.893Z"
       },
       "lastFile": "C:\\kfms\\backend\\app\\db\\models.py"
     },
@@ -84,9 +86,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-09-10T01:49:41.134Z",
-        "lastUpdated": "2026-09-22T07:28:10.761Z"
+        "lastUpdated": "2026-09-22T09:33:08.769Z"
       },
-      "lastFile": "C:\\kfms\\frontend\\src\\services\\api.ts"
+      "lastFile": "C:\\kfms\\frontend\\src\\views\\AnomalyView.vue"
     },
     "router": {
       "phase": "do",
@@ -97,7 +99,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-09-10T01:50:20.305Z",
-        "lastUpdated": "2026-09-10T01:50:20.305Z"
+        "lastUpdated": "2026-09-22T09:33:10.669Z"
       },
       "lastFile": "C:\\kfms\\frontend\\src\\router\\index.ts"
     },
@@ -110,9 +112,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-09-10T01:53:42.017Z",
-        "lastUpdated": "2026-09-22T07:26:50.792Z"
+        "lastUpdated": "2026-09-22T09:12:03.045Z"
       },
-      "lastFile": "C:\\kfms\\backend\\app\\db\\repositories\\history.py"
+      "lastFile": "C:\\kfms\\backend\\app\\db\\repositories\\anomaly.py"
     },
     "v1": {
       "phase": "do",
@@ -123,9 +125,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-09-10T01:54:23.268Z",
-        "lastUpdated": "2026-09-22T07:27:46.864Z"
+        "lastUpdated": "2026-09-22T09:19:47.024Z"
       },
-      "lastFile": "C:\\kfms\\backend\\app\\api\\v1\\history.py"
+      "lastFile": "C:\\kfms\\backend\\app\\api\\v1\\anomaly.py"
     },
     "llm": {
       "phase": "do",
@@ -149,9 +151,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-09-10T01:57:10.123Z",
-        "lastUpdated": "2026-09-22T07:22:24.456Z"
+        "lastUpdated": "2026-09-22T09:32:57.440Z"
       },
-      "lastFile": "C:\\kfms\\frontend\\src\\stores\\query.ts"
+      "lastFile": "C:\\kfms\\frontend\\src\\stores\\anomaly.ts"
     },
     "database": {
       "phase": "do",
@@ -256,6 +258,32 @@
         "lastUpdated": "2026-09-22T06:13:16.728Z"
       },
       "lastFile": "C:\\Users\\신문봉~1\\AppData\\Local\\Temp\\claude\\c--kfms\\1478a918-111b-4827-a357-641cf9e2b76d\\scratchpad\\test_enforce_limit.py"
+    },
+    "anomaly": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-09-22T08:50:10.129Z",
+        "lastUpdated": "2026-09-22T09:29:22.911Z"
+      },
+      "lastFile": "C:\\kfms\\backend\\tests\\anomaly\\test_rules.py"
+    },
+    "layout": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-09-22T09:33:13.401Z",
+        "lastUpdated": "2026-09-22T09:33:13.401Z"
+      },
+      "lastFile": "C:\\kfms\\frontend\\src\\components\\layout\\FunctionTabs.vue"
     }
   },
   "pipeline": {
@@ -266,7 +294,7 @@
   "session": {
     "startedAt": "2026-09-10T01:10:57.403Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-09-22T07:29:03.431Z"
+    "lastActivity": "2026-09-22T09:33:13.401Z"
   },
   "history": [
     {
@@ -956,6 +984,246 @@
     {
       "timestamp": "2026-09-22T07:29:03.431Z",
       "feature": "query",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T08:50:10.129Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T08:50:11.427Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T08:50:13.328Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T08:50:16.542Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T08:50:20.336Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T08:50:25.608Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T08:54:30.456Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T08:54:42.704Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T08:57:36.678Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T08:57:48.115Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T08:57:56.358Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:01:13.193Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:01:14.516Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:01:25.812Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:01:29.647Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:01:31.438Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:04:58.477Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:05:06.798Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:05:31.805Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:08:39.344Z",
+      "feature": "db",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:08:42.893Z",
+      "feature": "db",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:08:50.182Z",
+      "feature": "repositories",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:12:03.045Z",
+      "feature": "repositories",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:14:18.941Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:14:40.268Z",
+      "feature": "backend",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:19:47.024Z",
+      "feature": "v1",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:19:51.331Z",
+      "feature": "backend",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:19:55.546Z",
+      "feature": "backend",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:21:30.863Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:28:48.854Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:28:54.435Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:29:00.066Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:29:05.658Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:29:11.954Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:29:22.911Z",
+      "feature": "anomaly",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:32:51.486Z",
+      "feature": "frontend",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:32:57.440Z",
+      "feature": "stores",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:33:08.769Z",
+      "feature": "frontend",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:33:10.669Z",
+      "feature": "router",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-09-22T09:33:13.401Z",
+      "feature": "layout",
       "phase": "do",
       "action": "updated"
     }

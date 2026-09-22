@@ -21,7 +21,15 @@ def get_anomaly_service(
 
 
 class ReviewRequest(BaseModel):
+    """I1: finding_key travels in the body, never the URL path.
+
+    The SPLIT_PAYMENT subject is `cardno|merchno|transdate`, so the key embeds a
+    full 16-digit card number. In the path it would be written into proxy access
+    logs, browser history and referrer headers by every hop in between.
+    """
+
     database_id: str
+    finding_key: str
     status: str
     fingerprint: str
     note: Optional[str] = None
@@ -38,12 +46,12 @@ async def list_findings(
     return await service.list_findings(database_id, rule_code=rule_code, status=status)
 
 
-@router.patch("/findings/{finding_key:path}/review")
+@router.patch("/findings/review")
 async def review_finding(
-    finding_key: str,
     request: ReviewRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    finding_key = request.finding_key
     if request.status not in ("confirmed", "dismissed"):
         raise HTTPException(
             status_code=http_status.HTTP_400_BAD_REQUEST,

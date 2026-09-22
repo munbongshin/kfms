@@ -1,4 +1,5 @@
 """Repository for anomaly_review."""
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from sqlalchemy import select
@@ -56,6 +57,10 @@ class AnomalyRepository:
         else:
             review.status = status
             review.fingerprint = fingerprint
+            # I3: the timestamp IS the audit evidence. Without this, flipping a
+            # decision from confirmed to dismissed keeps the original review time
+            # (the column's server_default only fires on INSERT).
+            review.reviewed_at = datetime.now(timezone.utc)
             # An omitted note (None) must not erase a previously recorded one;
             # only overwrite when the caller actually supplied a note.
             if note is not None:

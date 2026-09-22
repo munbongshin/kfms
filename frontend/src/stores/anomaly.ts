@@ -36,11 +36,21 @@ export interface Finding {
 export const useAnomalyStore = defineStore('anomaly', () => {
   const rules = ref<RuleStatus[]>([])
   const findings = ref<Finding[]>([])
+  const caveat = ref<string | null>(null)
   const loading = ref(false)
   const ruleFilter = ref('')
   const statusFilter = ref('')
 
+  function reset() {
+    rules.value = []
+    findings.value = []
+    caveat.value = null
+  }
+
   async function fetchFindings(databaseId: string) {
+    // Clear first: otherwise the previous connection's rows stay visible under
+    // the loading overlay, and stay on screen if the fetch then fails.
+    reset()
     loading.value = true
     try {
       const data = await api.anomaly.listFindings({
@@ -50,7 +60,9 @@ export const useAnomalyStore = defineStore('anomaly', () => {
       })
       rules.value = data.applicable_rules
       findings.value = data.findings
+      caveat.value = data.caveat ?? null
     } catch (error) {
+      reset()
       ElMessage.error('점검 결과를 불러오지 못했습니다')
     } finally {
       loading.value = false
@@ -63,8 +75,9 @@ export const useAnomalyStore = defineStore('anomaly', () => {
     status: 'confirmed' | 'dismissed'
   ) {
     try {
-      const updated = await api.anomaly.review(finding.finding_key, {
+      const updated = await api.anomaly.review({
         database_id: databaseId,
+        finding_key: finding.finding_key,
         status,
         // The fingerprint the reviewer actually saw, so a later change reopens it.
         fingerprint: finding.fingerprint,
@@ -81,5 +94,5 @@ export const useAnomalyStore = defineStore('anomaly', () => {
     }
   }
 
-  return { rules, findings, loading, ruleFilter, statusFilter, fetchFindings, review }
+  return { rules, findings, caveat, loading, ruleFilter, statusFilter, reset, fetchFindings, review }
 })
