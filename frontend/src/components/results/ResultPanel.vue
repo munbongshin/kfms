@@ -33,12 +33,11 @@
 
     <ResultTable v-show="activeTab === 'table'" ref="tableRef" :results="results" />
 
-    <ResultChart
-      v-if="results.results.length > 0"
-      v-show="activeTab === 'chart'"
-      :data="results.results"
-    />
-    <el-empty v-else v-show="activeTab === 'chart'" description="차트로 그릴 데이터가 없습니다" />
+    <!-- Mounted only while visible: ECharts reads a zero-sized container under v-show. -->
+    <template v-if="activeTab === 'chart'">
+      <ResultChart v-if="results.results.length > 0" :data="results.results" />
+      <el-empty v-else description="차트로 그릴 데이터가 없습니다" />
+    </template>
 
     <div v-show="activeTab === 'sql'" class="sql-tab">
       <div class="sql-actions">
