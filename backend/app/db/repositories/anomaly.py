@@ -56,7 +56,10 @@ class AnomalyRepository:
         else:
             review.status = status
             review.fingerprint = fingerprint
-            review.note = note
+            # An omitted note (None) must not erase a previously recorded one;
+            # only overwrite when the caller actually supplied a note.
+            if note is not None:
+                review.note = note
 
         await self.session.commit()
         await self.session.refresh(review)
