@@ -127,7 +127,13 @@ def detect_split_payment(rows: List[Row], params: Dict[str, Any]) -> List[Findin
     for (cardno, merchno, transdate), members in groups.items():
         if len(members) < min_count:
             continue
-        total = sum((m["apprtot"] or Decimal("0") for m in members), Decimal("0"))
+        # apprtot arrives as Decimal from unit-test fixtures but as float from
+        # DatabaseConnectionPool.execute_query (which JSON-safes NUMERIC columns
+        # via _json_safe). Normalise through str() so summing never mixes types.
+        total = sum(
+            (Decimal(str(m["apprtot"])) if m.get("apprtot") is not None else Decimal("0") for m in members),
+            Decimal("0"),
+        )
         findings.append(
             Finding(
                 rule_code="SPLIT_PAYMENT",

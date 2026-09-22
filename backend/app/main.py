@@ -13,7 +13,7 @@ from app.db.connection_pool import get_connection_pool
 from app.db.repositories.database_repo import DatabaseRepository
 
 # Import routers
-from app.api.v1 import databases, query, excel, history
+from app.api.v1 import databases, query, excel, history, anomaly
 
 
 @asynccontextmanager
@@ -118,6 +118,7 @@ app.include_router(databases.router, prefix="/api/v1")
 app.include_router(query.router, prefix="/api/v1")
 app.include_router(excel.router, prefix="/api/v1")
 app.include_router(history.router, prefix="/api/v1")
+app.include_router(anomaly.router, prefix="/api/v1")
 
 
 if __name__ == "__main__":
