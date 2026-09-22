@@ -57,6 +57,58 @@ def detect_high_amount(rows: List[Row], params: Dict[str, Any]) -> List[Finding]
     return findings
 
 
+WEEKDAY_NAMES = ("월", "화", "수", "목", "금", "토", "일")
+
+
+def detect_off_hours(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
+    night_start: str = params["night_start"]
+    night_end: str = params["night_end"]
+    findings = []
+    for r in approvals(rows):
+        if not r.get("transdate") or not r.get("transtime"):
+            continue
+        occurred = date.fromisoformat(r["transdate"])
+        hour = r["transtime"][:2]
+        is_weekend = occurred.weekday() >= 5
+        is_night = hour >= night_start or hour < night_end
+        if not (is_weekend or is_night):
+            continue
+        label = "주말" if is_weekend else "심야"
+        findings.append(
+            Finding(
+                rule_code="OFF_HOURS",
+                subject=seq_key(r),
+                severity="medium",
+                summary=f"{label} 결제 — {WEEKDAY_NAMES[occurred.weekday()]}요일 {r['transtime'][:5]}",
+                transactions=[r],
+                amount=r["apprtot"] or Decimal("0"),
+                occurred_on=occurred,
+            )
+        )
+    return findings
+
+
+def detect_watch_mcc(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
+    watch = set(params["watch_mcc"])
+    findings = []
+    for r in approvals(rows):
+        mcc = r.get("mccname")
+        if mcc is None or mcc not in watch:
+            continue
+        findings.append(
+            Finding(
+                rule_code="WATCH_MCC",
+                subject=seq_key(r),
+                severity="high",
+                summary=f"주의 업종: {mcc}",
+                transactions=[r],
+                amount=r["apprtot"] or Decimal("0"),
+                occurred_on=date.fromisoformat(r["transdate"]),
+            )
+        )
+    return findings
+
+
 RULES: List[Rule] = [
     Rule(
         code="HIGH_AMOUNT",
@@ -65,5 +117,30 @@ RULES: List[Rule] = [
         detect=detect_high_amount,
         params={"threshold": Decimal("500000")},
         required_columns=("seq", "class", "apprtot", "transdate"),
+    ),
+    Rule(
+        code="OFF_HOURS",
+        label="시간 외 사용",
+        severity="medium",
+        detect=detect_off_hours,
+        params={"night_start": "23", "night_end": "06"},
+        required_columns=("seq", "class", "transdate", "transtime"),
+    ),
+    Rule(
+        code="WATCH_MCC",
+        label="주의 업종",
+        severity="high",
+        detect=detect_watch_mcc,
+        params={
+            "watch_mcc": [
+                "상품권 전문판매",
+                "볼 링 장",
+                "영화관",
+                "화   원",
+                "기타회원제형태업소4",
+                "자사카드발행백화점",
+            ]
+        },
+        required_columns=("seq", "class", "mccname", "transdate"),
     ),
 ]
