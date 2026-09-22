@@ -3,6 +3,7 @@
 Rules are pure functions over rows already read from v_approval, so they can
 be tested with fixture lists instead of a live database.
 """
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
@@ -109,6 +110,38 @@ def detect_watch_mcc(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
     return findings
 
 
+def detect_split_payment(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
+    min_count: int = params["min_count"]
+    excluded = {b.strip() for b in params["exclude_merchbizno"]}
+
+    groups: Dict[Tuple[str, str, str], List[Row]] = defaultdict(list)
+    for r in approvals(rows):
+        bizno = (r.get("merchbizno") or "").strip()
+        if bizno in excluded:
+            continue
+        if not r.get("cardno") or not r.get("merchno") or not r.get("transdate"):
+            continue
+        groups[(r["cardno"], r["merchno"], r["transdate"])].append(r)
+
+    findings = []
+    for (cardno, merchno, transdate), members in groups.items():
+        if len(members) < min_count:
+            continue
+        total = sum((m["apprtot"] or Decimal("0") for m in members), Decimal("0"))
+        findings.append(
+            Finding(
+                rule_code="SPLIT_PAYMENT",
+                subject=f"{cardno}|{merchno}|{transdate}",
+                severity="medium",
+                summary=f"동일 가맹점 당일 {len(members)}건 {won(total)}",
+                transactions=members,
+                amount=total,
+                occurred_on=date.fromisoformat(transdate),
+            )
+        )
+    return findings
+
+
 RULES: List[Rule] = [
     Rule(
         code="HIGH_AMOUNT",
@@ -142,5 +175,13 @@ RULES: List[Rule] = [
             ]
         },
         required_columns=("seq", "class", "mccname", "transdate"),
+    ),
+    Rule(
+        code="SPLIT_PAYMENT",
+        label="분할결제 의심",
+        severity="medium",
+        detect=detect_split_payment,
+        params={"min_count": 2, "exclude_merchbizno": ["1018302925"]},
+        required_columns=("seq", "class", "cardno", "merchno", "merchbizno", "transdate", "apprtot"),
     ),
 ]

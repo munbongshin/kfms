@@ -1,6 +1,11 @@
 from decimal import Decimal
 
-from app.anomaly.rules import detect_high_amount, detect_off_hours, detect_watch_mcc
+from app.anomaly.rules import (
+    detect_high_amount,
+    detect_off_hours,
+    detect_split_payment,
+    detect_watch_mcc,
+)
 
 
 def row(**overrides):
@@ -93,3 +98,64 @@ def test_watch_mcc_ignores_null_category():
 def test_watch_mcc_ignores_cancellations():
     cancelled = row(mccname="영화관", **{"class": "B"})
     assert detect_watch_mcc([cancelled], WATCH_PARAMS) == []
+
+
+SPLIT_PARAMS = {"min_count": 2, "exclude_merchbizno": ["1018302925"]}
+
+
+def test_split_payment_flags_two_payments_at_one_merchant_on_one_day():
+    rows = [
+        row(seq=Decimal("1"), apprtot=Decimal("100000")),
+        row(seq=Decimal("2"), apprtot=Decimal("104000")),
+    ]
+    findings = detect_split_payment(rows, SPLIT_PARAMS)
+    assert len(findings) == 1
+    assert findings[0].finding_key == "SPLIT_PAYMENT:4072855739182287|000049877848|2023-07-31"
+    assert findings[0].amount == Decimal("204000")
+    assert "2건" in findings[0].summary
+
+
+def test_split_payment_ignores_a_single_payment():
+    assert detect_split_payment([row()], SPLIT_PARAMS) == []
+
+
+def test_split_payment_does_not_group_across_merchants():
+    rows = [
+        row(seq=Decimal("1"), merchno="AAA"),
+        row(seq=Decimal("2"), merchno="BBB"),
+    ]
+    assert detect_split_payment(rows, SPLIT_PARAMS) == []
+
+
+def test_split_payment_does_not_group_across_days():
+    rows = [
+        row(seq=Decimal("1"), transdate="2023-07-30"),
+        row(seq=Decimal("2"), transdate="2023-07-31"),
+    ]
+    assert detect_split_payment(rows, SPLIT_PARAMS) == []
+
+
+def test_split_payment_skips_excluded_business_numbers():
+    # 우정사업본부: 41 of 200 rows, repeated postage is legitimate.
+    rows = [
+        row(seq=Decimal("1"), merchbizno="1018302925"),
+        row(seq=Decimal("2"), merchbizno="1018302925"),
+    ]
+    assert detect_split_payment(rows, SPLIT_PARAMS) == []
+
+
+def test_split_payment_strips_padded_business_numbers():
+    # merchbizno is CHAR(10), so shorter values arrive space-padded.
+    rows = [
+        row(seq=Decimal("1"), merchbizno="1018302925"),
+        row(seq=Decimal("2"), merchbizno="1018302925 "),
+    ]
+    assert detect_split_payment(rows, SPLIT_PARAMS) == []
+
+
+def test_split_payment_ignores_cancellations():
+    rows = [
+        row(seq=Decimal("1")),
+        row(seq=Decimal("2"), **{"class": "B"}),
+    ]
+    assert detect_split_payment(rows, SPLIT_PARAMS) == []
