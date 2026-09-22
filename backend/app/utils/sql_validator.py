@@ -3,6 +3,7 @@ SQL Validator for Read-Only Mode.
 Validates SQL queries to ensure they are safe for execution.
 """
 from typing import Dict, List, Any
+import re
 import sqlparse
 from sqlparse.sql import Statement
 from sqlparse.tokens import Keyword, DML
@@ -202,19 +203,16 @@ class SQLValidator:
         Returns:
             SQL with LIMIT clause
         """
-        sql_upper = sql.upper()
+        # A trailing semicolon would terminate the statement before the appended
+        # clause, and LIMIT has to come after ORDER BY, so it always goes last.
+        statement = sql.strip().rstrip(';').rstrip()
 
-        if 'LIMIT' in sql_upper:
-            return sql
+        # Word boundaries keep identifiers such as "cardlimitappr" from reading
+        # as an existing LIMIT clause and silently dropping the row cap.
+        if re.search(r'\bLIMIT\b', statement, re.IGNORECASE):
+            return statement
 
-        # Add LIMIT before ORDER BY if present, otherwise at end
-        if 'ORDER BY' in sql_upper:
-            # Insert LIMIT before ORDER BY
-            parts = sql.split('ORDER BY')
-            return f"{parts[0].rstrip()} LIMIT {default_limit} ORDER BY {'ORDER BY'.join(parts[1:])}"
-        else:
-            # Add LIMIT at end
-            return f"{sql.rstrip()} LIMIT {default_limit}"
+        return f"{statement} LIMIT {default_limit}"
 
 
 # Convenience function
