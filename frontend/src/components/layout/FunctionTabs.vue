@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
-import { ChatLineSquare, Coin, Clock } from '@element-plus/icons-vue'
+import { ChatLineSquare, Coin, Clock, Warning } from '@element-plus/icons-vue'
 
 defineProps<{ collapsed: boolean }>()
 
@@ -27,6 +27,7 @@ const tabs = [
   { name: 'query', label: '질의', icon: ChatLineSquare },
   { name: 'databases', label: '데이터', icon: Coin },
   { name: 'history', label: '이력', icon: Clock },
+  { name: 'anomaly', label: '점검', icon: Warning },
 ]
 </script>
 

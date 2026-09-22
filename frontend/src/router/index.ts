@@ -23,6 +23,12 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/HistoryView.vue'),
     meta: { title: 'History' }
   }
+  ,{
+    path: '/anomaly',
+    name: 'anomaly',
+    component: () => import('../views/AnomalyView.vue'),
+    meta: { title: 'Anomaly' }
+  }
 ]
 
 const router = createRouter({

@@ -245,6 +245,31 @@ export const api = {
       return response.data
     },
   },
+
+  // Anomaly detection
+  anomaly: {
+    async listFindings(params: {
+      database_id: string
+      rule_code?: string
+      status?: string
+    }) {
+      const response = await apiClient.get('/anomaly/findings', { params })
+      return response.data
+    },
+
+    async review(findingKey: string, data: {
+      database_id: string
+      status: 'confirmed' | 'dismissed'
+      fingerprint: string
+      note?: string
+    }) {
+      const response = await apiClient.patch(
+        `/anomaly/findings/${encodeURIComponent(findingKey)}/review`,
+        data
+      )
+      return response.data
+    },
+  },
 }
 
 export default apiClient
