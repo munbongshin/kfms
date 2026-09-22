@@ -188,7 +188,7 @@ class DatabaseConnectionPool:
                 SELECT table_name
                 FROM information_schema.tables
                 WHERE table_schema = 'public'
-                AND table_type = 'BASE TABLE'
+                AND table_type IN ('BASE TABLE', 'VIEW')
                 ORDER BY table_name
             """))
 
