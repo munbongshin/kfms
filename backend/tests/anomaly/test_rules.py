@@ -113,10 +113,19 @@ def test_split_payment_flags_two_payments_at_one_merchant_on_one_day():
     assert findings[0].finding_key == "SPLIT_PAYMENT:4072855739182287|000049877848|2023-07-31"
     assert findings[0].amount == Decimal("204000")
     assert "2건" in findings[0].summary
+    assert sorted(m["seq"] for m in findings[0].transactions) == [Decimal("1"), Decimal("2")]
 
 
 def test_split_payment_ignores_a_single_payment():
     assert detect_split_payment([row()], SPLIT_PARAMS) == []
+
+
+def test_split_payment_does_not_group_across_cards():
+    rows = [
+        row(seq=Decimal("1"), cardno="4072855739182287"),
+        row(seq=Decimal("2"), cardno="4072855739182299"),
+    ]
+    assert detect_split_payment(rows, SPLIT_PARAMS) == []
 
 
 def test_split_payment_does_not_group_across_merchants():
