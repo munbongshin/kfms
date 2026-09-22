@@ -3,7 +3,9 @@ Query History API endpoints.
 View and manage query execution history.
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+# Aliased: the list endpoint takes a `status` query parameter that would
+# otherwise shadow this module inside that function.
+from fastapi import APIRouter, Depends, HTTPException, status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from datetime import datetime
@@ -27,6 +29,7 @@ class HistoryListItem(BaseModel):
     execution_time_ms: Optional[int]
     llm_provider: Optional[str]
     llm_model: Optional[str]
+    is_bookmarked: bool
     created_at: str
 
     class Config:
@@ -47,6 +50,7 @@ class HistoryDetail(BaseModel):
     llm_provider: Optional[str]
     llm_model: Optional[str]
     validation_approved: bool
+    is_bookmarked: bool
     created_at: str
 
     class Config:
@@ -62,6 +66,7 @@ def get_history_repo(db: AsyncSession = Depends(get_db)) -> HistoryRepository:
 async def list_history(
     database_id: Optional[str] = None,
     status: Optional[str] = None,
+    bookmarked: Optional[bool] = None,
     limit: int = 100,
     offset: int = 0,
     repo: HistoryRepository = Depends(get_history_repo)
@@ -72,6 +77,7 @@ async def list_history(
     Args:
         database_id: Filter by database connection ID
         status: Filter by status (success, error, pending)
+        bookmarked: Filter by bookmark state
         limit: Maximum records to return (max 1000)
         offset: Number of records to skip
 
@@ -85,6 +91,7 @@ async def list_history(
         history = await repo.get_all(
             database_id=database_id,
             status=status,
+            bookmarked=bookmarked,
             limit=limit,
             offset=offset
         )
@@ -100,6 +107,7 @@ async def list_history(
                 execution_time_ms=h.execution_time_ms,
                 llm_provider=h.llm_provider,
                 llm_model=h.llm_model,
+                is_bookmarked=h.is_bookmarked,
                 created_at=h.created_at.isoformat()
             )
             for h in history
@@ -107,7 +115,7 @@ async def list_history(
 
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch history: {str(e)}"
         )
 
@@ -127,7 +135,7 @@ async def get_history(
 
         if not history:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail=f"History {history_id} not found"
             )
 
@@ -144,6 +152,7 @@ async def get_history(
             llm_provider=history.llm_provider,
             llm_model=history.llm_model,
             validation_approved=history.validation_approved,
+            is_bookmarked=history.is_bookmarked,
             created_at=history.created_at.isoformat()
         )
 
@@ -151,12 +160,51 @@ async def get_history(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get history: {str(e)}"
         )
 
 
-@router.delete("/{history_id}", status_code=status.HTTP_204_NO_CONTENT)
+class BookmarkRequest(BaseModel):
+    """Bookmark state change."""
+    is_bookmarked: bool
+
+
+@router.patch("/{history_id}/bookmark", response_model=HistoryListItem)
+async def set_bookmark(
+    history_id: int,
+    request: BookmarkRequest,
+    repo: HistoryRepository = Depends(get_history_repo)
+):
+    """
+    Mark or unmark a history record as a bookmark.
+
+    Bookmarked queries are offered as one-click re-runs of their saved SQL.
+    """
+    record = await repo.set_bookmark(history_id, request.is_bookmarked)
+
+    if not record:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"History {history_id} not found"
+        )
+
+    return HistoryListItem(
+        id=record.id,
+        question=record.question,
+        generated_sql=record.generated_sql,
+        database_id=record.database_id,
+        status=record.status,
+        row_count=record.row_count,
+        execution_time_ms=record.execution_time_ms,
+        llm_provider=record.llm_provider,
+        llm_model=record.llm_model,
+        is_bookmarked=record.is_bookmarked,
+        created_at=record.created_at.isoformat()
+    )
+
+
+@router.delete("/{history_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_history(
     history_id: int,
     repo: HistoryRepository = Depends(get_history_repo)
@@ -171,7 +219,7 @@ async def delete_history(
 
         if not deleted:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail=f"History {history_id} not found"
             )
 
@@ -181,7 +229,7 @@ async def delete_history(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete history: {str(e)}"
         )
 
@@ -219,6 +267,6 @@ async def get_history_stats(
 
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get stats: {str(e)}"
         )

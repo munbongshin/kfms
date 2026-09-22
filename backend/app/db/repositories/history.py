@@ -111,10 +111,32 @@ class HistoryRepository:
         )
         return result.scalar_one_or_none()
 
+    async def set_bookmark(self, history_id: int, is_bookmarked: bool) -> Optional[QueryHistory]:
+        """
+        Mark or unmark a history record as a bookmark.
+
+        Args:
+            history_id: History record ID
+            is_bookmarked: New bookmark state
+
+        Returns:
+            Updated QueryHistory if found, None otherwise
+        """
+        record = await self.get_by_id(history_id)
+        if record is None:
+            return None
+
+        record.is_bookmarked = is_bookmarked
+        await self.session.commit()
+        await self.session.refresh(record)
+
+        return record
+
     async def get_all(
         self,
         database_id: Optional[str] = None,
         status: Optional[str] = None,
+        bookmarked: Optional[bool] = None,
         limit: int = 100,
         offset: int = 0
     ) -> List[QueryHistory]:
@@ -124,6 +146,7 @@ class HistoryRepository:
         Args:
             database_id: Filter by database ID
             status: Filter by status
+            bookmarked: Filter by bookmark state
             limit: Maximum records to return
             offset: Number of records to skip
 
@@ -137,6 +160,9 @@ class HistoryRepository:
 
         if status:
             query = query.where(QueryHistory.status == status)
+
+        if bookmarked is not None:
+            query = query.where(QueryHistory.is_bookmarked == bookmarked)
 
         query = query.limit(limit).offset(offset)
 

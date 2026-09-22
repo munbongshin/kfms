@@ -13,12 +13,15 @@ CREATE TABLE query_history (
     llm_provider VARCHAR(50),
     llm_model VARCHAR(100),
     validation_approved BOOLEAN DEFAULT false,
+    is_bookmarked BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_query_history_created_at ON query_history(created_at DESC);
 CREATE INDEX idx_query_history_database_id ON query_history(database_id);
 CREATE INDEX idx_query_history_status ON query_history(status);
+CREATE INDEX idx_query_history_bookmarked ON query_history(is_bookmarked, created_at DESC)
+    WHERE is_bookmarked;
 
 CREATE TABLE database_connections (
     id SERIAL PRIMARY KEY,

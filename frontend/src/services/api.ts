@@ -10,7 +10,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  // Must outlast the backend's own budget (OLLAMA_TIMEOUT + QUERY_TIMEOUT),
+  // otherwise a slow generation aborts here and hides the server's error.
+  timeout: 180000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -214,10 +216,18 @@ export const api = {
     async list(params?: {
       database_id?: string
       status?: string
+      bookmarked?: boolean
       limit?: number
       offset?: number
     }) {
       const response = await apiClient.get('/history', { params })
+      return response.data
+    },
+
+    async setBookmark(historyId: number, isBookmarked: boolean) {
+      const response = await apiClient.patch(`/history/${historyId}/bookmark`, {
+        is_bookmarked: isBookmarked,
+      })
       return response.data
     },
 

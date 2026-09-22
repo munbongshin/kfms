@@ -1,6 +1,7 @@
 <template>
   <div class="query-view">
     <QueryInput />
+    <BookmarkBar />
     <SQLPreview />
 
     <ResultPanel v-if="queryStore.queryResults" :results="queryStore.queryResults" />
@@ -27,6 +28,7 @@
 <script setup lang="ts">
 import { useQueryStore } from '../stores/query'
 import QueryInput from '../components/query/QueryInput.vue'
+import BookmarkBar from '../components/query/BookmarkBar.vue'
 import SQLPreview from '../components/query/SQLPreview.vue'
 import ResultPanel from '../components/results/ResultPanel.vue'
 

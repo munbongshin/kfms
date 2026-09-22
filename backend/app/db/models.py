@@ -43,6 +43,12 @@ class QueryHistory(Base):
         nullable=False,
         comment="User confirmed execution after seeing SQL"
     )
+    is_bookmarked: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        comment="Saved by the user for one-click re-execution"
+    )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=False,

@@ -33,6 +33,19 @@
         style="width: 100%"
         @row-click="viewDetail"
       >
+        <el-table-column label="★" width="50">
+          <template #default="{ row }">
+            <el-button
+              text
+              size="small"
+              :class="{ bookmarked: row.is_bookmarked }"
+              @click.stop="toggleBookmark(row)"
+            >
+              <el-icon><StarFilled v-if="row.is_bookmarked" /><Star v-else /></el-icon>
+            </el-button>
+          </template>
+        </el-table-column>
+
         <el-table-column prop="question" label="Question" min-width="300" show-overflow-tooltip />
 
         <el-table-column label="Status" width="120">
@@ -135,7 +148,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Refresh, Filter, Delete } from '@element-plus/icons-vue'
+import { Refresh, Filter, Delete, Star, StarFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../../services/api'
 import { useQueryStore } from '../../stores/query'
@@ -203,13 +216,17 @@ async function viewDetail(row: any) {
 
 async function rerunQuery(row: any) {
   router.push('/query')
+  await queryStore.runSavedSQL(row.question, row.generated_sql, Number(row.database_id))
+}
 
-  // Set the question in query store
-  setTimeout(() => {
-    queryStore.currentQuestion = row.question
-  }, 100)
-
-  ElMessage.info('Question loaded. Click "Generate & Execute" to re-run.')
+async function toggleBookmark(row: any) {
+  try {
+    const updated = await api.history.setBookmark(row.id, !row.is_bookmarked)
+    row.is_bookmarked = updated.is_bookmarked
+    ElMessage.success(row.is_bookmarked ? '북마크에 추가했습니다' : '북마크를 해제했습니다')
+  } catch (error) {
+    ElMessage.error('Failed to update bookmark')
+  }
 }
 
 async function deleteHistory(historyId: number) {
@@ -244,6 +261,10 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: center;
+}
+
+.bookmarked {
+  color: #e6a23c;
 }
 
 .el-table :deep(.el-table__row) {

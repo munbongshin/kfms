@@ -234,6 +234,45 @@ export const useQueryStore = defineStore('query', () => {
     }
   }
 
+  async function runSavedSQL(question: string, sql: string, databaseId: number) {
+    loading.value = true
+    currentQuestion.value = question
+    generatedSQL.value = sql
+
+    try {
+      const result = await api.query.execute({
+        question,
+        sql,
+        database_id: databaseId,
+        validation_approved: true,
+      })
+
+      if (!result.success) {
+        throw new Error(result.error || 'Execution failed')
+      }
+
+      queryResults.value = {
+        question,
+        sql,
+        results: result.results || [],
+        row_count: result.row_count || 0,
+        execution_time_ms: result.execution_time_ms || 0,
+        history_id: result.history_id,
+        warnings: result.warnings,
+      }
+
+      ElMessage.success(`저장된 SQL 실행 완료 (${result.execution_time_ms}ms)`)
+      return result
+    } catch (error: any) {
+      // Saved SQL goes stale when the schema changes, so fall back to
+      // regenerating rather than leaving the user at a dead end.
+      ElMessage.warning('저장된 SQL이 현재 스키마에서 실패해 다시 생성합니다')
+      return await directExecute(question, databaseId)
+    } finally {
+      loading.value = false
+    }
+  }
+
   function clearResults() {
     queryResults.value = null
     currentQuestion.value = ''
@@ -261,5 +300,6 @@ export const useQueryStore = defineStore('query', () => {
     clearResults,
     insertIdentifier,
     previewTable,
+    runSavedSQL,
   }
 })
