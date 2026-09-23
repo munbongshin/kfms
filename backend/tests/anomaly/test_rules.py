@@ -1,11 +1,20 @@
 from decimal import Decimal
 
 from app.anomaly.rules import (
+    SOURCES,
     detect_high_amount,
     detect_off_hours,
     detect_split_payment,
     detect_watch_mcc,
 )
+
+
+APPROVAL_COLUMNS = SOURCES["approval"].columns
+
+
+def params(code, severity, **extra):
+    """Rule params as build_rules assembles them, for the approval source."""
+    return {"columns": APPROVAL_COLUMNS, "code": code, "severity": severity, **extra}
 
 
 def row(**overrides):
@@ -26,22 +35,22 @@ def row(**overrides):
 
 
 def test_high_amount_flags_at_the_threshold():
-    findings = detect_high_amount([row(apprtot=Decimal("500000"))], {"threshold": Decimal("500000")})
+    findings = detect_high_amount([row(apprtot=Decimal("500000"))], params("HIGH_AMOUNT", "high", threshold=Decimal("500000")))
     assert len(findings) == 1
     assert findings[0].finding_key == "HIGH_AMOUNT:560348"
 
 
 def test_high_amount_ignores_one_won_below_the_threshold():
-    findings = detect_high_amount([row(apprtot=Decimal("499999"))], {"threshold": Decimal("500000")})
+    findings = detect_high_amount([row(apprtot=Decimal("499999"))], params("HIGH_AMOUNT", "high", threshold=Decimal("500000")))
     assert findings == []
 
 
 def test_high_amount_ignores_cancellations():
     cancelled = row(apprtot=Decimal("900000"), **{"class": "B"})
-    assert detect_high_amount([cancelled], {"threshold": Decimal("500000")}) == []
+    assert detect_high_amount([cancelled], params("HIGH_AMOUNT", "high", threshold=Decimal("500000"))) == []
 
 
-OFF_HOURS_PARAMS = {"night_start": "23", "night_end": "06"}
+OFF_HOURS_PARAMS = params("OFF_HOURS", "medium", night_start="23", night_end="06")
 
 
 def test_off_hours_flags_saturday():
@@ -77,7 +86,7 @@ def test_off_hours_ignores_cancellations():
     assert detect_off_hours([cancelled], OFF_HOURS_PARAMS) == []
 
 
-WATCH_PARAMS = {"watch_mcc": ["상품권 전문판매", "영화관"]}
+WATCH_PARAMS = params("WATCH_MCC", "high", watch_mcc=["상품권 전문판매", "영화관"])
 
 
 def test_watch_mcc_flags_a_listed_category():
@@ -100,7 +109,7 @@ def test_watch_mcc_ignores_cancellations():
     assert detect_watch_mcc([cancelled], WATCH_PARAMS) == []
 
 
-SPLIT_PARAMS = {"min_count": 2, "exclude_merchbizno": ["1018302925"]}
+SPLIT_PARAMS = params("SPLIT_PAYMENT", "medium", min_count=2, exclude_merchbizno=["1018302925"])
 
 
 def test_split_payment_flags_two_payments_at_one_merchant_on_one_day():

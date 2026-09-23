@@ -269,8 +269,8 @@ export const api = {
 
     // Only called when a reviewer expands a row. The response carries the card
     // number, which is why it is a separate request rather than part of the list.
-    async transactions(databaseId: string, seqs: number[]) {
-      const params = new URLSearchParams({ database_id: databaseId })
+    async transactions(databaseId: string, source: string, seqs: number[]) {
+      const params = new URLSearchParams({ database_id: databaseId, source })
       seqs.forEach((seq) => params.append('seq', String(seq)))
       const response = await apiClient.get(`/anomaly/findings/transactions?${params}`)
       return response.data

@@ -4,12 +4,25 @@ import re
 from typing import Any, Dict, List, Optional
 
 from app.anomaly.models import Finding
-from app.anomaly.rules import RULES, SOURCES, Source, rules_by_source
+from app.anomaly.rules import (
+    AMOUNT,
+    CARD,
+    CATEGORY,
+    CLASS,
+    DATE,
+    KEY,
+    MERCHANT,
+    MERCHANT_BIZNO,
+    TIME,
+    RULES,
+    SOURCES,
+    Source,
+    detect_watch_mcc,
+    rules_by_source,
+)
 from app.db.repositories.anomaly import AnomalyRepository
 
 logger = logging.getLogger(__name__)
-
-SOURCE_VIEW = "v_approval"
 
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
@@ -21,7 +34,7 @@ TRANSACTION_FIELDS = ("seq", "merchname", "apprtot")
 
 # I4: caveats are rendered in the UI, so they never carry exception text —
 # SQLAlchemy messages embed SQL and connection details. The detail is logged.
-SOURCE_ERROR_CAVEAT = f"{SOURCE_VIEW} 조회 실패 — 서버 로그를 확인하세요"
+SOURCE_ERROR_CAVEAT = "점검 대상 조회 실패 — 서버 로그를 확인하세요"
 RULE_ERROR_CAVEAT = "규칙 실행 오류 — 서버 로그를 확인하세요"
 REVIEW_ERROR_CAVEAT = "검토 이력을 불러오지 못해 모든 건이 미검토로 표시됩니다"
 
@@ -29,24 +42,31 @@ REVIEW_ERROR_CAVEAT = "검토 이력을 불러오지 못해 모든 건이 미검
 # Shown by default when a reviewer expands a finding. The card number is
 # deliberately unmasked: the reviewer opened this row to judge it, and the
 # list endpoint still never carries it.
-DETAIL_LABELS = {
-    "cardno": "카드번호",
-    "class": "구분",
-    "transdate": "사용일자",
-    "transtime": "사용시각",
-    "merchname": "가맹점명",
-    "mccname": "업종",
-    "apprtot": "승인금액",
-    "appramt": "공급가액",
-    "vat": "부가세",
-    "apprno": "승인번호",
-    "insttype": "할부구분",
-    "instmonth": "할부개월",
-    "merchbizno": "가맹점 사업자번호",
-    "merchtel": "가맹점 전화",
-    "merchaddr1": "가맹점 주소",
-}
-DETAIL_FIELDS = tuple(DETAIL_LABELS)
+#
+# The first group is addressed through the source's logical mapping, so the
+# same labels work whether the column is called transdate or apprdate. The
+# second is physical and simply skipped where a source lacks it.
+LOGICAL_DETAIL = (
+    (CARD, "카드번호"),
+    (CLASS, "구분"),
+    (DATE, "사용일자"),
+    (TIME, "사용시각"),
+    (AMOUNT, "금액"),
+    (CATEGORY, "업종"),
+    (MERCHANT, "가맹점번호"),
+    (MERCHANT_BIZNO, "가맹점 사업자번호"),
+)
+
+EXTRA_DETAIL = (
+    ("merchname", "가맹점명"),
+    ("apprno", "승인번호"),
+    ("appramt", "공급가액"),
+    ("vat", "부가세"),
+    ("insttype", "할부구분"),
+    ("instmonth", "할부개월"),
+    ("merchtel", "가맹점 전화"),
+    ("merchaddr1", "가맹점 주소"),
+)
 
 
 ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -69,10 +89,10 @@ def build_source_query(source: Source, date_from: Optional[str], date_to: Option
     conditions = []
     params: Dict[str, Any] = {}
     if date_from:
-        conditions.append(f"{source.date_column} >= :date_from")
+        conditions.append(f"{source.columns[DATE]} >= :date_from")
         params["date_from"] = date_from
     if date_to:
-        conditions.append(f"{source.date_column} <= :date_to")
+        conditions.append(f"{source.columns[DATE]} <= :date_to")
         params["date_to"] = date_to
 
     sql = f"SELECT * FROM {source.view}"
@@ -86,21 +106,32 @@ def _public_transaction(row: Dict[str, Any]) -> Dict[str, Any]:
     return {field: row.get(field) for field in TRANSACTION_FIELDS}
 
 
-def split_detail(row: Dict[str, Any]) -> tuple:
-    """Split one approval into the audit fields and everything else worth showing.
+def split_detail(row: Dict[str, Any], source: Source) -> tuple:
+    """Split one row into the audit fields and everything else worth showing.
 
     Core fields keep their order and survive a null value — a missing 업종 is
     itself evidence. The rest drops empties so the "show all" toggle is not
     mostly blank.
     """
-    core = [
-        {"field": field, "label": DETAIL_LABELS[field], "value": row.get(field)}
-        for field in DETAIL_FIELDS
-    ]
+    core = []
+    seen = set()
+
+    for logical, label in LOGICAL_DETAIL:
+        physical = source.columns.get(logical)
+        if physical is None:
+            continue
+        core.append({"field": physical, "label": label, "value": row.get(physical)})
+        seen.add(physical)
+
+    for physical, label in EXTRA_DETAIL:
+        if physical in row and physical not in seen:
+            core.append({"field": physical, "label": label, "value": row.get(physical)})
+            seen.add(physical)
+
     rest = [
         {"field": field, "label": field, "value": value}
         for field, value in row.items()
-        if field not in DETAIL_LABELS and value is not None and value != ""
+        if field not in seen and value is not None and value != ""
     ]
     return core, rest
 
@@ -160,8 +191,8 @@ class AnomalyService:
             try:
                 rows = await self.pool.execute_query(
                     database_id,
-                    f"SELECT MIN({source.date_column}) AS min_date,"
-                    f" MAX({source.date_column}) AS max_date,"
+                    f"SELECT MIN({source.columns[DATE]}) AS min_date,"
+                    f" MAX({source.columns[DATE]}) AS max_date,"
                     f" COUNT(*) AS row_count FROM {source.view}",
                 )
             except Exception:
@@ -182,31 +213,35 @@ class AnomalyService:
             )
         return out
 
-    async def get_transactions(self, database_id: str, seqs: List[int]) -> List[Dict[str, Any]]:
-        """Full approvals behind one finding, split into audit fields and the rest.
+    async def get_transactions(
+        self, database_id: str, source_key: str, keys: List[int]
+    ) -> List[Dict[str, Any]]:
+        """Full rows behind one finding, split into audit fields and the rest.
 
         Only reached when a reviewer expands a row, which is why this — unlike
         the list endpoint — may carry the card number.
         """
-        if not seqs:
+        if not keys:
             return []
 
-        placeholders = ", ".join(f":seq{i}" for i in range(len(seqs)))
-        params = {f"seq{i}": seq for i, seq in enumerate(seqs)}
+        source = SOURCES[source_key]
+        key_column = source.columns[KEY]
+        placeholders = ", ".join(f":key{i}" for i in range(len(keys)))
+        params = {f"key{i}": key for i, key in enumerate(keys)}
         rows = await self.pool.execute_query(
             database_id,
-            f"SELECT * FROM {SOURCE_VIEW} WHERE seq IN ({placeholders})",
+            f"SELECT * FROM {source.view} WHERE {key_column} IN ({placeholders})",
             params,
         )
 
-        by_seq = {int(row["seq"]): row for row in rows}
+        by_key = {int(row[key_column]): row for row in rows}
         detail = []
-        for seq in seqs:
-            row = by_seq.get(seq)
+        for key in keys:
+            row = by_key.get(key)
             if row is None:
                 continue
-            core, rest = split_detail(row)
-            detail.append({"seq": seq, "core": core, "rest": rest})
+            core, rest = split_detail(row, source)
+            detail.append({"seq": key, "core": core, "rest": rest})
         return detail
 
     def _run_source_rules(
@@ -257,9 +292,11 @@ class AnomalyService:
                 continue
 
             entry: Dict[str, Any] = {"rule_code": rule.code, "label": rule.label, "applicable": True}
-            if rule.code == "WATCH_MCC":
+            if rule.detect is detect_watch_mcc:
+                category = rule.params["columns"][CATEGORY]
+                klass = rule.params["columns"][CLASS]
                 unclassified = sum(
-                    1 for r in rows if (r.get("class") or "").strip() == "A" and r.get("mccname") is None
+                    1 for r in rows if (r.get(klass) or "").strip() == "A" and r.get(category) is None
                 )
                 if unclassified:
                     entry["caveat"] = f"업종 미분류 {unclassified}건은 판정에서 제외됨"

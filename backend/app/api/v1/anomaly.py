@@ -89,6 +89,7 @@ async def list_findings(
 @router.get("/findings/transactions")
 async def finding_transactions(
     database_id: str = Query(...),
+    source: str = Query("approval"),
     seq: List[int] = Query(default=[]),
     service: AnomalyService = Depends(get_anomaly_service),
 ):
@@ -103,7 +104,13 @@ async def finding_transactions(
             detail=f"at most {MAX_DETAIL_SEQS} transactions per request",
         )
 
-    return {"transactions": await service.get_transactions(database_id, seq)}
+    if source not in SOURCES:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown source: {source}",
+        )
+
+    return {"transactions": await service.get_transactions(database_id, source, seq)}
 
 
 @router.patch("/findings/review")

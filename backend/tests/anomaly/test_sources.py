@@ -1,6 +1,6 @@
 import pytest
 
-from app.anomaly.rules import RULES, SOURCES, Source, rules_by_source
+from app.anomaly.rules import DATE, RULES, SOURCES, Source, rules_by_source
 from app.services.anomaly_service import build_source_query
 
 
@@ -9,28 +9,35 @@ def test_every_rule_names_a_source_that_exists():
         assert rule.source in SOURCES, f"{rule.code} points at unknown source {rule.source}"
 
 
-def test_all_four_rules_currently_live_on_the_approval_source():
+def test_each_source_offers_only_the_rules_its_columns_support():
     grouped = rules_by_source(RULES)
-    assert set(grouped) == {"approval"}
+    assert set(grouped) == {"approval", "acquire", "bill"}
+    # 승인내역 carries every logical column, so all four templates bind.
     assert len(grouped["approval"]) == 4
+    assert len(grouped["acquire"]) == 4
+    # 청구내역 has no transaction time, merchant number or category.
+    assert [r.code for r in grouped["bill"]] == ["BILL_HIGH_AMOUNT"]
 
 
-def test_grouping_keeps_each_rule_under_its_own_source():
-    other = Source(key="other", label="다른 원천", view="v_other", date_column="d")
-    moved = [
-        RULES[0],
-        type(RULES[1])(**{**RULES[1].__dict__, "source": "other"}),
-    ]
-    grouped = rules_by_source(moved)
-    assert grouped[RULES[0].source] == [RULES[0]]
-    assert grouped["other"][0].code == RULES[1].code
-    assert other.view == "v_other"
+def test_rule_codes_are_unique_so_review_keys_cannot_collide():
+    codes = [r.code for r in RULES]
+    assert len(codes) == len(set(codes))
 
 
-def test_approval_source_reads_the_view_the_rules_were_written_against():
-    approval = SOURCES["approval"]
-    assert approval.view == "v_approval"
-    assert approval.date_column == "transdate"
+def test_a_sources_rules_all_carry_its_prefix():
+    for rule in RULES:
+        assert rule.code.startswith(SOURCES[rule.source].code_prefix)
+
+
+def test_approval_rule_codes_stay_bare_so_stored_reviews_keep_matching():
+    approval_codes = {r.code for r in RULES if r.source == "approval"}
+    assert approval_codes == {"HIGH_AMOUNT", "OFF_HOURS", "WATCH_MCC", "SPLIT_PAYMENT"}
+
+
+def test_each_source_maps_its_own_physical_date_column():
+    assert SOURCES["approval"].columns[DATE] == "transdate"
+    assert SOURCES["acquire"].columns[DATE] == "apprdate"
+    assert SOURCES["bill"].columns[DATE] == "orgnapprdate"
 
 
 def test_query_without_a_period_selects_everything():

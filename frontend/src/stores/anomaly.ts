@@ -87,7 +87,7 @@ export const useAnomalyStore = defineStore('anomaly', () => {
     detailLoading.value[finding.finding_key] = true
     try {
       const seqs = finding.transactions.map((t) => Number(t.seq))
-      const data = await api.anomaly.transactions(databaseId, seqs)
+      const data = await api.anomaly.transactions(databaseId, sourceFilter.value, seqs)
       details.value[finding.finding_key] = data.transactions
     } catch (error) {
       ElMessage.error('거래 상세를 불러오지 못했습니다')
