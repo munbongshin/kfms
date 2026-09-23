@@ -30,10 +30,12 @@
       :filter-node-method="filterNode"
       :expand-on-click-node="false"
       @node-click="onNodeClick"
-      @node-dblclick="onNodeDblClick"
     >
       <template #default="{ data }">
-        <span class="node">
+        <!-- el-tree emits no node-dblclick, so the handler lives on the slot
+             content; .node stretches to the full row so a double-click
+             anywhere in it counts, not only on the label. -->
+        <span class="node" @dblclick="onNodeDblClick(data)">
           <span class="node-label" :class="data.kind">{{ data.label }}</span>
           <span v-if="data.meta" class="node-meta">{{ data.meta }}</span>
         </span>
@@ -195,6 +197,10 @@ async function onNodeDblClick(data: TreeNode) {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  /* Fill the row so the double-click target is the whole line, not just the
+     text: el-tree has no node-dblclick event to bind at the row level. */
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
 }
 
