@@ -132,6 +132,7 @@
         v-loading="store.loading"
         size="small"
         border
+        scrollbar-always-on
         style="width: 100%"
         @expand-change="onExpand"
       >

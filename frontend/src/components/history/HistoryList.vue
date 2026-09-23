@@ -30,6 +30,7 @@
         :data="history"
         v-loading="loading"
         stripe
+        scrollbar-always-on
         style="width: 100%"
         @row-click="viewDetail"
       >

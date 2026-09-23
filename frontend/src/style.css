@@ -28,3 +28,74 @@ body {
 }
 
 /* Override Element Plus defaults if needed */
+
+/* Scrollbars
+ *
+ * Two problems this solves. The browser's default bar is a pale grey that
+ * disappears against our panels, and Element Plus hides the native bar inside
+ * tables (.el-scrollbar__wrap--hidden) in favour of an overlay that only fades
+ * in on hover — so a table wide enough to scroll gives no sign that it does.
+ * Both are made permanent and visible, in the same navy the chrome uses.
+ */
+* {
+  scrollbar-width: auto;
+  scrollbar-color: #8b9bb4 #e6eaf0;
+}
+
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+::-webkit-scrollbar-track {
+  background: #e6eaf0;
+  border: 1px solid #d3dae3;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #8b9bb4;
+  border: 3px solid #e6eaf0;
+  border-radius: 7px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1b3c74;
+}
+
+::-webkit-scrollbar-corner {
+  background: #e6eaf0;
+}
+
+/* Element Plus draws its own bar over a hidden native one. Keep it on screen
+ * instead of fading it in on hover, and give it the same weight. */
+.el-scrollbar__bar {
+  opacity: 1 !important;
+}
+
+.el-scrollbar__bar.is-horizontal {
+  height: 12px;
+  background: #e6eaf0;
+  border-top: 1px solid #d3dae3;
+}
+
+.el-scrollbar__bar.is-vertical {
+  width: 12px;
+  background: #e6eaf0;
+  border-left: 1px solid #d3dae3;
+}
+
+.el-scrollbar__thumb {
+  background: #8b9bb4;
+  opacity: 1;
+  border-radius: 6px;
+}
+
+.el-scrollbar__thumb:hover {
+  background: #1b3c74;
+}
+
+/* The horizontal bar is absolutely positioned inside the scroll area, so
+ * without this it sits on top of the last row and clips it. */
+.el-table--scrollable-x .el-table__body-wrapper .el-scrollbar__wrap {
+  padding-bottom: 12px;
+}

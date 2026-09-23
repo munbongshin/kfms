@@ -6,6 +6,7 @@
         stripe
         border
         max-height="520"
+        scrollbar-always-on
         style="width: 100%"
       >
         <el-table-column
