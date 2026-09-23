@@ -65,16 +65,17 @@ function toggle() {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 48px;
+  height: 44px;
   padding: 0 16px;
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  background: #1b3c74;
   flex-shrink: 0;
 }
 
 .brand {
   font-weight: 700;
-  color: #303133;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  color: #fff;
 }
 
 .active-conn {
@@ -92,8 +93,8 @@ function toggle() {
   display: flex;
   flex-direction: column;
   width: 260px;
-  background: #fff;
-  border-right: 1px solid #e4e7ed;
+  background: #f7f8fa;
+  border-right: 1px solid #d3dae3;
   flex-shrink: 0;
   transition: width 0.15s ease;
 }
@@ -110,10 +111,10 @@ function toggle() {
 }
 
 .collapse-toggle {
-  height: 28px;
+  height: 26px;
   border: none;
-  border-top: 1px solid #e4e7ed;
-  background: #fafafa;
+  border-top: 1px solid #d3dae3;
+  background: #eef1f5;
   color: #909399;
   cursor: pointer;
   flex-shrink: 0;
@@ -122,8 +123,8 @@ function toggle() {
 .content {
   flex: 1;
   overflow: auto;
-  padding: 16px;
-  background: #f5f7fa;
+  padding: 12px;
+  background: #f4f6f9;
   min-width: 0;
 }
 </style>
