@@ -62,9 +62,11 @@ export const useAnomalyStore = defineStore('anomaly', () => {
   const statusFilter = ref('')
   const sources = ref<AnomalySource[]>([])
   const sourceFilter = ref('')
-  // [from, to] as YYYY-MM-DD, seeded from the source's own range so opening the
-  // screen shows results instead of an empty period the reviewer must fill in.
-  const period = ref<[string, string] | null>(null)
+  // Two independent bounds, not one range: a daterange picker restarts the whole
+  // selection on every click, so a reviewer could not adjust just the end date.
+  // Either may be empty — the backend treats a missing bound as open-ended.
+  const dateFrom = ref<string>('')
+  const dateTo = ref<string>('')
 
   // Keyed by finding_key. Card numbers live here, so it is dropped with the
   // rest of the state whenever the connection changes or a fetch fails.
@@ -101,8 +103,9 @@ export const useAnomalyStore = defineStore('anomaly', () => {
       const active = sources.value.find((s) => s.key === sourceFilter.value) ?? sources.value[0]
       if (active) {
         sourceFilter.value = active.key
-        if (!period.value && active.min_date && active.max_date) {
-          period.value = [active.min_date, active.max_date]
+        if (!dateFrom.value && !dateTo.value && active.min_date && active.max_date) {
+          dateFrom.value = active.min_date
+          dateTo.value = active.max_date
         }
       }
     } catch (error) {
@@ -122,8 +125,8 @@ export const useAnomalyStore = defineStore('anomaly', () => {
         rule_code: ruleFilter.value || undefined,
         status: statusFilter.value || undefined,
         source: sourceFilter.value || undefined,
-        date_from: period.value?.[0] || undefined,
-        date_to: period.value?.[1] || undefined,
+        date_from: dateFrom.value || undefined,
+        date_to: dateTo.value || undefined,
       })
       rules.value = data.applicable_rules
       findings.value = data.findings
@@ -170,7 +173,8 @@ export const useAnomalyStore = defineStore('anomaly', () => {
     statusFilter,
     sources,
     sourceFilter,
-    period,
+    dateFrom,
+    dateTo,
     details,
     detailLoading,
     reset,

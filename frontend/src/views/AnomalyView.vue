@@ -57,13 +57,21 @@
           </el-select>
 
           <el-date-picker
-            v-model="store.period"
-            type="daterange"
+            v-model="store.dateFrom"
+            type="date"
             value-format="YYYY-MM-DD"
-            range-separator="~"
-            start-placeholder="시작일"
-            end-placeholder="종료일"
-            style="width: 260px"
+            placeholder="시작일"
+            clearable
+            style="width: 150px"
+          />
+          <span class="range-sep">~</span>
+          <el-date-picker
+            v-model="store.dateTo"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="종료일"
+            clearable
+            style="width: 150px"
           />
 
           <el-select v-model="store.ruleFilter" placeholder="전체 규칙" clearable style="width: 180px">
@@ -210,7 +218,8 @@ async function reload() {
 
 watch(connectionId, () => {
   // A different connection has a different date range; drop the old one.
-  store.period = null
+  store.dateFrom = ''
+  store.dateTo = ''
   reload()
 })
 onMounted(reload)
@@ -221,6 +230,10 @@ onMounted(reload)
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.range-sep {
+  color: #909399;
 }
 
 .detail {
