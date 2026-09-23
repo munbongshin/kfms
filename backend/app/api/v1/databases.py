@@ -2,15 +2,19 @@
 Database management API endpoints.
 CRUD operations for database connections.
 """
+import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
 from app.dependencies import get_db, get_db_pool
 from app.db.repositories.database_repo import DatabaseRepository
 from app.db.connection_pool import DatabaseConnectionPool
+from app.services.table_browser import MAX_PAGE_SIZE, TableBrowser
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/databases", tags=["Databases"])
 
@@ -266,6 +270,40 @@ async def get_schema(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch schema: {str(e)}"
+        )
+
+
+@router.get("/{connection_id}/tables/{table}/rows")
+async def read_table_rows(
+    connection_id: int,
+    table: str,
+    columns: Optional[str] = Query(None, description="Comma-separated; omit for all"),
+    order_by: Optional[str] = None,
+    descending: bool = False,
+    limit: int = Query(100, ge=1, le=MAX_PAGE_SIZE),
+    offset: int = Query(0, ge=0),
+    pool: DatabaseConnectionPool = Depends(get_db_pool),
+):
+    """One page of a table, with the caller's choice of columns.
+
+    The table and column names are checked against the connection's real schema
+    before any of them reach the SQL — they cannot be bound as parameters.
+    """
+    selected = [c for c in (columns or "").split(",") if c]
+
+    try:
+        return await TableBrowser(pool).read_page(
+            str(connection_id), table, selected, order_by, descending, limit, offset
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except Exception:
+        logger.exception(
+            "Table read failed for connection_id=%s table=%s", connection_id, table
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="테이블을 읽지 못했습니다 — 서버 로그를 확인하세요",
         )
 
 

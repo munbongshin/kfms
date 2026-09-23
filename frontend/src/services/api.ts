@@ -131,6 +131,20 @@ export const api = {
     async delete(connectionId: number): Promise<void> {
       await apiClient.delete(`/databases/${connectionId}`)
     },
+
+    async readTable(connectionId: number, table: string, params: {
+      columns?: string
+      order_by?: string
+      descending?: boolean
+      limit?: number
+      offset?: number
+    }) {
+      const response = await apiClient.get(
+        `/databases/${connectionId}/tables/${encodeURIComponent(table)}/rows`,
+        { params }
+      )
+      return response.data
+    },
   },
 
   // Query operations

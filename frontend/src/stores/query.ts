@@ -17,6 +17,17 @@ export interface QueryResult {
   warnings?: string[]
 }
 
+export interface TablePreview {
+  table: string
+  columns: string[]
+  selected: string[]
+  orderBy: string | null
+  descending: boolean
+  total: number
+  page: number
+  pageSize: number
+}
+
 export const useQueryStore = defineStore('query', () => {
   // State
   const currentQuestion = ref('')
@@ -29,6 +40,10 @@ export const useQueryStore = defineStore('query', () => {
 
   // Temporary storage for execution
   const pendingExecution = ref<any>(null)
+
+  // Set only while a table preview is on screen; paging and column choice
+  // live here rather than in the generic result, which an LLM query fills.
+  const preview = ref<TablePreview | null>(null)
 
   // Actions
   async function generateSQL(question: string, databaseId: number, llmProvider?: string) {
@@ -195,38 +210,51 @@ export const useQueryStore = defineStore('query', () => {
     }
   }
 
-  function quoteIdentifier(name: string) {
-    return `"${name.replace(/"/g, '""')}"`
-  }
-
-  async function previewTable(tableName: string, databaseId: number) {
+  async function previewTable(tableName: string, databaseId: number, page = 1) {
     loading.value = true
-    const question = `[미리보기] ${tableName}`
-    const sql = `SELECT * FROM ${quoteIdentifier(tableName)} LIMIT 100`
+
+    // A new table starts from its own defaults; paging the current one keeps
+    // the reviewer's column choice and sort.
+    if (preview.value?.table !== tableName) {
+      preview.value = {
+        table: tableName,
+        columns: [],
+        selected: [],
+        orderBy: null,
+        descending: false,
+        total: 0,
+        page: 1,
+        pageSize: preview.value?.pageSize ?? 100,
+      }
+      page = 1
+    }
+
+    const state = preview.value!
 
     try {
-      const result = await api.query.execute({
-        question,
-        sql,
-        database_id: databaseId,
-        validation_approved: true,
+      const data = await api.databases.readTable(databaseId, tableName, {
+        columns: state.selected.length ? state.selected.join(',') : undefined,
+        order_by: state.orderBy ?? undefined,
+        descending: state.descending,
+        limit: state.pageSize,
+        offset: (page - 1) * state.pageSize,
       })
 
-      if (!result.success) {
-        throw new Error(result.error || 'Preview failed')
-      }
+      state.columns = data.columns
+      state.orderBy = data.order_by
+      state.total = data.total
+      state.page = page
 
       queryResults.value = {
-        question,
-        sql,
-        results: result.results || [],
-        row_count: result.row_count || 0,
-        execution_time_ms: result.execution_time_ms || 0,
-        history_id: result.history_id,
-        warnings: result.warnings,
+        question: `[미리보기] ${tableName}`,
+        sql: '',
+        results: data.rows,
+        row_count: data.total,
+        execution_time_ms: 0,
+        history_id: 0,
       }
     } catch (error: any) {
-      const message = error.response?.data?.detail || error.message || 'Failed to preview table'
+      const message = error.response?.data?.detail || error.message || '테이블을 읽지 못했습니다'
       ElMessage.error(message)
       throw error
     } finally {
@@ -274,6 +302,7 @@ export const useQueryStore = defineStore('query', () => {
   }
 
   function clearResults() {
+    preview.value = null
     queryResults.value = null
     currentQuestion.value = ''
     generatedSQL.value = ''
@@ -291,6 +320,7 @@ export const useQueryStore = defineStore('query', () => {
     showSQLPreview,
     showValidationDialog,
     pendingExecution,
+    preview,
 
     // Actions
     generateSQL,
