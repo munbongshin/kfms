@@ -34,8 +34,13 @@
         <div class="fields">
           <label class="lbl">점검대상</label>
           <div class="ctl">
-            <el-select v-model="store.sourceFilter" size="small" style="width: 190px">
-              <el-option label="전체" value="" />
+            <el-select
+              v-model="store.sourceFilter"
+              size="small"
+              placeholder="전체"
+              style="width: 190px"
+            >
+              <el-option label="전체 (모든 점검대상)" value="" />
               <el-option
                 v-for="s in store.sources"
                 :key="s.key"
@@ -115,7 +120,7 @@
 
       <div class="rules">
         <span
-          v-for="rule in store.rules"
+          v-for="rule in ruleChips"
           :key="rule.rule_code"
           class="rule-chip"
           :class="{ off: !rule.applicable }"
@@ -128,94 +133,97 @@
         조회결과 <strong>{{ store.findings.length }}</strong>건
       </div>
 
-      <el-table
-        :data="store.findings"
-        v-loading="store.loading"
-        size="small"
-        border
-        scrollbar-always-on
-        style="width: 100%"
-        @expand-change="onExpand"
-      >
-        <el-table-column type="expand">
-          <template #default="{ row }">
-            <div v-loading="store.detailLoading[row.finding_key]" class="detail">
-              <div
-                v-for="tx in store.details[row.finding_key] || []"
-                :key="tx.seq"
-                class="detail-card"
-              >
-                <table class="detail-table">
-                  <tbody>
-                    <tr v-for="pair in pairUp(tx.core)" :key="pair[0].field">
-                      <th>{{ pair[0].label }}</th>
-                      <td>{{ display(pair[0].value) }}</td>
-                      <th>{{ pair[1] ? pair[1].label : '' }}</th>
-                      <td>{{ pair[1] ? display(pair[1].value) : '' }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+      <div class="grid">
+        <el-table
+          :data="store.findings"
+          v-loading="store.loading"
+          size="small"
+          border
+          height="100%"
+          scrollbar-always-on
+          style="width: 100%"
+          @expand-change="onExpand"
+        >
+          <el-table-column type="expand">
+            <template #default="{ row }">
+              <div v-loading="store.detailLoading[row.finding_key]" class="detail">
+                <div
+                  v-for="tx in store.details[row.finding_key] || []"
+                  :key="tx.seq"
+                  class="detail-card"
+                >
+                  <table class="detail-table">
+                    <tbody>
+                      <tr v-for="pair in pairUp(tx.core)" :key="pair[0].field">
+                        <th>{{ pair[0].label }}</th>
+                        <td>{{ display(pair[0].value) }}</td>
+                        <th>{{ pair[1] ? pair[1].label : '' }}</th>
+                        <td>{{ pair[1] ? display(pair[1].value) : '' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
 
-                <button class="link" @click="toggleAll(tx.seq)">
-                  {{ expandedAll.has(tx.seq) ? '전체 숨기기' : `전체 보기 (${tx.rest.length}개 항목)` }}
-                </button>
+                  <button class="link" @click="toggleAll(tx.seq)">
+                    {{ expandedAll.has(tx.seq) ? '전체 숨기기' : `전체 보기 (${tx.rest.length}개 항목)` }}
+                  </button>
 
-                <table v-if="expandedAll.has(tx.seq)" class="detail-table rest">
-                  <tbody>
-                    <tr v-for="pair in pairUp(tx.rest)" :key="pair[0].field">
-                      <th>{{ pair[0].label }}</th>
-                      <td>{{ display(pair[0].value) }}</td>
-                      <th>{{ pair[1] ? pair[1].label : '' }}</th>
-                      <td>{{ pair[1] ? display(pair[1].value) : '' }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                  <table v-if="expandedAll.has(tx.seq)" class="detail-table rest">
+                    <tbody>
+                      <tr v-for="pair in pairUp(tx.rest)" :key="pair[0].field">
+                        <th>{{ pair[0].label }}</th>
+                        <td>{{ display(pair[0].value) }}</td>
+                        <th>{{ pair[1] ? pair[1].label : '' }}</th>
+                        <td>{{ pair[1] ? display(pair[1].value) : '' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="No." type="index" width="56" align="center" />
+
+          <el-table-column label="심각도" width="80" align="center">
+            <template #default="{ row }">
+              <span class="sev" :class="row.severity">{{ severityLabel(row.severity) }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column prop="occurred_on" label="거래일" width="110" align="center" />
+
+          <el-table-column label="점검사유" min-width="280">
+            <template #default="{ row }">
+              {{ row.summary }}
+              <span v-if="row.stale" class="stale">검토 후 변경됨</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="금액" width="130" align="right">
+            <template #default="{ row }">{{ row.amount.toLocaleString() }}</template>
+          </el-table-column>
+
+          <el-table-column label="건수" width="70" align="right">
+            <template #default="{ row }">{{ row.transactions.length }}</template>
+          </el-table-column>
+
+          <el-table-column label="검토" width="150" align="center" fixed="right">
+            <template #default="{ row }">
+              <span v-if="!row.review || row.stale" class="review-actions">
+                <button class="mini" @click="store.review(connectionId, row, 'confirmed')">확인</button>
+                <button class="mini" @click="store.review(connectionId, row, 'dismissed')">정상</button>
+              </span>
+              <span v-else class="reviewed" :class="row.review.status">
+                {{ row.review.status === 'dismissed' ? '정상' : '확인함' }}
+              </span>
+            </template>
+          </el-table-column>
+
+          <template #empty>
+            <span class="empty">조회된 건이 없습니다. 기간이나 점검대상을 바꿔 다시 조회하세요.</span>
           </template>
-        </el-table-column>
-
-        <el-table-column label="No." type="index" width="56" align="center" />
-
-        <el-table-column label="심각도" width="80" align="center">
-          <template #default="{ row }">
-            <span class="sev" :class="row.severity">{{ severityLabel(row.severity) }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="occurred_on" label="거래일" width="110" align="center" />
-
-        <el-table-column label="점검사유" min-width="280">
-          <template #default="{ row }">
-            {{ row.summary }}
-            <span v-if="row.stale" class="stale">검토 후 변경됨</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="금액" width="130" align="right">
-          <template #default="{ row }">{{ row.amount.toLocaleString() }}</template>
-        </el-table-column>
-
-        <el-table-column label="건수" width="70" align="right">
-          <template #default="{ row }">{{ row.transactions.length }}</template>
-        </el-table-column>
-
-        <el-table-column label="검토" width="150" align="center" fixed="right">
-          <template #default="{ row }">
-            <span v-if="!row.review || row.stale" class="review-actions">
-              <button class="mini" @click="store.review(connectionId, row, 'confirmed')">확인</button>
-              <button class="mini" @click="store.review(connectionId, row, 'dismissed')">정상</button>
-            </span>
-            <span v-else class="reviewed" :class="row.review.status">
-              {{ row.review.status === 'dismissed' ? '정상' : '확인함' }}
-            </span>
-          </template>
-        </el-table-column>
-
-        <template #empty>
-          <span class="empty">조회된 건이 없습니다. 기간이나 점검대상을 바꿔 다시 조회하세요.</span>
-        </template>
-      </el-table>
+        </el-table>
+      </div>
     </template>
   </div>
 </template>
@@ -250,6 +258,17 @@ const ruleOptions = computed(() => {
   const seen = new Map<string, { template: string; label: string }>()
   for (const rule of store.rules) {
     if (!seen.has(rule.template)) seen.set(rule.template, rule)
+  }
+  return [...seen.values()]
+})
+
+// One chip per kind too, keeping whichever entry carries a caveat so the
+// 업종 미분류 note is not lost when 전체 merges several sources.
+const ruleChips = computed(() => {
+  const seen = new Map<string, (typeof store.rules)[number]>()
+  for (const rule of store.rules) {
+    const held = seen.get(rule.template)
+    if (!held || (!held.caveat && rule.caveat)) seen.set(rule.template, rule)
   }
   return [...seen.values()]
 })
@@ -357,9 +376,22 @@ onMounted(reload)
 </script>
 
 <style scoped>
+/* The screen owns the viewport: the blocks above keep their natural height and
+ * the grid takes what is left. Without this the table grows the page instead,
+ * so rows are sliced by the window edge at every scroll position. */
 .anomaly-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   font-size: 12px;
   color: #333;
+}
+
+.grid {
+  flex: 1;
+  /* Low enough that the grid can shrink instead of pushing the page into a
+   * scroll; below this the page scrolls, which beats an unusable sliver. */
+  min-height: 150px;
 }
 
 .page-title {

@@ -94,6 +94,14 @@ body {
   background: #1b3c74;
 }
 
+/* scrollbar-always-on draws a bar for BOTH axes, so a table that only scrolls
+ * vertically still gets a full-width horizontal strip laid over its last row.
+ * An axis that cannot scroll gets no bar. */
+.el-table:not(.el-table--scrollable-x) .el-scrollbar__bar.is-horizontal,
+.el-table:not(.el-table--scrollable-y) .el-scrollbar__bar.is-vertical {
+  display: none !important;
+}
+
 /* The horizontal bar is absolutely positioned inside the scroll area, so
  * without this it sits on top of the last row and clips it. */
 .el-table--scrollable-x .el-table__body-wrapper .el-scrollbar__wrap {
