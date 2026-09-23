@@ -1,9 +1,10 @@
 """Runs audit rules over a connection's approvals and merges review state."""
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from app.anomaly.models import Finding
-from app.anomaly.rules import RULES
+from app.anomaly.rules import RULES, SOURCES, Source, rules_by_source
 from app.db.repositories.anomaly import AnomalyRepository
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,38 @@ DETAIL_LABELS = {
     "merchaddr1": "가맹점 주소",
 }
 DETAIL_FIELDS = tuple(DETAIL_LABELS)
+
+
+ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def build_source_query(source: Source, date_from: Optional[str], date_to: Optional[str]):
+    """SELECT for one source, bounded by an optional period.
+
+    The date columns are CHAR(10) 'YYYY-MM-DD', so lexicographic comparison is
+    date comparison and no cast is needed. The bounds are bind parameters; the
+    column name comes from the Source catalogue, never from a request.
+    """
+    for label, value in (("date_from", date_from), ("date_to", date_to)):
+        if value is not None and not ISO_DATE.match(value):
+            raise ValueError(f"{label} must be YYYY-MM-DD, got {value!r}")
+
+    if date_from and date_to and date_from > date_to:
+        raise ValueError(f"date_from {date_from} is after date_to {date_to}")
+
+    conditions = []
+    params: Dict[str, Any] = {}
+    if date_from:
+        conditions.append(f"{source.date_column} >= :date_from")
+        params["date_from"] = date_from
+    if date_to:
+        conditions.append(f"{source.date_column} <= :date_to")
+        params["date_to"] = date_to
+
+    sql = f"SELECT * FROM {source.view}"
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    return sql, params
 
 
 def _public_transaction(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -105,8 +138,49 @@ class AnomalyService:
         self.pool = pool
         self.repo = repo
 
-    async def _load_rows(self, database_id: str) -> List[Dict[str, Any]]:
-        return await self.pool.execute_query(database_id, f"SELECT * FROM {SOURCE_VIEW}")
+    async def _load_rows(
+        self,
+        database_id: str,
+        source: Source,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        sql, params = build_source_query(source, date_from, date_to)
+        return await self.pool.execute_query(database_id, sql, params)
+
+    async def list_sources(self, database_id: str) -> List[Dict[str, Any]]:
+        """Checkable sources for this connection, each with the period it covers.
+
+        A source is checkable only if its view is actually queryable here — the
+        rules are written against specific columns, so "every table" was never
+        the answer. The screen seeds its date picker from the range.
+        """
+        out = []
+        for source in SOURCES.values():
+            try:
+                rows = await self.pool.execute_query(
+                    database_id,
+                    f"SELECT MIN({source.date_column}) AS min_date,"
+                    f" MAX({source.date_column}) AS max_date,"
+                    f" COUNT(*) AS row_count FROM {source.view}",
+                )
+            except Exception:
+                logger.exception(
+                    "Anomaly source %s unavailable for database_id=%s", source.key, database_id
+                )
+                continue
+
+            row = rows[0] if rows else {}
+            out.append(
+                {
+                    "key": source.key,
+                    "label": source.label,
+                    "min_date": row.get("min_date"),
+                    "max_date": row.get("max_date"),
+                    "row_count": int(row.get("row_count") or 0),
+                }
+            )
+        return out
 
     async def get_transactions(self, database_id: str, seqs: List[int]) -> List[Dict[str, Any]]:
         """Full approvals behind one finding, split into audit fields and the rest.
@@ -135,38 +209,19 @@ class AnomalyService:
             detail.append({"seq": seq, "core": core, "rest": rest})
         return detail
 
-    async def list_findings(
+    def _run_source_rules(
         self,
         database_id: str,
-        rule_code: Optional[str] = None,
-        status: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        try:
-            rows = await self._load_rows(database_id)
-        except Exception:
-            logger.exception(
-                "Anomaly source query failed for database_id=%s (%s)", database_id, SOURCE_VIEW
-            )
-            return {
-                "applicable_rules": [
-                    {
-                        "rule_code": r.code,
-                        "label": r.label,
-                        "applicable": False,
-                        "caveat": SOURCE_ERROR_CAVEAT,
-                    }
-                    for r in RULES
-                ],
-                "findings": [],
-                "caveat": None,
-            }
-
+        source_rules,
+        rows: List[Dict[str, Any]],
+        rule_code: Optional[str],
+        applicable_rules: List[Dict[str, Any]],
+        findings: List[Finding],
+    ) -> None:
+        """Run one source's rules over its rows, recording applicability as it goes."""
         available = set(rows[0].keys()) if rows else set()
 
-        applicable_rules: List[Dict[str, Any]] = []
-        findings: List[Finding] = []
-
-        for rule in RULES:
+        for rule in source_rules:
             # I5: every rule always produces an applicable_rules entry — the screen
             # builds its filter dropdown from this array, so skipping non-matching
             # rules here collapsed the dropdown to the one rule already selected and
@@ -213,6 +268,51 @@ class AnomalyService:
             if rule_code and rule.code != rule_code:
                 continue
             findings.extend(detected)
+
+    async def list_findings(
+        self,
+        database_id: str,
+        rule_code: Optional[str] = None,
+        status: Optional[str] = None,
+        source: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        grouped = rules_by_source(RULES)
+        if source:
+            grouped = {k: v for k, v in grouped.items() if k == source}
+
+        applicable_rules: List[Dict[str, Any]] = []
+        findings: List[Finding] = []
+
+        # Each source is read once and handed to every rule that declares it, so
+        # adding a rule on a new source costs one SOURCES entry, not a rewrite.
+        for source_key, source_rules in grouped.items():
+            definition = SOURCES[source_key]
+            try:
+                rows = await self._load_rows(database_id, definition, date_from, date_to)
+            except ValueError as exc:
+                raise exc
+            except Exception:
+                logger.exception(
+                    "Anomaly source query failed for database_id=%s (%s)",
+                    database_id,
+                    definition.view,
+                )
+                applicable_rules.extend(
+                    {
+                        "rule_code": r.code,
+                        "label": r.label,
+                        "applicable": False,
+                        "caveat": SOURCE_ERROR_CAVEAT,
+                    }
+                    for r in source_rules
+                )
+                continue
+
+            self._run_source_rules(
+                database_id, source_rules, rows, rule_code, applicable_rules, findings
+            )
 
         # C2: the metadata DB is a second failure domain. A missing anomaly_review
         # table or a kfms outage must degrade to "nothing reviewed yet", not a 500

@@ -13,6 +13,32 @@ from app.anomaly.models import Finding
 
 Row = Dict[str, Any]
 
+
+@dataclass(frozen=True)
+class Source:
+    """A view a rule can run against, and the column that dates its rows.
+
+    Rules are written against specific columns, so the set of checkable sources
+    is not "every table" — it is whatever carries what the rules need. Adding
+    one here plus a `source` on the rules that use it is the whole change; the
+    service groups by source and the screen reads the list.
+    """
+
+    key: str
+    label: str
+    view: str
+    date_column: str
+
+
+SOURCES: Dict[str, Source] = {
+    "approval": Source(
+        key="approval",
+        label="승인내역",
+        view="v_approval",
+        date_column="transdate",
+    ),
+}
+
 # M1: the ONE source of truth for rule severity. Both the Rule catalogue below
 # and the Findings each detect function emits read from here, so editing a value
 # actually changes what the screen shows instead of silently doing nothing.
@@ -57,6 +83,10 @@ class Rule:
     detect: Callable[[List[Row], Dict[str, Any]], List[Finding]]
     params: Dict[str, Any] = field(default_factory=dict)
     required_columns: Tuple[str, ...] = ()
+    # finding_key carries no source, so a rule on a second source must use its
+    # own code (ACQUIRE_HIGH_AMOUNT, not HIGH_AMOUNT) — otherwise two tables'
+    # seq spaces would collide in one key and reviews would cross over.
+    source: str = "approval"
 
     @property
     def severity(self) -> str:
@@ -211,3 +241,11 @@ RULES: List[Rule] = [
         required_columns=("seq", "class", "cardno", "merchno", "merchbizno", "transdate", "apprtot"),
     ),
 ]
+
+
+def rules_by_source(rules: List[Rule]) -> Dict[str, List[Rule]]:
+    """Group rules by the source they read, preserving catalogue order."""
+    grouped: Dict[str, List[Rule]] = defaultdict(list)
+    for rule in rules:
+        grouped[rule.source].append(rule)
+    return dict(grouped)

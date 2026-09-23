@@ -42,6 +42,30 @@
         </div>
 
         <div class="filters">
+          <el-select
+            v-model="store.sourceFilter"
+            placeholder="점검 대상"
+            style="width: 180px"
+            :disabled="store.sources.length <= 1"
+          >
+            <el-option
+              v-for="s in store.sources"
+              :key="s.key"
+              :label="`${s.label} (${s.row_count.toLocaleString()}건)`"
+              :value="s.key"
+            />
+          </el-select>
+
+          <el-date-picker
+            v-model="store.period"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            range-separator="~"
+            start-placeholder="시작일"
+            end-placeholder="종료일"
+            style="width: 260px"
+          />
+
           <el-select v-model="store.ruleFilter" placeholder="전체 규칙" clearable style="width: 180px">
             <el-option v-for="r in store.rules" :key="r.rule_code" :label="r.label" :value="r.rule_code" />
           </el-select>
@@ -173,8 +197,23 @@ function refresh() {
   }
 }
 
-watch(connectionId, refresh)
-onMounted(refresh)
+async function reload() {
+  if (!connectionId.value) {
+    store.reset()
+    return
+  }
+  // Sources first: the period picker is seeded from the source's own date range,
+  // so findings must wait until that range is known.
+  await store.fetchSources(connectionId.value)
+  refresh()
+}
+
+watch(connectionId, () => {
+  // A different connection has a different date range; drop the old one.
+  store.period = null
+  reload()
+})
+onMounted(reload)
 </script>
 
 <style scoped>

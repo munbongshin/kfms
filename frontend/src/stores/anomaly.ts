@@ -33,6 +33,14 @@ export interface Finding {
   stale: boolean
 }
 
+export interface AnomalySource {
+  key: string
+  label: string
+  min_date: string | null
+  max_date: string | null
+  row_count: number
+}
+
 export interface DetailField {
   field: string
   label: string
@@ -52,6 +60,11 @@ export const useAnomalyStore = defineStore('anomaly', () => {
   const loading = ref(false)
   const ruleFilter = ref('')
   const statusFilter = ref('')
+  const sources = ref<AnomalySource[]>([])
+  const sourceFilter = ref('')
+  // [from, to] as YYYY-MM-DD, seeded from the source's own range so opening the
+  // screen shows results instead of an empty period the reviewer must fill in.
+  const period = ref<[string, string] | null>(null)
 
   // Keyed by finding_key. Card numbers live here, so it is dropped with the
   // rest of the state whenever the connection changes or a fetch fails.
@@ -81,6 +94,23 @@ export const useAnomalyStore = defineStore('anomaly', () => {
     }
   }
 
+  async function fetchSources(databaseId: string) {
+    try {
+      const data = await api.anomaly.listSources(databaseId)
+      sources.value = data.sources
+      const active = sources.value.find((s) => s.key === sourceFilter.value) ?? sources.value[0]
+      if (active) {
+        sourceFilter.value = active.key
+        if (!period.value && active.min_date && active.max_date) {
+          period.value = [active.min_date, active.max_date]
+        }
+      }
+    } catch (error) {
+      sources.value = []
+      ElMessage.error('점검 가능한 원천을 불러오지 못했습니다')
+    }
+  }
+
   async function fetchFindings(databaseId: string) {
     // Clear first: otherwise the previous connection's rows stay visible under
     // the loading overlay, and stay on screen if the fetch then fails.
@@ -91,6 +121,9 @@ export const useAnomalyStore = defineStore('anomaly', () => {
         database_id: databaseId,
         rule_code: ruleFilter.value || undefined,
         status: statusFilter.value || undefined,
+        source: sourceFilter.value || undefined,
+        date_from: period.value?.[0] || undefined,
+        date_to: period.value?.[1] || undefined,
       })
       rules.value = data.applicable_rules
       findings.value = data.findings
@@ -135,9 +168,13 @@ export const useAnomalyStore = defineStore('anomaly', () => {
     loading,
     ruleFilter,
     statusFilter,
+    sources,
+    sourceFilter,
+    period,
     details,
     detailLoading,
     reset,
+    fetchSources,
     fetchFindings,
     fetchDetail,
     review,

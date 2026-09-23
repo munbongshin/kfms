@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status as http_sta
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.anomaly.rules import RULES
+from app.anomaly.rules import RULES, SOURCES
 from app.db.repositories.anomaly import AnomalyRepository
 from app.dependencies import get_db, get_db_pool
 from app.services.anomaly_service import AnomalyService
@@ -39,15 +39,51 @@ class ReviewRequest(BaseModel):
     note: Optional[str] = None
 
 
+@router.get("/sources")
+async def list_sources(
+    database_id: str = Query(...),
+    service: AnomalyService = Depends(get_anomaly_service),
+):
+    """Sources this connection can actually be checked against, with their date range.
+
+    Not every table is checkable: the rules are written against specific columns,
+    so the catalogue decides the list. The screen seeds its date picker from the
+    range returned here.
+    """
+    return {"sources": await service.list_sources(database_id)}
+
+
 @router.get("/findings")
 async def list_findings(
     database_id: str = Query(...),
     rule_code: Optional[str] = None,
     status: Optional[str] = None,
+    source: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
     service: AnomalyService = Depends(get_anomaly_service),
 ):
     """Findings for one connection, with review state merged in."""
-    return await service.list_findings(database_id, rule_code=rule_code, status=status)
+    if source is not None and source not in SOURCES:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown source: {source}",
+        )
+
+    try:
+        return await service.list_findings(
+            database_id,
+            rule_code=rule_code,
+            status=status,
+            source=source,
+            date_from=date_from,
+            date_to=date_to,
+        )
+    except ValueError as exc:
+        # A malformed or inverted period is a caller bug, not a server fault.
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        )
 
 
 @router.get("/findings/transactions")

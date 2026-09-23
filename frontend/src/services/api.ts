@@ -248,10 +248,20 @@ export const api = {
 
   // Anomaly detection
   anomaly: {
+    async listSources(databaseId: string) {
+      const response = await apiClient.get('/anomaly/sources', {
+        params: { database_id: databaseId },
+      })
+      return response.data
+    },
+
     async listFindings(params: {
       database_id: string
       rule_code?: string
       status?: string
+      source?: string
+      date_from?: string
+      date_to?: string
     }) {
       const response = await apiClient.get('/anomaly/findings', { params })
       return response.data
