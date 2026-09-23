@@ -64,7 +64,9 @@ def build_rows_query(
     if offset < 0:
         raise ValueError(f"offset must not be negative, got {offset}")
 
-    projection = ", ".join(quote(c) for c in chosen)
+    # Listing all 157 of card_data's columns makes the SQL unreadable for no
+    # gain; a star means the same thing when nothing was filtered out.
+    projection = "*" if len(chosen) == len(columns) else ", ".join(quote(c) for c in chosen)
     direction = "DESC" if descending else "ASC"
 
     # ORDER BY is not optional: PostgreSQL makes no promise about row order
@@ -117,6 +119,9 @@ class TableBrowser:
 
         return {
             "table": table,
+            # The query is ours, not the caller's — showing it lets a reviewer
+            # see exactly what produced the page and copy it into the query screen.
+            "sql": sql,
             "columns": columns,
             "selected": [c for c in columns if c in set(selected)] if selected else columns,
             "order_by": order_by or columns[0],

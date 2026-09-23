@@ -26,6 +26,7 @@
         max-height="520"
         scrollbar-always-on
         style="width: 100%"
+        @sort-change="onSortChange"
       >
         <el-table-column
           v-for="column in columns"
@@ -33,6 +34,8 @@
           :prop="column"
           :label="column"
           :min-width="120"
+          :sortable="preview ? 'custom' : false"
+          :sort-orders="['ascending', 'descending']"
           show-overflow-tooltip
         />
       </el-table>
@@ -112,6 +115,16 @@ function applyColumnsOnClose(open: boolean) {
     state.selected.length === selectedColumns.value.length &&
     state.selected.every((c) => selectedColumns.value.includes(c))
   if (!same) reloadPage(1)
+}
+
+/** Server-side sort: the page is one slice of the table, so reordering has to
+ *  happen in the query, not among the hundred rows already on screen. */
+function onSortChange({ prop, order }: { prop: string; order: string | null }) {
+  const state = preview.value
+  if (!state || !prop) return
+  state.orderBy = prop
+  state.descending = order === 'descending'
+  reloadPage(1)
 }
 
 function clearColumns() {

@@ -247,7 +247,7 @@ export const useQueryStore = defineStore('query', () => {
 
       queryResults.value = {
         question: `[미리보기] ${tableName}`,
-        sql: '',
+        sql: data.sql ?? '',
         results: data.rows,
         row_count: data.total,
         execution_time_ms: 0,

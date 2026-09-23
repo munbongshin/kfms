@@ -13,7 +13,7 @@ SCHEMA = {"v_approval": COLUMNS, "empty": [], 'we"ird': ['a"b']}
 
 def test_selecting_no_columns_returns_them_all():
     sql, params = build_rows_query(SCHEMA, "v_approval", [], None, False, 100, 0)
-    assert '"seq", "cardno", "merchname", "apprtot"' in sql
+    assert sql.startswith('SELECT * FROM')
 
 
 def test_selected_columns_keep_the_tables_own_order():
@@ -123,3 +123,15 @@ def test_a_quote_in_an_identifier_cannot_break_out():
     sql, _ = build_rows_query(SCHEMA, 'we"ird', [], None, False, 10, 0)
     assert 'FROM "we""ird"' in sql
     assert '"a""b"' in sql
+
+
+def test_selecting_everything_uses_a_star_so_the_query_stays_readable():
+    # 157 column names in the projection makes the SQL tab unreadable, and the
+    # meaning is the same.
+    sql, _ = build_rows_query(SCHEMA, "v_approval", [], None, False, 100, 0)
+    assert sql.startswith('SELECT * FROM "v_approval"')
+
+
+def test_naming_a_subset_still_lists_the_columns():
+    sql, _ = build_rows_query(SCHEMA, "v_approval", ["seq", "cardno"], None, False, 100, 0)
+    assert 'SELECT "seq", "cardno" FROM' in sql
