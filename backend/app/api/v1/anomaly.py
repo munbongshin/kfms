@@ -1,5 +1,5 @@
 """Anomaly detection endpoints."""
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status as http_status
 from pydantic import BaseModel
@@ -11,6 +11,10 @@ from app.dependencies import get_db, get_db_pool
 from app.services.anomaly_service import AnomalyService
 
 router = APIRouter(prefix="/anomaly", tags=["Anomaly"])
+
+# A finding covers a handful of transactions; a large seq list would be someone
+# using this as a bulk row reader rather than expanding a row.
+MAX_DETAIL_SEQS = 50
 
 
 def get_anomaly_service(
@@ -44,6 +48,26 @@ async def list_findings(
 ):
     """Findings for one connection, with review state merged in."""
     return await service.list_findings(database_id, rule_code=rule_code, status=status)
+
+
+@router.get("/findings/transactions")
+async def finding_transactions(
+    database_id: str = Query(...),
+    seq: List[int] = Query(default=[]),
+    service: AnomalyService = Depends(get_anomaly_service),
+):
+    """Full approvals behind one finding, fetched only when a reviewer expands it.
+
+    Unlike the list endpoint this carries the card number, so it stays a
+    separate deliberate request rather than riding along with every page load.
+    """
+    if len(seq) > MAX_DETAIL_SEQS:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=f"at most {MAX_DETAIL_SEQS} transactions per request",
+        )
+
+    return {"transactions": await service.get_transactions(database_id, seq)}
 
 
 @router.patch("/findings/review")

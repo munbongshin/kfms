@@ -257,6 +257,15 @@ export const api = {
       return response.data
     },
 
+    // Only called when a reviewer expands a row. The response carries the card
+    // number, which is why it is a separate request rather than part of the list.
+    async transactions(databaseId: string, seqs: number[]) {
+      const params = new URLSearchParams({ database_id: databaseId })
+      seqs.forEach((seq) => params.append('seq', String(seq)))
+      const response = await apiClient.get(`/anomaly/findings/transactions?${params}`)
+      return response.data
+    },
+
     // finding_key goes in the body, not the path: a SPLIT_PAYMENT key contains a
     // full card number, which must not reach proxy logs or browser history.
     async review(data: {

@@ -53,7 +53,43 @@
           <el-button @click="refresh">적용</el-button>
         </div>
 
-        <el-table :data="store.findings" v-loading="store.loading" stripe style="width: 100%">
+        <el-table
+          :data="store.findings"
+          v-loading="store.loading"
+          stripe
+          style="width: 100%"
+          @expand-change="onExpand"
+        >
+          <el-table-column type="expand">
+            <template #default="{ row }">
+              <div v-loading="store.detailLoading[row.finding_key]" class="detail">
+                <div
+                  v-for="tx in store.details[row.finding_key] || []"
+                  :key="tx.seq"
+                  class="detail-card"
+                >
+                  <div class="detail-grid">
+                    <template v-for="f in tx.core" :key="f.field">
+                      <span class="detail-label">{{ f.label }}</span>
+                      <span class="detail-value">{{ display(f.value) }}</span>
+                    </template>
+                  </div>
+
+                  <el-button text size="small" @click="toggleAll(tx.seq)">
+                    {{ expandedAll.has(tx.seq) ? '전체 숨기기' : `전체 보기 (${tx.rest.length}개)` }}
+                  </el-button>
+
+                  <div v-if="expandedAll.has(tx.seq)" class="detail-grid rest">
+                    <template v-for="f in tx.rest" :key="f.field">
+                      <span class="detail-label">{{ f.label }}</span>
+                      <span class="detail-value">{{ display(f.value) }}</span>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
           <el-table-column label="심각도" width="90">
             <template #default="{ row }">
               <el-tag :type="severityType(row.severity)" size="small">{{ row.severity }}</el-tag>
@@ -97,18 +133,35 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
-import { useAnomalyStore } from '../stores/anomaly'
+import { useAnomalyStore, type Finding } from '../stores/anomaly'
 import { useDatabaseStore } from '../stores/database'
 
 const store = useAnomalyStore()
 const databaseStore = useDatabaseStore()
 
 const connectionId = computed(() => String(databaseStore.activeConnectionId ?? ''))
+const expandedAll = ref(new Set<number>())
 
 function severityType(severity: string) {
   return severity === 'high' ? 'danger' : severity === 'medium' ? 'warning' : 'info'
+}
+
+function display(value: string | number | null) {
+  return value === null || value === '' ? '—' : String(value)
+}
+
+function onExpand(row: Finding, expanded: Finding[]) {
+  if (expanded.includes(row) && connectionId.value) {
+    store.fetchDetail(connectionId.value, row)
+  }
+}
+
+function toggleAll(seq: number) {
+  const next = new Set(expandedAll.value)
+  next.has(seq) ? next.delete(seq) : next.add(seq)
+  expandedAll.value = next
 }
 
 function refresh() {
@@ -129,6 +182,44 @@ onMounted(refresh)
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.detail {
+  padding: 8px 16px;
+  min-height: 40px;
+}
+
+.detail-card {
+  padding: 12px 0;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.detail-card:last-child {
+  border-bottom: none;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+  gap: 6px 14px;
+  margin-bottom: 8px;
+}
+
+.detail-grid.rest {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #ebeef5;
+}
+
+.detail-label {
+  color: #909399;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.detail-value {
+  font-size: 13px;
+  word-break: break-all;
 }
 
 .caveat {

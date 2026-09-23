@@ -33,6 +33,18 @@ export interface Finding {
   stale: boolean
 }
 
+export interface DetailField {
+  field: string
+  label: string
+  value: string | number | null
+}
+
+export interface TransactionDetail {
+  seq: number
+  core: DetailField[]
+  rest: DetailField[]
+}
+
 export const useAnomalyStore = defineStore('anomaly', () => {
   const rules = ref<RuleStatus[]>([])
   const findings = ref<Finding[]>([])
@@ -41,10 +53,32 @@ export const useAnomalyStore = defineStore('anomaly', () => {
   const ruleFilter = ref('')
   const statusFilter = ref('')
 
+  // Keyed by finding_key. Card numbers live here, so it is dropped with the
+  // rest of the state whenever the connection changes or a fetch fails.
+  const details = ref<Record<string, TransactionDetail[]>>({})
+  const detailLoading = ref<Record<string, boolean>>({})
+
   function reset() {
     rules.value = []
     findings.value = []
     caveat.value = null
+    details.value = {}
+    detailLoading.value = {}
+  }
+
+  async function fetchDetail(databaseId: string, finding: Finding) {
+    if (details.value[finding.finding_key] || detailLoading.value[finding.finding_key]) return
+
+    detailLoading.value[finding.finding_key] = true
+    try {
+      const seqs = finding.transactions.map((t) => Number(t.seq))
+      const data = await api.anomaly.transactions(databaseId, seqs)
+      details.value[finding.finding_key] = data.transactions
+    } catch (error) {
+      ElMessage.error('거래 상세를 불러오지 못했습니다')
+    } finally {
+      delete detailLoading.value[finding.finding_key]
+    }
   }
 
   async function fetchFindings(databaseId: string) {
@@ -94,5 +128,18 @@ export const useAnomalyStore = defineStore('anomaly', () => {
     }
   }
 
-  return { rules, findings, caveat, loading, ruleFilter, statusFilter, reset, fetchFindings, review }
+  return {
+    rules,
+    findings,
+    caveat,
+    loading,
+    ruleFilter,
+    statusFilter,
+    details,
+    detailLoading,
+    reset,
+    fetchFindings,
+    fetchDetail,
+    review,
+  }
 })

@@ -25,9 +25,51 @@ RULE_ERROR_CAVEAT = "규칙 실행 오류 — 서버 로그를 확인하세요"
 REVIEW_ERROR_CAVEAT = "검토 이력을 불러오지 못해 모든 건이 미검토로 표시됩니다"
 
 
+# Shown by default when a reviewer expands a finding. The card number is
+# deliberately unmasked: the reviewer opened this row to judge it, and the
+# list endpoint still never carries it.
+DETAIL_LABELS = {
+    "cardno": "카드번호",
+    "class": "구분",
+    "transdate": "사용일자",
+    "transtime": "사용시각",
+    "merchname": "가맹점명",
+    "mccname": "업종",
+    "apprtot": "승인금액",
+    "appramt": "공급가액",
+    "vat": "부가세",
+    "apprno": "승인번호",
+    "insttype": "할부구분",
+    "instmonth": "할부개월",
+    "merchbizno": "가맹점 사업자번호",
+    "merchtel": "가맹점 전화",
+    "merchaddr1": "가맹점 주소",
+}
+DETAIL_FIELDS = tuple(DETAIL_LABELS)
+
+
 def _public_transaction(row: Dict[str, Any]) -> Dict[str, Any]:
     """The spec's response example: seq, merchname, apprtot — nothing else."""
     return {field: row.get(field) for field in TRANSACTION_FIELDS}
+
+
+def split_detail(row: Dict[str, Any]) -> tuple:
+    """Split one approval into the audit fields and everything else worth showing.
+
+    Core fields keep their order and survive a null value — a missing 업종 is
+    itself evidence. The rest drops empties so the "show all" toggle is not
+    mostly blank.
+    """
+    core = [
+        {"field": field, "label": DETAIL_LABELS[field], "value": row.get(field)}
+        for field in DETAIL_FIELDS
+    ]
+    rest = [
+        {"field": field, "label": field, "value": value}
+        for field, value in row.items()
+        if field not in DETAIL_LABELS and value is not None and value != ""
+    ]
+    return core, rest
 
 
 def merge_reviews(findings: List[Finding], reviews: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -65,6 +107,33 @@ class AnomalyService:
 
     async def _load_rows(self, database_id: str) -> List[Dict[str, Any]]:
         return await self.pool.execute_query(database_id, f"SELECT * FROM {SOURCE_VIEW}")
+
+    async def get_transactions(self, database_id: str, seqs: List[int]) -> List[Dict[str, Any]]:
+        """Full approvals behind one finding, split into audit fields and the rest.
+
+        Only reached when a reviewer expands a row, which is why this — unlike
+        the list endpoint — may carry the card number.
+        """
+        if not seqs:
+            return []
+
+        placeholders = ", ".join(f":seq{i}" for i in range(len(seqs)))
+        params = {f"seq{i}": seq for i, seq in enumerate(seqs)}
+        rows = await self.pool.execute_query(
+            database_id,
+            f"SELECT * FROM {SOURCE_VIEW} WHERE seq IN ({placeholders})",
+            params,
+        )
+
+        by_seq = {int(row["seq"]): row for row in rows}
+        detail = []
+        for seq in seqs:
+            row = by_seq.get(seq)
+            if row is None:
+                continue
+            core, rest = split_detail(row)
+            detail.append({"seq": seq, "core": core, "rest": rest})
+        return detail
 
     async def list_findings(
         self,
