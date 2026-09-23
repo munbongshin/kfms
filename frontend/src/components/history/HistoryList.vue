@@ -23,6 +23,11 @@
           <el-icon><Filter /></el-icon>
           Apply Filters
         </el-button>
+
+        <el-button type="danger" plain class="clear-all" @click="clearHistory">
+          <el-icon><Delete /></el-icon>
+          전체 삭제
+        </el-button>
       </div>
 
       <!-- History Table -->
@@ -150,7 +155,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Refresh, Filter, Delete, Star, StarFilled } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../../services/api'
 import { useQueryStore } from '../../stores/query'
 
@@ -230,6 +235,28 @@ async function toggleBookmark(row: any) {
   }
 }
 
+async function clearHistory() {
+  try {
+    // Bookmarks are excluded server-side; say so plainly before deleting.
+    await ElMessageBox.confirm(
+      '북마크한 이력은 남기고 나머지를 모두 삭제합니다. 되돌릴 수 없습니다.',
+      '이력 전체 삭제',
+      { confirmButtonText: '삭제', cancelButtonText: '취소', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+
+  try {
+    const result = await api.history.clear(true)
+    ElMessage.success(`${result.deleted}건을 삭제했습니다. 북마크 ${result.kept}건은 유지됩니다.`)
+    currentPage.value = 1
+    await fetchHistory()
+  } catch (error) {
+    ElMessage.error('이력을 삭제하지 못했습니다')
+  }
+}
+
 async function deleteHistory(historyId: number) {
   try {
     await api.history.delete(historyId)
@@ -256,6 +283,10 @@ onMounted(() => {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+}
+
+.clear-all {
+  margin-left: auto;
 }
 
 .pagination {

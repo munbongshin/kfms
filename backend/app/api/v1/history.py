@@ -204,6 +204,24 @@ async def set_bookmark(
     )
 
 
+@router.delete("")
+async def clear_history(
+    keep_bookmarked: bool = True,
+    repo: HistoryRepository = Depends(get_history_repo),
+):
+    """Delete history in bulk, keeping bookmarked entries by default.
+
+    A bookmark means the user intends to run that query again, so clearing
+    history must not take one with it. Returns how many rows were removed and
+    how many were kept.
+    """
+    removable = await repo.count(keep_bookmarked=keep_bookmarked)
+    deleted = await repo.clear(keep_bookmarked=keep_bookmarked)
+    kept = await repo.count(keep_bookmarked=False)
+
+    return {"deleted": deleted, "kept": kept, "expected": removable}
+
+
 @router.delete("/{history_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_history(
     history_id: int,

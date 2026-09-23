@@ -254,6 +254,13 @@ export const api = {
       await apiClient.delete(`/history/${historyId}`)
     },
 
+    async clear(keepBookmarked = true) {
+      const response = await apiClient.delete('/history', {
+        params: { keep_bookmarked: keepBookmarked },
+      })
+      return response.data
+    },
+
     async getStats() {
       const response = await apiClient.get('/history/stats/summary')
       return response.data

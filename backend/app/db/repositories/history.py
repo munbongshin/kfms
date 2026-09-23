@@ -4,10 +4,23 @@ Handles CRUD operations for query execution history.
 """
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, desc
+from sqlalchemy import select, update, delete, desc, func
 from datetime import datetime
 
 from app.db.models import QueryHistory
+
+
+def build_clear_statement(keep_bookmarked: bool = True):
+    """The DELETE a bulk clear runs.
+
+    Kept separate so the bookmark guard can be pinned by a test without a
+    database, and so the default protects bookmarks even if a caller omits
+    the flag.
+    """
+    stmt = delete(QueryHistory)
+    if keep_bookmarked:
+        stmt = stmt.where(QueryHistory.is_bookmarked.is_(False))
+    return stmt
 
 
 class HistoryRepository:
@@ -168,6 +181,24 @@ class HistoryRepository:
 
         result = await self.session.execute(query)
         return list(result.scalars().all())
+
+    async def clear(self, keep_bookmarked: bool = True) -> int:
+        """Delete history in bulk. Returns how many rows went.
+
+        Bookmarked rows are kept by default: a bookmark is the user saying they
+        will run that query again, so clearing history must not destroy one.
+        """
+        result = await self.session.execute(build_clear_statement(keep_bookmarked))
+        await self.session.commit()
+        return result.rowcount
+
+    async def count(self, keep_bookmarked: bool = True) -> int:
+        """How many rows a clear() with the same flag would remove."""
+        stmt = select(func.count()).select_from(QueryHistory)
+        if keep_bookmarked:
+            stmt = stmt.where(QueryHistory.is_bookmarked.is_(False))
+        result = await self.session.execute(stmt)
+        return int(result.scalar() or 0)
 
     async def delete_history(self, history_id: int) -> bool:
         """
