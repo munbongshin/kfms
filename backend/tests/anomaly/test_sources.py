@@ -74,3 +74,25 @@ def test_query_rejects_a_date_that_is_not_iso():
 def test_query_rejects_an_inverted_period():
     with pytest.raises(ValueError):
         build_source_query(SOURCES["approval"], "2023-07-31", "2023-06-01")
+
+
+def test_a_rule_knows_which_template_it_came_from():
+    codes = {r.code: r.template for r in RULES}
+    assert codes["HIGH_AMOUNT"] == "HIGH_AMOUNT"
+    assert codes["ACQUIRE_HIGH_AMOUNT"] == "HIGH_AMOUNT"
+    assert codes["BILL_HIGH_AMOUNT"] == "HIGH_AMOUNT"
+
+
+def test_the_same_template_spans_sources_so_a_filter_can_follow_the_user():
+    # The screen's rule filter holds a template, not a code: picking 고액 결제
+    # and then switching 점검대상 must keep finding the same kind of rule.
+    high = [r for r in RULES if r.template == "HIGH_AMOUNT"]
+    assert {r.source for r in high} == {"approval", "acquire", "bill"}
+
+
+def test_every_template_label_is_shared_across_its_sources():
+    labels = {}
+    for rule in RULES:
+        labels.setdefault(rule.template, set()).add(rule.label)
+    for template, names in labels.items():
+        assert len(names) == 1, f"{template} has inconsistent labels: {names}"

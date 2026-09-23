@@ -56,14 +56,19 @@ async def list_sources(
 @router.get("/findings")
 async def list_findings(
     database_id: str = Query(...),
-    rule_code: Optional[str] = None,
+    template: Optional[str] = None,
     status: Optional[str] = None,
     source: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     service: AnomalyService = Depends(get_anomaly_service),
 ):
-    """Findings for one connection, with review state merged in."""
+    """Findings for one connection, with review state merged in.
+
+    Omitting `source` checks every source at once. `template` filters by the
+    kind of rule (고액 결제), not by its source-specific code, so the screen's
+    filter keeps meaning the same thing when 점검대상 changes.
+    """
     if source is not None and source not in SOURCES:
         raise HTTPException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
@@ -73,7 +78,7 @@ async def list_findings(
     try:
         return await service.list_findings(
             database_id,
-            rule_code=rule_code,
+            template=template,
             status=status,
             source=source,
             date_from=date_from,

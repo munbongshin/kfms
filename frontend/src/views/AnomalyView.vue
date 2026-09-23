@@ -35,6 +35,7 @@
           <label class="lbl">점검대상</label>
           <div class="ctl">
             <el-select v-model="store.sourceFilter" size="small" style="width: 190px">
+              <el-option label="전체" value="" />
               <el-option
                 v-for="s in store.sources"
                 :key="s.key"
@@ -54,10 +55,10 @@
               style="width: 190px"
             >
               <el-option
-                v-for="r in store.rules"
-                :key="r.rule_code"
+                v-for="r in ruleOptions"
+                :key="r.template"
                 :label="r.label"
-                :value="r.rule_code"
+                :value="r.template"
               />
             </el-select>
           </div>
@@ -243,21 +244,36 @@ const QUICK: Array<{ label: string; months: number | null }> = [
 
 const activeSource = computed(() => store.sources.find((s) => s.key === store.sourceFilter))
 
-function applyQuick(months: number | null) {
-  const source = activeSource.value
-  if (!source || !source.min_date || !source.max_date) return
+// One entry per kind of rule. With 전체 selected the same template arrives once
+// per source, and the dropdown must not list 고액 결제 three times.
+const ruleOptions = computed(() => {
+  const seen = new Map<string, { template: string; label: string }>()
+  for (const rule of store.rules) {
+    if (!seen.has(rule.template)) seen.set(rule.template, rule)
+  }
+  return [...seen.values()]
+})
 
-  store.dateTo = source.max_date
+function applyQuick(months: number | null) {
+  // With 전체 selected the window spans every source's range.
+  const range = activeSource.value ? [activeSource.value] : store.sources
+  const mins = range.map((s) => s.min_date).filter(Boolean) as string[]
+  const maxes = range.map((s) => s.max_date).filter(Boolean) as string[]
+  if (!mins.length || !maxes.length) return
+
+  const earliest = mins.reduce((a, b) => (a < b ? a : b))
+  const latest = maxes.reduce((a, b) => (a > b ? a : b))
+  store.dateTo = latest
 
   if (months === null) {
-    store.dateFrom = source.min_date
+    store.dateFrom = earliest
     return
   }
 
-  const start = new Date(source.max_date)
+  const start = new Date(latest)
   start.setMonth(start.getMonth() - months)
   const iso = start.toISOString().slice(0, 10)
-  store.dateFrom = iso < source.min_date ? source.min_date : iso
+  store.dateFrom = iso < earliest ? earliest : iso
 }
 
 function severityLabel(severity: string) {

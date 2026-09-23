@@ -136,7 +136,9 @@ def split_detail(row: Dict[str, Any], source: Source) -> tuple:
     return core, rest
 
 
-def merge_reviews(findings: List[Finding], reviews: Dict[str, Any]) -> List[Dict[str, Any]]:
+def merge_reviews(
+    findings: List[Finding], reviews: Dict[str, Any], source_of: Optional[Dict[str, str]] = None
+) -> List[Dict[str, Any]]:
     """Attach review state; a fingerprint mismatch means the finding changed since review."""
     merged = []
     for f in findings:
@@ -145,6 +147,7 @@ def merge_reviews(findings: List[Finding], reviews: Dict[str, Any]) -> List[Dict
             {
                 "finding_key": f.finding_key,
                 "rule_code": f.rule_code,
+                "source": (source_of or {}).get(f.rule_code, ""),
                 "severity": f.severity,
                 "summary": f.summary,
                 "amount": float(f.amount),
@@ -249,7 +252,7 @@ class AnomalyService:
         database_id: str,
         source_rules,
         rows: List[Dict[str, Any]],
-        rule_code: Optional[str],
+        template: Optional[str],
         applicable_rules: List[Dict[str, Any]],
         findings: List[Finding],
     ) -> None:
@@ -267,6 +270,7 @@ class AnomalyService:
                 applicable_rules.append(
                     {
                         "rule_code": rule.code,
+                        "template": rule.template,
                         "label": rule.label,
                         "applicable": False,
                         "caveat": f"컬럼 없음: {', '.join(missing)}",
@@ -284,6 +288,7 @@ class AnomalyService:
                 applicable_rules.append(
                     {
                         "rule_code": rule.code,
+                        "template": rule.template,
                         "label": rule.label,
                         "applicable": False,
                         "caveat": RULE_ERROR_CAVEAT,
@@ -291,7 +296,12 @@ class AnomalyService:
                 )
                 continue
 
-            entry: Dict[str, Any] = {"rule_code": rule.code, "label": rule.label, "applicable": True}
+            entry: Dict[str, Any] = {
+                "rule_code": rule.code,
+                "template": rule.template,
+                "label": rule.label,
+                "applicable": True,
+            }
             if rule.detect is detect_watch_mcc:
                 category = rule.params["columns"][CATEGORY]
                 klass = rule.params["columns"][CLASS]
@@ -302,14 +312,14 @@ class AnomalyService:
                     entry["caveat"] = f"업종 미분류 {unclassified}건은 판정에서 제외됨"
             applicable_rules.append(entry)
 
-            if rule_code and rule.code != rule_code:
+            if template and rule.template != template:
                 continue
             findings.extend(detected)
 
     async def list_findings(
         self,
         database_id: str,
-        rule_code: Optional[str] = None,
+        template: Optional[str] = None,
         status: Optional[str] = None,
         source: Optional[str] = None,
         date_from: Optional[str] = None,
@@ -339,6 +349,7 @@ class AnomalyService:
                 applicable_rules.extend(
                     {
                         "rule_code": r.code,
+                        "template": r.template,
                         "label": r.label,
                         "applicable": False,
                         "caveat": SOURCE_ERROR_CAVEAT,
@@ -348,16 +359,20 @@ class AnomalyService:
                 continue
 
             self._run_source_rules(
-                database_id, source_rules, rows, rule_code, applicable_rules, findings
+                database_id, source_rules, rows, template, applicable_rules, findings
             )
 
         # C2: the metadata DB is a second failure domain. A missing anomaly_review
         # table or a kfms outage must degrade to "nothing reviewed yet", not a 500
         # that blanks the screen — the same contract _load_rows already honours for
         # the retail side. The degradation is surfaced, not swallowed.
+        source_of = {r.code: r.source for r in RULES}
+
         caveat: Optional[str] = None
         try:
-            reviews = await self.repo.get_reviews(database_id, [f.finding_key for f in findings])
+            reviews = await self.repo.get_reviews(
+                database_id, [f.finding_key for f in findings]
+            )
         except Exception:
             logger.exception(
                 "Anomaly review lookup failed for database_id=%s; rendering findings "
@@ -367,7 +382,7 @@ class AnomalyService:
             reviews = {}
             caveat = REVIEW_ERROR_CAVEAT
 
-        merged = merge_reviews(findings, reviews)
+        merged = merge_reviews(findings, reviews, source_of)
 
         if status == "unreviewed":
             merged = [m for m in merged if m["review"] is None or m["stale"]]

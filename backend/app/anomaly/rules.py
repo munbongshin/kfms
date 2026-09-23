@@ -311,6 +311,10 @@ TEMPLATES: List[RuleTemplate] = [
 @dataclass(frozen=True)
 class Rule:
     code: str
+    # The template this came from. Codes are source-specific so review keys
+    # cannot collide, but the screen filters on the template — picking 고액 결제
+    # must keep meaning the same thing after 점검대상 changes.
+    template: str
     label: str
     severity: str
     detect: Callable[[List[Row], Dict[str, Any]], List[Finding]]
@@ -330,6 +334,7 @@ def build_rules(sources: Dict[str, Source], templates: List[RuleTemplate]) -> Li
             rules.append(
                 Rule(
                     code=code,
+                    template=tpl.template,
                     label=tpl.label,
                     severity=tpl.severity,
                     detect=tpl.detect,

@@ -30,9 +30,10 @@
       :filter-node-method="filterNode"
       :expand-on-click-node="false"
       @node-click="onNodeClick"
+      @node-dblclick="onNodeDblClick"
     >
       <template #default="{ data }">
-        <span class="node" @dblclick="onNodeDblClick(data)">
+        <span class="node">
           <span class="node-label" :class="data.kind">{{ data.label }}</span>
           <span v-if="data.meta" class="node-meta">{{ data.meta }}</span>
         </span>

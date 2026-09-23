@@ -271,7 +271,7 @@ export const api = {
 
     async listFindings(params: {
       database_id: string
-      rule_code?: string
+      template?: string
       status?: string
       source?: string
       date_from?: string

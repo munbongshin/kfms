@@ -9,6 +9,7 @@ import { api } from '../services/api'
 
 export interface RuleStatus {
   rule_code: string
+  template: string
   label: string
   applicable: boolean
   caveat?: string
@@ -23,6 +24,7 @@ export interface FindingReview {
 export interface Finding {
   finding_key: string
   rule_code: string
+  source: string
   severity: 'high' | 'medium' | 'low'
   summary: string
   amount: number
@@ -58,6 +60,8 @@ export const useAnomalyStore = defineStore('anomaly', () => {
   const findings = ref<Finding[]>([])
   const caveat = ref<string | null>(null)
   const loading = ref(false)
+  // A template, not a rule code: codes are source-specific, so filtering by
+  // code silently matched nothing once 점검대상 changed.
   const ruleFilter = ref('')
   const statusFilter = ref('')
   const sources = ref<AnomalySource[]>([])
@@ -87,7 +91,9 @@ export const useAnomalyStore = defineStore('anomaly', () => {
     detailLoading.value[finding.finding_key] = true
     try {
       const seqs = finding.transactions.map((t) => Number(t.seq))
-      const data = await api.anomaly.transactions(databaseId, sourceFilter.value, seqs)
+      // With 전체 selected the list mixes sources, so each finding names its own.
+      const source = finding.source || sourceFilter.value
+      const data = await api.anomaly.transactions(databaseId, source, seqs)
       details.value[finding.finding_key] = data.transactions
     } catch (error) {
       ElMessage.error('거래 상세를 불러오지 못했습니다')
@@ -100,13 +106,15 @@ export const useAnomalyStore = defineStore('anomaly', () => {
     try {
       const data = await api.anomaly.listSources(databaseId)
       sources.value = data.sources
-      const active = sources.value.find((s) => s.key === sourceFilter.value) ?? sources.value[0]
-      if (active) {
-        sourceFilter.value = active.key
-        if (!dateFrom.value && !dateTo.value && active.min_date && active.max_date) {
-          dateFrom.value = active.min_date
-          dateTo.value = active.max_date
-        }
+      // Seed the period from the widest range across sources, so 전체 opens
+      // showing everything rather than a window that fits only one of them.
+      const active = sources.value.find((s) => s.key === sourceFilter.value)
+      const range = active ? [active] : sources.value
+      const mins = range.map((s) => s.min_date).filter(Boolean) as string[]
+      const maxes = range.map((s) => s.max_date).filter(Boolean) as string[]
+      if (!dateFrom.value && !dateTo.value && mins.length && maxes.length) {
+        dateFrom.value = mins.reduce((a, b) => (a < b ? a : b))
+        dateTo.value = maxes.reduce((a, b) => (a > b ? a : b))
       }
     } catch (error) {
       sources.value = []
@@ -122,7 +130,7 @@ export const useAnomalyStore = defineStore('anomaly', () => {
     try {
       const data = await api.anomaly.listFindings({
         database_id: databaseId,
-        rule_code: ruleFilter.value || undefined,
+        template: ruleFilter.value || undefined,
         status: statusFilter.value || undefined,
         source: sourceFilter.value || undefined,
         date_from: dateFrom.value || undefined,
