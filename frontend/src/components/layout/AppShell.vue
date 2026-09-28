@@ -2,10 +2,19 @@
   <div class="app-shell">
     <header class="top-bar">
       <span class="brand">KFMS</span>
-      <span v-if="databaseStore.activeConnection" class="active-conn">
-        <el-tag size="small" type="success">
+      <span class="top-right">
+        <el-tag v-if="databaseStore.activeConnection" size="small" type="success">
           {{ databaseStore.activeConnection.name }}
         </el-tag>
+        <button
+          class="help-btn"
+          :class="{ active: route.name === 'help' }"
+          title="프로그램 구조와 사용법"
+          @click="router.push({ name: 'help' })"
+        >
+          <el-icon><QuestionFilled /></el-icon>
+          도움말
+        </button>
       </span>
     </header>
 
@@ -31,6 +40,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import FunctionTabs from './FunctionTabs.vue'
 import SchemaTree from './SchemaTree.vue'
 import { useDatabaseStore } from '../../stores/database'
@@ -38,6 +49,8 @@ import { useDatabaseStore } from '../../stores/database'
 const STORAGE_KEY = 'kfms.sidebar.collapsed'
 
 const databaseStore = useDatabaseStore()
+const route = useRoute()
+const router = useRouter()
 const collapsed = ref(false)
 
 onMounted(() => {
@@ -78,8 +91,30 @@ function toggle() {
   color: #fff;
 }
 
-.active-conn {
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-left: auto;
+}
+
+.help-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  background: transparent;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.help-btn:hover,
+.help-btn.active {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .body {
