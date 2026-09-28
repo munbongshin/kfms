@@ -12,6 +12,12 @@ from app.dependencies import get_db, get_db_pool
 from app.db.repositories.database_repo import DatabaseRepository
 from app.db.connection_pool import DatabaseConnectionPool
 from app.services.table_browser import MAX_PAGE_SIZE, TableBrowser
+from app.services.connection_rules import is_metadata_database, needs_pool_refresh
+from app.config import settings
+
+METADATA_DB_REFUSED = (
+    "KFMS 운영 정보 DB는 조회 대상으로 등록할 수 없습니다 — 모든 연결의 접속 정보가 들어 있습니다"
+)
 
 
 logger = logging.getLogger(__name__)
@@ -117,6 +123,11 @@ async def create_connection(
         HTTPException: If connection name already exists
     """
     repo = DatabaseRepository(db)
+
+    if is_metadata_database(
+        connection_data.host, connection_data.port, connection_data.database, settings.DATABASE_URL
+    ):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=METADATA_DB_REFUSED)
 
     # Check if name already exists
     existing = await repo.get_by_name(connection_data.name)
@@ -305,6 +316,75 @@ async def read_table_rows(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="테이블을 읽지 못했습니다 — 서버 로그를 확인하세요",
         )
+
+
+@router.patch("/{connection_id}", response_model=DatabaseConnectionResponse)
+async def update_connection(
+    connection_id: int,
+    changes: DatabaseConnectionUpdate,
+    db: AsyncSession = Depends(get_db),
+    pool: DatabaseConnectionPool = Depends(get_db_pool)
+):
+    """Change a connection: its name, where it points, or its credentials.
+
+    Only the fields sent are changed. A rename leaves the live pool alone;
+    anything baked into the engine (host, credentials, read-only...) rebuilds it.
+    """
+    repo = DatabaseRepository(db)
+    current = await repo.get_by_id(connection_id)
+    if not current:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Connection {connection_id} not found"
+        )
+
+    fields = changes.model_dump(exclude_none=True)
+    if not fields:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="변경할 항목이 없습니다")
+
+    if "name" in fields and fields["name"] != current.name:
+        existing = await repo.get_by_name(fields["name"])
+        if existing and existing.id != connection_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"'{fields['name']}' 이름의 연결이 이미 있습니다"
+            )
+
+    if is_metadata_database(
+        fields.get("host", current.host),
+        fields.get("port", current.port),
+        fields.get("database", current.database),
+        settings.DATABASE_URL,
+    ):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=METADATA_DB_REFUSED)
+
+    updated = await repo.update_connection(connection_id, **fields)
+
+    if needs_pool_refresh(fields):
+        await pool.remove_connection(str(connection_id))
+        if updated.is_active:
+            await pool.add_connection(
+                connection_id=str(updated.id),
+                host=updated.host,
+                port=updated.port,
+                database=updated.database,
+                username=updated.username,
+                password=repo.get_decrypted_password(updated),
+                is_read_only=updated.is_read_only
+            )
+
+    return DatabaseConnectionResponse(
+        id=updated.id,
+        name=updated.name,
+        host=updated.host,
+        port=updated.port,
+        database=updated.database,
+        username=updated.username,
+        is_active=updated.is_active,
+        is_read_only=updated.is_read_only,
+        created_at=updated.created_at.isoformat(),
+        updated_at=updated.updated_at.isoformat()
+    )
 
 
 @router.delete("/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)

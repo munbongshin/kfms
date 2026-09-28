@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>Database Connections</span>
-          <el-button type="primary" @click="showCreateDialog = true">
+          <el-button type="primary" @click="openCreate">
             <el-icon><Plus /></el-icon>
             Add Connection
           </el-button>
@@ -31,8 +31,12 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="Actions" width="200" fixed="right">
+        <el-table-column label="Actions" width="250" fixed="right">
           <template #default="{ row }">
+            <el-button size="small" @click="openEdit(row)">
+              <el-icon><Edit /></el-icon>
+              수정
+            </el-button>
             <el-button size="small" @click="testConnection(row.id)">
               <el-icon><Connection /></el-icon>
               Test
@@ -52,10 +56,10 @@
       </el-table>
     </el-card>
 
-    <!-- Create Connection Dialog -->
+    <!-- Create / Edit Connection Dialog -->
     <el-dialog
       v-model="showCreateDialog"
-      title="Add Database Connection"
+      :title="editingId ? '연결 수정' : 'Add Database Connection'"
       width="600px"
     >
       <el-form :model="formData" label-width="120px">
@@ -78,7 +82,7 @@
           <el-input
             v-model="formData.password"
             type="password"
-            placeholder="Enter password"
+            :placeholder="editingId ? '바꿀 때만 입력 (비우면 그대로)' : 'Enter password'"
             show-password
           />
         </el-form-item>
@@ -93,8 +97,8 @@
 
       <template #footer>
         <el-button @click="showCreateDialog = false">Cancel</el-button>
-        <el-button type="primary" @click="createConnection" :loading="databaseStore.loading">
-          Create
+        <el-button type="primary" @click="submit" :loading="databaseStore.loading">
+          {{ editingId ? '저장' : 'Create' }}
         </el-button>
       </template>
     </el-dialog>
@@ -103,13 +107,20 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Plus, Connection, Delete } from '@element-plus/icons-vue'
+import { Plus, Connection, Delete, Edit } from '@element-plus/icons-vue'
 import { useDatabaseStore } from '../../stores/database'
-import type { DatabaseConnectionCreate } from '../../services/api'
+import type {
+  DatabaseConnection,
+  DatabaseConnectionCreate,
+  DatabaseConnectionUpdate,
+} from '../../services/api'
 
 const databaseStore = useDatabaseStore()
 
 const showCreateDialog = ref(false)
+// The connection being edited; null while adding a new one.
+const editingId = ref<number | null>(null)
+let original: DatabaseConnection | null = null
 const formData = ref<DatabaseConnectionCreate>({
   name: '',
   host: 'localhost',
@@ -121,9 +132,56 @@ const formData = ref<DatabaseConnectionCreate>({
   is_read_only: true,
 })
 
-async function createConnection() {
+function openCreate() {
+  editingId.value = null
+  original = null
+  resetForm()
+  showCreateDialog.value = true
+}
+
+function openEdit(row: DatabaseConnection) {
+  editingId.value = row.id
+  original = row
+  // The password is never sent back to the browser; blank means "keep it".
+  formData.value = {
+    name: row.name,
+    host: row.host,
+    port: row.port,
+    database: row.database,
+    username: row.username,
+    password: '',
+    is_active: row.is_active,
+    is_read_only: row.is_read_only,
+  }
+  showCreateDialog.value = true
+}
+
+/** Only what the user actually changed, so a rename stays a rename. */
+function changedFields(): DatabaseConnectionUpdate {
+  const form = formData.value
+  const changes: DatabaseConnectionUpdate = {}
+  if (!original) return changes
+  if (form.name.trim() !== original.name) changes.name = form.name.trim()
+  if (form.host !== original.host) changes.host = form.host
+  if (form.port !== original.port) changes.port = form.port
+  if (form.database !== original.database) changes.database = form.database
+  if (form.username !== original.username) changes.username = form.username
+  if (form.password) changes.password = form.password
+  if (form.is_active !== original.is_active) changes.is_active = form.is_active
+  if (form.is_read_only !== original.is_read_only) changes.is_read_only = form.is_read_only
+  return changes
+}
+
+async function submit() {
   try {
-    await databaseStore.createConnection(formData.value)
+    if (editingId.value) {
+      const changes = changedFields()
+      if (Object.keys(changes).length) {
+        await databaseStore.updateConnection(editingId.value, changes)
+      }
+    } else {
+      await databaseStore.createConnection(formData.value)
+    }
     showCreateDialog.value = false
     resetForm()
   } catch (error) {

@@ -87,7 +87,7 @@ CREATE INDEX IF NOT EXISTS idx_retail_sales_category ON retail_sales(product_cat
 INSERT INTO database_connections
 (name, host, port, database, username, password, is_active, is_read_only, created_at, updated_at)
 VALUES
-('Retail Sales DB', 'localhost', 5433, 'postgres', 'postgres', 'postgres', true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+('KFMS Demo DB', 'localhost', 5433, 'postgres', 'postgres', 'postgres', true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (name) DO UPDATE SET
     host = EXCLUDED.host,
     port = EXCLUDED.port,

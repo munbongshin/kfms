@@ -73,7 +73,7 @@ Browser에서 http://localhost:5173 접속
 1. 홈페이지에서 **Database Management** 클릭
 2. **Add Connection** 클릭
 3. 정보 입력:
-   - Name: Retail Sales DB
+   - Name: KFMS Demo DB
    - Host: localhost (또는 127.0.0.1)
    - Port: 5433
    - Database: postgres

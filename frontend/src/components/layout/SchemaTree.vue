@@ -20,9 +20,12 @@
       </el-button>
     </el-empty>
 
+    <!-- A lazy tree loads its roots once; keying it on the connections makes a
+         rename or (de)activation show up without a page reload. -->
     <el-tree
       v-else
       ref="treeRef"
+      :key="connectionsKey"
       lazy
       :load="loadNode"
       :props="treeProps"
@@ -46,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { useDatabaseStore, type ColumnInfo } from '../../stores/database'
@@ -76,6 +79,10 @@ const filterText = ref('')
 const treeProps = { label: 'label', isLeaf: 'isLeaf' }
 
 watch(filterText, (v) => treeRef.value?.filter(v))
+
+const connectionsKey = computed(() =>
+  databaseStore.activeConnections.map((c) => `${c.id}:${c.name}:${c.database}`).join('|')
+)
 
 function filterNode(value: string, data: TreeNode) {
   if (!value) return true

@@ -15,7 +15,7 @@ SELECT * FROM database_connections;
 INSERT INTO database_connections
 (name, host, port, database, username, password, is_active, is_read_only, created_at, updated_at)
 VALUES
-('Retail Sales DB', 'localhost', 5433, 'postgres', 'postgres',
+('KFMS Demo DB', 'localhost', 5433, 'postgres', 'postgres',
  'postgres',  -- 실제 비밀번호로 변경하세요
  true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (name) DO UPDATE SET
@@ -34,4 +34,4 @@ FROM database_connections
 ORDER BY id DESC;
 
 -- 6. 연결 ID 확인 (Frontend에서 사용)
-SELECT id, name FROM database_connections WHERE name = 'Retail Sales DB';
+SELECT id, name FROM database_connections WHERE name = 'KFMS Demo DB';

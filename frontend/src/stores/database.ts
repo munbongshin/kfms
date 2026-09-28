@@ -4,7 +4,12 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { api, type DatabaseConnection, type DatabaseConnectionCreate } from '../services/api'
+import {
+  api,
+  type DatabaseConnection,
+  type DatabaseConnectionCreate,
+  type DatabaseConnectionUpdate,
+} from '../services/api'
 import { ElMessage } from 'element-plus'
 
 export interface ColumnInfo {
@@ -97,6 +102,30 @@ export const useDatabaseStore = defineStore('database', () => {
       return result
     } catch (error: any) {
       ElMessage.error('Failed to test connection')
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateConnection(connectionId: number, changes: DatabaseConnectionUpdate) {
+    loading.value = true
+    try {
+      const updated = await api.databases.update(connectionId, changes)
+      const index = connections.value.findIndex(conn => conn.id === connectionId)
+      if (index !== -1) connections.value.splice(index, 1, updated)
+
+      // A rename keeps the schema; anything else may point somewhere new.
+      if (Object.keys(changes).some(k => k !== 'name')) invalidateSchema(connectionId)
+
+      if (activeConnectionId.value === connectionId && !updated.is_active) {
+        activeConnectionId.value = activeConnections.value[0]?.id || null
+      }
+
+      ElMessage.success(`"${updated.name}" 연결을 수정했습니다`)
+      return updated
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.detail || '연결을 수정하지 못했습니다')
       throw error
     } finally {
       loading.value = false
@@ -208,6 +237,7 @@ export const useDatabaseStore = defineStore('database', () => {
     // Actions
     fetchConnections,
     createConnection,
+    updateConnection,
     testConnection,
     deleteConnection,
     setActiveConnection,

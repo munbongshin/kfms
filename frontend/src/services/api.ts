@@ -118,6 +118,11 @@ export const api = {
       return response.data
     },
 
+    async update(connectionId: number, data: DatabaseConnectionUpdate): Promise<DatabaseConnection> {
+      const response = await apiClient.patch(`/databases/${connectionId}`, data)
+      return response.data
+    },
+
     async test(connectionId: number): Promise<TestConnectionResponse> {
       const response = await apiClient.post(`/databases/${connectionId}/test`)
       return response.data
