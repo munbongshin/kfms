@@ -53,11 +53,12 @@
         <div class="mock">
           <div class="mock-top">
             <span>KFMS</span>
-            <span class="mock-tag">① 연결 선택 · 설정 · 도움말</span>
+            <span class="mock-tag">① 연결 선택</span>
           </div>
           <div class="mock-body">
             <div class="mock-rail">
               <span>②</span><span>질의</span><span>데이터</span><span>이력</span><span>점검</span>
+              <span class="mock-tools">설정<br />도움말</span>
             </div>
             <div class="mock-side">
               <div class="mock-tabs">테이블 <span class="mock-fold-btn">④ «</span></div>
@@ -71,8 +72,8 @@
         </div>
         <table class="kv">
           <tbody>
-            <tr><th>① 상단 바</th><td>조회할 데이터베이스를 고르는 <em>연결 선택</em>, 사용할 LLM을 고르는 <em>설정</em>, 이 <em>도움말</em> 버튼이 있습니다. 연결은 어느 화면에서든 여기서 바꿉니다.</td></tr>
-            <tr><th>② 기능 탭</th><td>왼쪽 세로 막대에서 질의 · 데이터 · 이력 · 점검 네 화면을 오갑니다. 어느 화면에서나 같은 모양입니다.</td></tr>
+            <tr><th>① 상단 바</th><td>조회할 데이터베이스를 고르는 <em>연결 선택</em>이 있습니다. 모든 화면이 여기서 고른 연결을 대상으로 동작하며, 어느 화면에서든 바꿀 수 있습니다.</td></tr>
+            <tr><th>② 기능 탭</th><td>왼쪽 세로 막대 위쪽에서 질의 · 데이터 · 이력 · 점검 네 화면을 오가고, 맨 아래의 <em>설정</em>(LLM 선택)과 <em>도움말</em>을 엽니다. 어느 화면에서나 같은 모양입니다.</td></tr>
             <tr>
               <th>③ 테이블 패널</th>
               <td>
@@ -583,7 +584,7 @@ LIMIT 1000</pre>
       <!-- 6-1 -->
       <section id="settings">
         <h2>LLM 설정</h2>
-        <p>상단 바의 <strong>설정</strong>에서 질문을 SQL로 바꿀 LLM 서빙 플랫폼을 고릅니다.</p>
+        <p>왼쪽 메뉴 아래의 <strong>설정</strong>에서 질문을 SQL로 바꿀 LLM 서빙 플랫폼을 고릅니다.</p>
         <table class="grid-table">
           <thead><tr><th>플랫폼</th><th>특징</th><th>입력할 것</th></tr></thead>
           <tbody>
@@ -689,7 +690,7 @@ LIMIT 1000</pre>
 
           <dt>SQL이 만들어지지 않거나 오류가 나요.</dt>
           <dd>
-            상단 바의 <strong>설정</strong>에서 <em>연결 테스트</em>를 눌러 LLM 서버가 응답하는지,
+            왼쪽 메뉴 아래의 <strong>설정</strong>에서 <em>연결 테스트</em>를 눌러 LLM 서버가 응답하는지,
             고른 모델이 서버에 있는지 확인하세요. 임베딩 전용 모델(embed, bge 등)은 SQL을 만들 수 없습니다.
           </dd>
 
@@ -962,6 +963,14 @@ em {
   color: #1a5fa8;
   font-size: 11px;
   font-weight: 600;
+}
+
+.mock-tools {
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid #d3dae3;
+  text-align: center;
+  color: #6b7686;
 }
 
 .mock-fold-btn {

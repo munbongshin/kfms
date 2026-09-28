@@ -1,22 +1,25 @@
 <template>
   <nav class="function-tabs">
-    <button
-      v-for="tab in tabs"
-      :key="tab.name"
-      class="tab"
-      :class="{ active: route.name === tab.name }"
-      :title="tab.label"
-      @click="select(tab.name)"
-    >
-      <el-icon><component :is="tab.icon" /></el-icon>
-      <span class="label">{{ tab.label }}</span>
-    </button>
+    <!-- Work tabs at the top; tools used now and then sit apart at the bottom. -->
+    <div v-for="group in [tabs, tools]" :key="group[0].name" class="group">
+      <button
+        v-for="tab in group"
+        :key="tab.name"
+        class="tab"
+        :class="{ active: route.name === tab.name }"
+        :title="tab.title || tab.label"
+        @click="select(tab.name)"
+      >
+        <el-icon><component :is="tab.icon" /></el-icon>
+        <span class="label">{{ tab.label }}</span>
+      </button>
+    </div>
   </nav>
 </template>
 
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
-import { ChatLineSquare, Coin, Clock, Warning } from '@element-plus/icons-vue'
+import { ChatLineSquare, Coin, Clock, Warning, Setting, QuestionFilled } from '@element-plus/icons-vue'
 
 // Clicking the tab already open is reported, so the shell can fold its panel.
 const emit = defineEmits<{ reselect: [name: string] }>()
@@ -29,11 +32,23 @@ function select(name: string) {
   else router.push({ name })
 }
 
-const tabs = [
+interface Tab {
+  name: string
+  label: string
+  icon: any
+  title?: string
+}
+
+const tabs: Tab[] = [
   { name: 'query', label: '질의', icon: ChatLineSquare },
   { name: 'databases', label: '데이터', icon: Coin },
   { name: 'history', label: '이력', icon: Clock },
   { name: 'anomaly', label: '점검', icon: Warning },
+]
+
+const tools: Tab[] = [
+  { name: 'settings', label: '설정', icon: Setting, title: '질문을 SQL로 바꿀 LLM 선택' },
+  { name: 'help', label: '도움말', icon: QuestionFilled, title: '프로그램 구조와 사용법' },
 ]
 </script>
 
@@ -42,6 +57,17 @@ const tabs = [
 .function-tabs {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+.group + .group {
+  border-top: 1px solid #e4e7ed;
 }
 
 .tab {

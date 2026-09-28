@@ -22,24 +22,6 @@
             />
           </el-select>
         </label>
-        <button
-          class="help-btn"
-          :class="{ active: route.name === 'settings' }"
-          title="질문을 SQL로 바꿀 LLM 선택"
-          @click="router.push({ name: 'settings' })"
-        >
-          <el-icon><Setting /></el-icon>
-          설정
-        </button>
-        <button
-          class="help-btn"
-          :class="{ active: route.name === 'help' }"
-          title="프로그램 구조와 사용법"
-          @click="router.push({ name: 'help' })"
-        >
-          <el-icon><QuestionFilled /></el-icon>
-          도움말
-        </button>
       </span>
     </header>
 
@@ -70,8 +52,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { Coin, QuestionFilled, Setting } from '@element-plus/icons-vue'
+import { useRoute } from 'vue-router'
+import { Coin } from '@element-plus/icons-vue'
 import FunctionTabs from './FunctionTabs.vue'
 import SchemaTree from './SchemaTree.vue'
 import { useDatabaseStore } from '../../stores/database'
@@ -80,7 +62,6 @@ const STORAGE_KEY = 'kfms.sidebar.collapsed'
 
 const databaseStore = useDatabaseStore()
 const route = useRoute()
-const router = useRouter()
 const collapsed = ref(false)
 
 const showTree = computed(() => route.name === 'query')
@@ -150,25 +131,6 @@ function onReselect(name: string) {
   margin-left: auto;
 }
 
-.help-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 26px;
-  padding: 0 10px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 3px;
-  background: transparent;
-  color: #fff;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.help-btn:hover,
-.help-btn.active {
-  background: rgba(255, 255, 255, 0.15);
-}
-
 .body {
   display: flex;
   flex: 1;
@@ -176,6 +138,8 @@ function onReselect(name: string) {
 }
 
 .rail {
+  display: flex;
+  flex-direction: column;
   width: 72px;
   flex-shrink: 0;
   background: #f7f8fa;
