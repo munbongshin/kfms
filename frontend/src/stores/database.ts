@@ -12,6 +12,10 @@ export interface ColumnInfo {
   type: string
   nullable: boolean
   default: string | null
+  /** Business name from COMMENT ON COLUMN, e.g. 카드번호 for cardno. */
+  comment: string | null
+  /** What the screen shows: a short display name if set, else the comment. */
+  label: string | null
 }
 
 export const useDatabaseStore = defineStore('database', () => {
@@ -153,6 +157,32 @@ export const useDatabaseStore = defineStore('database', () => {
     }
   }
 
+  /** Column name -> business name for one connection. A query result carries
+   *  only bare column names, so its headers are labelled by name alone. */
+  function columnLabels(connectionId: number | null): Record<string, string> {
+    return columnField(connectionId, (col) => col.label || col.comment)
+  }
+
+  /** Column name -> the full workbook name, for tooltips under a short label. */
+  function columnComments(connectionId: number | null): Record<string, string> {
+    return columnField(connectionId, (col) => col.comment)
+  }
+
+  function columnField(
+    connectionId: number | null,
+    pick: (col: ColumnInfo) => string | null
+  ): Record<string, string> {
+    const schema = connectionId ? schemas.value[connectionId] : undefined
+    const out: Record<string, string> = {}
+    for (const columns of Object.values(schema || {})) {
+      for (const col of columns) {
+        const value = pick(col)
+        if (value && !out[col.name]) out[col.name] = value
+      }
+    }
+    return out
+  }
+
   function invalidateSchema(connectionId: number) {
     const { [connectionId]: _s, ...restSchemas } = schemas.value
     const { [connectionId]: _l, ...restLoading } = schemaLoading.value
@@ -182,6 +212,8 @@ export const useDatabaseStore = defineStore('database', () => {
     deleteConnection,
     setActiveConnection,
     fetchSchema,
+    columnLabels,
+    columnComments,
     invalidateSchema,
   }
 })

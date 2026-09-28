@@ -5,7 +5,7 @@ Uses official Groq SDK for cloud-based inference.
 from typing import Dict, List, Any
 from groq import AsyncGroq
 
-from app.llm.base import BaseLLMProvider
+from app.llm.base import BaseLLMProvider, SQL_RULES
 
 
 class GroqProvider(BaseLLMProvider):
@@ -51,12 +51,7 @@ class GroqProvider(BaseLLMProvider):
 DATABASE SCHEMA:
 {schema_context}
 
-RULES:
-1. Use ONLY SELECT statements (read-only mode enforced)
-2. Include LIMIT 1000 if no limit specified
-3. Use table/column names exactly as shown in schema
-4. Return ONLY the SQL query, no explanations
-5. Use proper PostgreSQL syntax (ILIKE, ::, etc.)"""
+{SQL_RULES}"""
 
         context_part = f"CONTEXT: {context}\n\n" if context else ""
         user_prompt = f"""{context_part}QUESTION: {question}

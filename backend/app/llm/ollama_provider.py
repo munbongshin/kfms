@@ -5,7 +5,7 @@ Connects to local Ollama server via HTTP API.
 from typing import Dict, List, Any
 import httpx
 
-from app.llm.base import BaseLLMProvider
+from app.llm.base import BaseLLMProvider, SQL_RULES
 
 
 class OllamaProvider(BaseLLMProvider):
@@ -54,12 +54,7 @@ class OllamaProvider(BaseLLMProvider):
 DATABASE SCHEMA:
 {schema_context}
 
-RULES:
-1. Use ONLY SELECT statements (read-only mode enforced)
-2. Include LIMIT 1000 if no limit specified
-3. Use table/column names exactly as shown in schema
-4. Return ONLY the SQL query, no explanations
-5. Use proper PostgreSQL syntax (ILIKE, ::, etc.)
+{SQL_RULES}
 
 {f"CONTEXT: {context}" if context else ""}
 

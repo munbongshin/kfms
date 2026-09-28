@@ -13,6 +13,7 @@ from uuid import UUID
 import asyncio
 
 from app.config import settings
+from app.db.column_display_names import DISPLAY_NAMES
 
 
 def _json_safe(value: Any) -> Any:
@@ -24,6 +25,35 @@ def _json_safe(value: Any) -> Any:
     if isinstance(value, UUID):
         return str(value)
     return value
+
+
+def borrow_missing_comments(schema: Dict[str, List[Dict[str, Any]]]) -> None:
+    """Give uncommented columns the comment a same-named column has elsewhere.
+
+    PostgreSQL does not copy comments onto view columns, and the card views are
+    plain SELECTs over card_data, so their columns would otherwise have no
+    label. A column's own comment always wins.
+    """
+    known: Dict[str, str] = {}
+    for columns in schema.values():
+        for column in columns:
+            comment = (column.get("comment") or "").strip()
+            if comment:
+                known.setdefault(column["name"], comment)
+
+    for columns in schema.values():
+        for column in columns:
+            if not (column.get("comment") or "").strip():
+                column["comment"] = known.get(column["name"])
+
+
+def add_display_labels(schema: Dict[str, List[Dict[str, Any]]]) -> None:
+    """Set each column's on-screen `label`: a short display name if one is
+    defined, else the comment. The comment itself is left whole for the prompt.
+    """
+    for columns in schema.values():
+        for column in columns:
+            column["label"] = DISPLAY_NAMES.get(column["name"]) or column.get("comment")
 
 
 class DatabaseConnectionPool:
@@ -201,7 +231,11 @@ class DatabaseConnectionPool:
                         column_name,
                         data_type,
                         is_nullable,
-                        column_default
+                        column_default,
+                        col_description(
+                            format('%I.%I', table_schema, table_name)::regclass,
+                            ordinal_position
+                        )
                     FROM information_schema.columns
                     WHERE table_schema = 'public'
                     AND table_name = :table_name
@@ -213,13 +247,17 @@ class DatabaseConnectionPool:
                         "name": row[0],
                         "type": row[1],
                         "nullable": row[2] == "YES",
-                        "default": row[3]
+                        "default": row[3],
+                        # The business name (COMMENT ON COLUMN), e.g. 카드번호.
+                        "comment": row[4]
                     }
                     for row in result
                 ]
 
                 schema_info[table] = columns
 
+        borrow_missing_comments(schema_info)
+        add_display_labels(schema_info)
         return schema_info
 
     async def execute_query(

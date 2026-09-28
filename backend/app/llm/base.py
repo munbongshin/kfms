@@ -6,6 +6,20 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
 
 
+# Shared by every provider so the rules cannot drift apart between them.
+SQL_RULES = """RULES:
+1. Use ONLY SELECT statements (read-only mode enforced)
+2. Include LIMIT 1000 if no limit specified
+3. Use table/column names exactly as shown in schema
+4. Return ONLY the SQL query, no explanations
+5. Use proper PostgreSQL syntax (ILIKE, ::, etc.)
+6. Give every computed column (aggregates, arithmetic, CASE, etc.) a short
+   Korean alias in double quotes, e.g. SUM(total_amount) AS "매출액 합계",
+   COUNT(*) AS "건수", AVG(price) AS "평균 단가". Results are read by Korean
+   users, so never leave PostgreSQL's default names such as sum or count.
+   Plain columns keep their real names; the screen labels them itself."""
+
+
 class BaseLLMProvider(ABC):
     """
     Abstract base class for LLM providers.
@@ -105,8 +119,13 @@ class BaseLLMProvider(ABC):
             for col in columns:
                 nullable = "NULL" if col.get("nullable", True) else "NOT NULL"
                 default = f" DEFAULT {col.get('default')}" if col.get('default') else ""
+                # The business name lets a Korean question ("카드번호별")
+                # find its column. The display name wins so workbook notation
+                # users never say (현지금액) does not end up in aliases.
+                name = col.get("label") or col.get("comment")
+                label = f" -- {name}" if name else ""
                 schema_lines.append(
-                    f"  - {col['name']} ({col['type']}) {nullable}{default}"
+                    f"  - {col['name']} ({col['type']}) {nullable}{default}{label}"
                 )
 
         return "\n".join(schema_lines)

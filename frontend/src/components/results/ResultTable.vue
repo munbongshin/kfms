@@ -5,6 +5,7 @@
       <el-select
         v-model="selectedColumns"
         multiple
+        filterable
         collapse-tags
         collapse-tags-tooltip
         size="small"
@@ -12,7 +13,12 @@
         style="width: 260px"
         @visible-change="applyColumnsOnClose"
       >
-        <el-option v-for="c in preview.columns" :key="c" :label="c" :value="c" />
+        <el-option
+          v-for="c in preview.columns"
+          :key="c"
+          :label="labels[c] ? `${labels[c]} (${c})` : c"
+          :value="c"
+        />
       </el-select>
       <span class="count">{{ shownColumnCount }} / {{ preview.columns.length }} 컬럼</span>
       <button v-if="selectedColumns.length" class="link" @click="clearColumns">전체 보기</button>
@@ -37,7 +43,17 @@
           :sortable="preview ? 'custom' : false"
           :sort-orders="['ascending', 'descending']"
           show-overflow-tooltip
-        />
+        >
+          <!-- Business name first; the column name stays underneath because
+               two columns can share one (companyid and corpbizno are both
+               사업자번호) and it is what SQL has to use. -->
+          <template #header>
+            <span class="col-head" :title="comments[column] ? `${comments[column]} (${column})` : column">
+              <span class="col-label">{{ labels[column] || column }}</span>
+              <span v-if="labels[column]" class="col-name">{{ column }}</span>
+            </span>
+          </template>
+        </el-table-column>
       </el-table>
 
       <el-pagination
@@ -71,6 +87,7 @@
 import { ref, computed, watch } from 'vue'
 import { useQueryStore, type QueryResult } from '../../stores/query'
 import { useDatabaseStore } from '../../stores/database'
+import { DEFAULT_EXPRESSION_LABELS, labelsFromSql } from '../../utils/columnLabels'
 
 const props = defineProps<{
   results: QueryResult | null
@@ -131,6 +148,30 @@ function clearColumns() {
   selectedColumns.value = []
   reloadPage(1)
 }
+
+// Most specific last: a generic name for bare `sum`, then each real column's
+// business name, then what the SQL itself says a computed column is — so
+// `SUM(appramt) AS total_appr_amt` reads 승인금액 합계.
+// The full workbook name, shown on hover when the header uses a short one.
+const comments = computed(() => databaseStore.columnComments(databaseStore.activeConnectionId))
+
+const labels = computed(() => {
+  const schemaLabels = databaseStore.columnLabels(databaseStore.activeConnectionId)
+  return {
+    ...DEFAULT_EXPRESSION_LABELS,
+    ...schemaLabels,
+    ...labelsFromSql(props.results?.sql || '', schemaLabels),
+  }
+})
+
+// A result can arrive before the tree ever loaded this connection's schema.
+watch(
+  () => databaseStore.activeConnectionId,
+  (id) => {
+    if (id) databaseStore.fetchSchema(id).catch(() => {})
+  },
+  { immediate: true }
+)
 
 // A different table arrives with its own columns; drop the previous choice.
 watch(
@@ -195,6 +236,23 @@ defineExpose({ exportToCSV })
   margin-top: 20px;
   display: flex;
   justify-content: center;
+}
+
+.col-head {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.25;
+  vertical-align: middle;
+}
+
+.col-label {
+  font-weight: 600;
+}
+
+.col-name {
+  font-size: 11px;
+  font-weight: 400;
+  color: #8a94a3;
 }
 
 .preview-bar {

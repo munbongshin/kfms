@@ -35,8 +35,9 @@
         <!-- el-tree emits no node-dblclick, so the handler lives on the slot
              content; .node stretches to the full row so a double-click
              anywhere in it counts, not only on the label. -->
-        <span class="node" @dblclick="onNodeDblClick(data)">
+        <span class="node" :title="data.title" @dblclick="onNodeDblClick(data)">
           <span class="node-label" :class="data.kind">{{ data.label }}</span>
+          <span v-if="data.name" class="node-name">{{ data.name }}</span>
           <span v-if="data.meta" class="node-meta">{{ data.meta }}</span>
         </span>
       </template>
@@ -57,6 +58,9 @@ export interface TreeNode {
   kind: 'connection' | 'table' | 'column' | 'message'
   connectionId: number
   table?: string
+  /** A column's real name when its label is the business name instead. */
+  name?: string
+  title?: string
   meta?: string
   isLeaf?: boolean
   retry?: boolean
@@ -75,7 +79,10 @@ watch(filterText, (v) => treeRef.value?.filter(v))
 
 function filterNode(value: string, data: TreeNode) {
   if (!value) return true
-  return data.label.toLowerCase().includes(value.toLowerCase())
+  const needle = value.toLowerCase()
+  // Match the shown name (승인금액), the column name (appramt) or the full
+  // workbook name (공급가액[승인금액,현지금액]).
+  return [data.label, data.name, data.title].some((s) => s?.toLowerCase().includes(needle))
 }
 
 async function loadNode(node: any, resolve: (nodes: TreeNode[]) => void) {
@@ -141,7 +148,10 @@ async function loadNode(node: any, resolve: (nodes: TreeNode[]) => void) {
     resolve(
       columns.map((col) => ({
         key: `col-${data.connectionId}-${data.table}-${col.name}`,
-        label: col.name,
+        label: col.label || col.comment || col.name,
+        name: col.label || col.comment ? col.name : undefined,
+        // The full workbook name when the label is a shortened one.
+        title: col.comment || undefined,
         kind: 'column' as const,
         connectionId: data.connectionId,
         table: data.table,
@@ -162,7 +172,8 @@ function onNodeClick(data: TreeNode, node: any) {
   }
 
   if (data.kind === 'column') {
-    queryStore.insertIdentifier(data.label)
+    // SQL needs the real name, not the Korean label shown in the tree.
+    queryStore.insertIdentifier(data.name || data.label)
     if (route.name !== 'query') router.push({ name: 'query' })
     return
   }
@@ -219,9 +230,30 @@ async function onNodeDblClick(data: TreeNode) {
   font-style: italic;
 }
 
+/* In a narrow panel the business name is what the user reads, so it keeps its
+   width and the data type gives way first. */
+.node-label.column {
+  flex-shrink: 0;
+  max-width: 65%;
+}
+
+.node-name {
+  color: #7a8494;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
 .node-meta {
   color: #a8abb2;
   font-size: 11px;
   flex-shrink: 0;
+}
+
+.node-name + .node-meta {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
