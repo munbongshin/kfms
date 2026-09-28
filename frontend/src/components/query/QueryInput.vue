@@ -55,7 +55,7 @@
           type="info"
           :closable="false"
           show-icon
-          title="좌측 트리에서 연결을 선택하세요"
+          title="상단의 연결 선택에서 데이터베이스를 고르세요"
         />
       </el-form>
     </el-card>
@@ -117,4 +117,5 @@ function handleClear() {
 .el-alert {
   margin-top: 10px;
 }
+
 </style>

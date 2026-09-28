@@ -2,6 +2,7 @@
 Base LLM Provider interface.
 Defines the contract for all LLM provider implementations.
 """
+import re
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
 
@@ -35,6 +36,8 @@ class BaseLLMProvider(ABC):
             **kwargs: Provider-specific configuration
         """
         self.model = model
+        # Platform name recorded in query history; subclasses override.
+        self.name = self.__class__.__name__.replace("Provider", "").lower()
         self.config = kwargs
 
     @abstractmethod
@@ -130,6 +133,11 @@ class BaseLLMProvider(ABC):
 
         return "\n".join(schema_lines)
 
+    @staticmethod
+    def strip_reasoning(response: str) -> str:
+        """Drop a reasoning model's <think>…</think> preamble (qwen3, deepseek-r1)."""
+        return re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL | re.IGNORECASE)
+
     def extract_sql_from_response(self, response: str) -> str:
         """
         Extract SQL query from LLM response.
@@ -141,6 +149,8 @@ class BaseLLMProvider(ABC):
         Returns:
             Extracted SQL query
         """
+        response = BaseLLMProvider.strip_reasoning(response)
+
         # Remove markdown SQL code blocks if present
         if "```sql" in response.lower():
             # Extract content between ```sql and ```

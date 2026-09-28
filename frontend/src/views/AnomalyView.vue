@@ -17,7 +17,7 @@
       type="info"
       :closable="false"
       show-icon
-      title="좌측에서 데이터베이스 연결을 선택하세요"
+      title="상단의 연결 선택에서 데이터베이스를 고르세요"
     />
 
     <template v-else>

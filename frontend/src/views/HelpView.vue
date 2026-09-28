@@ -1,7 +1,7 @@
 <template>
   <div class="help-view">
     <nav class="toc">
-      <div class="toc-title">도움말</div>
+      <div class="toc-title">도움말<small>2026-09-28 기준</small></div>
       <a
         v-for="s in sections"
         :key="s.id"
@@ -40,6 +40,10 @@
             <div class="card-h">점검</div>
             <p>고액·시간 외·주의 업종·분할결제 의심 거래 찾기</p>
           </div>
+          <div class="card">
+            <div class="card-h">설정</div>
+            <p>SQL을 만들 LLM 선택 — Ollama · LM Studio · vLLM · Groq 등</p>
+          </div>
         </div>
       </section>
 
@@ -49,33 +53,35 @@
         <div class="mock">
           <div class="mock-top">
             <span>KFMS</span>
-            <span class="mock-tag">① 현재 연결 · 도움말</span>
+            <span class="mock-tag">① 연결 선택 · 설정 · 도움말</span>
           </div>
           <div class="mock-body">
+            <div class="mock-rail">
+              <span>②</span><span>질의</span><span>데이터</span><span>이력</span><span>점검</span>
+            </div>
             <div class="mock-side">
-              <div class="mock-tabs">② 질의 · 데이터 · 이력 · 점검</div>
+              <div class="mock-tabs">테이블 <span class="mock-fold-btn">④ «</span></div>
               <div class="mock-tree">
-                ③ 테이블 트리<br />
+                ③ 테이블 패널 <span>(질의 화면)</span><br />
                 <span>연결 ▸ 테이블 ▸ 컬럼</span>
               </div>
-              <div class="mock-fold">④ « 접기</div>
             </div>
             <div class="mock-main">⑤ 작업 영역<br /><span>선택한 기능의 화면</span></div>
           </div>
         </div>
         <table class="kv">
           <tbody>
-            <tr><th>① 상단 바</th><td>지금 조회 중인 데이터베이스 연결 이름과 이 도움말 버튼이 있습니다.</td></tr>
-            <tr><th>② 기능 탭</th><td>질의 · 데이터 · 이력 · 점검 네 화면을 오갑니다.</td></tr>
+            <tr><th>① 상단 바</th><td>조회할 데이터베이스를 고르는 <em>연결 선택</em>, 사용할 LLM을 고르는 <em>설정</em>, 이 <em>도움말</em> 버튼이 있습니다. 연결은 어느 화면에서든 여기서 바꿉니다.</td></tr>
+            <tr><th>② 기능 탭</th><td>왼쪽 세로 막대에서 질의 · 데이터 · 이력 · 점검 네 화면을 오갑니다. 어느 화면에서나 같은 모양입니다.</td></tr>
             <tr>
-              <th>③ 테이블 트리</th>
+              <th>③ 테이블 패널</th>
               <td>
-                연결을 펼치면 테이블이, 테이블을 펼치면 컬럼이 나옵니다. 컬럼은
-                <strong>한글명</strong>(예: 카드번호) 옆에 실제 컬럼명(cardno)과 형식이 작게 표시됩니다.
-                위 검색창에 한글명이나 컬럼명 어느 쪽을 넣어도 찾습니다.
+                <strong>질의 화면에서만</strong> 표시됩니다. 연결을 펼치면 테이블이, 테이블을 펼치면
+                컬럼이 나옵니다. 컬럼은 <strong>한글명</strong>(예: 카드번호) 옆에 실제 컬럼명(cardno)과
+                형식이 작게 표시되고, 위 검색창에 한글명이나 컬럼명 어느 쪽을 넣어도 찾습니다.
               </td>
             </tr>
-            <tr><th>④ 접기</th><td>왼쪽 영역을 좁혀 작업 영역을 넓힙니다. 설정은 다음에도 유지됩니다.</td></tr>
+            <tr><th>④ 접기</th><td>테이블 패널 위의 «를 누르거나, 질의 화면에서 <em>질의</em> 탭을 한 번 더 누르면 패널을 접고 펼칩니다. 접은 상태는 다음에도 유지됩니다.</td></tr>
             <tr><th>⑤ 작업 영역</th><td>선택한 기능 화면이 표시됩니다.</td></tr>
           </tbody>
         </table>
@@ -87,7 +93,7 @@
         <p>질문 하나가 결과가 되기까지 다음 순서로 처리됩니다.</p>
         <ol class="flow">
           <li><b>질문 입력</b><span>한국어로 원하는 내용을 적습니다.</span></li>
-          <li><b>SQL 생성</b><span>AI(LLM)가 테이블·컬럼의 한글명을 참고해 SQL을 만듭니다.</span></li>
+          <li><b>SQL 생성</b><span>설정에서 고른 AI(LLM)가 테이블·컬럼의 한글명을 참고해 SQL을 만듭니다.</span></li>
           <li><b>안전성 검사</b><span>조회(SELECT)만 허용합니다. 데이터를 바꾸는 SQL은 차단됩니다.</span></li>
           <li><b>확인 후 실행</b><span>만들어진 SQL을 보고 실행 여부를 정합니다.</span></li>
           <li><b>결과 표시</b><span>표 · 차트 · SQL 탭으로 봅니다.</span></li>
@@ -141,8 +147,9 @@
             <div>
               <div class="tier-name">AI (LLM)</div>
               <div class="box">
-                <b>Ollama</b> <small>(기본, 사내 서버)</small><br />
-                <b>Groq</b> <small>(선택, 외부 API)</small>
+                <b>Ollama · LM Studio · vLLM</b> <small>(사내)</small><br />
+                <b>OpenAI 호환 서버 · Groq</b><br />
+                <small>설정 화면에서 선택</small>
               </div>
             </div>
             <div>
@@ -168,7 +175,7 @@
             <tr><td>API 서버</td><td>Python, FastAPI</td><td>REST API, 비동기 처리</td></tr>
             <tr><td>DB 접근</td><td>SQLAlchemy(async), asyncpg</td><td>연결 풀, 쿼리 실행</td></tr>
             <tr><td>SQL 검증</td><td>sqlparse</td><td>생성된 SQL의 안전성 검사</td></tr>
-            <tr><td>AI</td><td>Ollama / Groq</td><td>한국어 질문 → SQL 변환</td></tr>
+            <tr><td>AI</td><td>Ollama, OpenAI 호환 API (LM Studio · vLLM · llama.cpp · Groq 등)</td><td>한국어 질문 → SQL 변환</td></tr>
             <tr><td>데이터베이스</td><td>PostgreSQL 16 (Docker)</td><td>운영 정보 저장, 조회 대상 데이터</td></tr>
           </tbody>
         </table>
@@ -176,8 +183,8 @@
         <h3>프론트엔드 구성</h3>
         <table class="kv">
           <tbody>
-            <tr><th>views</th><td>화면 단위 — 질의, 데이터, 이력, 점검, 도움말</td></tr>
-            <tr><th>components</th><td>화면 조각 — 레이아웃(상단 바·기능 탭·테이블 트리), 질문 입력, SQL 확인 창, 결과 표·차트, 이력 목록, 연결 관리, 엑셀 올리기</td></tr>
+            <tr><th>views</th><td>화면 단위 — 질의, 데이터, 이력, 점검, LLM 설정, 도움말</td></tr>
+            <tr><th>components</th><td>화면 조각 — 레이아웃(상단 바·기능 탭·테이블 트리), 질문 입력, SQL 확인 창, 결과 표·차트, 이력 목록, 연결 관리(추가·수정), 엑셀 올리기</td></tr>
             <tr><th>stores</th><td>화면 간에 공유하는 상태 — 연결·스키마(database), 질문·결과(query), 점검 결과(anomaly)</td></tr>
             <tr><th>services</th><td>API 서버 호출을 한곳에 모은 클라이언트(api.ts)</td></tr>
             <tr><th>utils</th><td>계산 결과 컬럼의 한글명 만들기 등 공통 기능</td></tr>
@@ -189,16 +196,16 @@
         <div class="layers">
           <div class="layer">
             <b>API 라우터</b>
-            <span>databases · query · history · excel · anomaly — 요청 검사, 응답 형식</span>
+            <span>databases · query · history · excel · anomaly · llm-settings — 요청 검사, 응답 형식</span>
           </div>
           <div class="layer">
             <b>서비스</b>
-            <span>질의 처리(query), SQL 생성(llm), 테이블 보기(table_browser), 이상거래 점검(anomaly), 엑셀 적재(excel)</span>
+            <span>질의 처리(query), SQL 생성(llm), 테이블 보기(table_browser), 이상거래 점검(anomaly), 엑셀 적재(excel), 연결 규칙(connection_rules)</span>
           </div>
           <div class="layer side">
-            <div><b>LLM 공급자</b><span>공통 규칙·프롬프트 + Ollama·Groq 구현</span></div>
+            <div><b>LLM 공급자</b><span>공통 규칙·프롬프트, Ollama · OpenAI 호환 구현, 플랫폼 목록·설정 해석</span></div>
             <div><b>점검 규칙</b><span>고액·시간 외·주의 업종·분할결제</span></div>
-            <div><b>유틸</b><span>SQL 검증, 비밀번호 암호화</span></div>
+            <div><b>유틸</b><span>SQL 검증, 비밀번호·API 키 암호화</span></div>
           </div>
           <div class="layer">
             <b>데이터 접근</b>
@@ -210,18 +217,19 @@
         <table class="grid-table">
           <thead><tr><th>DB</th><th>테이블</th><th>내용</th></tr></thead>
           <tbody>
-            <tr><td rowspan="4"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
+            <tr><td rowspan="5"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
             <tr><td><code>query_history</code></td><td>질문·SQL·결과·북마크</td></tr>
             <tr><td><code>excel_uploads</code></td><td>올린 엑셀 파일과 만든 임시 테이블 목록</td></tr>
             <tr><td><code>anomaly_review</code></td><td>이상거래 검토 판정(확인함·정상)</td></tr>
+            <tr><td><code>llm_settings</code></td><td>설정 화면에서 고른 LLM 플랫폼과 플랫폼별 주소·모델·API 키(암호화)</td></tr>
             <tr><td rowspan="3"><b>retail</b><br /><small>조회 대상</small></td><td><code>card_data</code> + 뷰 5개</td><td>법인카드 데이터 (승인·매입·청구·카드정보·사용부서)</td></tr>
             <tr><td><code>retail_sales</code></td><td>소매 판매 예제 데이터</td></tr>
             <tr><td>엑셀 임시 테이블</td><td>엑셀 올리기로 만든 테이블</td></tr>
           </tbody>
         </table>
         <div class="note">
-          운영 정보 DB(kfms)는 조회 대상으로 등록하지 않습니다. 다른 DB의 접속 정보가
-          들어 있어, 질문으로 조회되면 안 되기 때문입니다.
+          운영 정보 DB(kfms)는 조회 대상으로 등록하거나 연결을 그쪽으로 바꿀 수 없도록 서버가 막습니다.
+          다른 DB의 접속 정보와 LLM API 키가 들어 있어, 질문으로 조회되면 안 되기 때문입니다.
         </div>
 
         <h3>Text-to-SQL 동작 원리</h3>
@@ -304,8 +312,8 @@
             <g class="node llm">
               <rect x="555" y="160" width="160" height="150" />
               <text x="635" y="190" class="t">SQL 생성 모델</text>
-              <text x="635" y="214" class="s">Ollama (사내 서버)</text>
-              <text x="635" y="232" class="s">또는 Groq (외부 API)</text>
+              <text x="635" y="214" class="s">Ollama · LM Studio · vLLM</text>
+              <text x="635" y="232" class="s">OpenAI 호환 · Groq</text>
               <line x1="575" y1="250" x2="695" y2="250" />
               <text x="635" y="272" class="s">자연어 → SQL 변환</text>
               <text x="635" y="290" class="s">데이터 값은 받지 않음</text>
@@ -381,7 +389,7 @@
             </g>
           </svg>
           <figcaption>
-            ① 질문 전송 → ② DBMS에서 테이블·컬럼 구조와 한글명(COMMENT)을 읽음 →
+            ① 질문 전송 → ② DBMS에서 테이블·컬럼 구조와 한글명(COMMENT)을 읽음→
             ③ 스키마·규칙·질문으로 프롬프트를 만들어 LLM에 보냄 → ④ LLM이 SQL을 돌려줌
             (SELECT만 허용, 최대 1,000행으로 제한해 검증) → ⑤ 화면에 SQL 표시 →
             ⑥ 사용자가 확인하고 실행 → ⑦ DBMS에서 읽기 전용으로 실행 →
@@ -392,7 +400,9 @@
         <div class="note">
           LLM에는 <strong>스키마(테이블·컬럼 이름, 형식, 한글명)와 질문만</strong> 전달됩니다.
           실제 거래 데이터 값은 LLM으로 보내지 않고, SQL 실행은 항상 API 서버가
-          DBMS에 직접 합니다.
+          DBMS에 직접 합니다. 연결의 모든 테이블을 보내고 LLM이 알맞은 테이블을 고르되,
+          통합 테이블 <code>card_data</code>는 다섯 뷰가 모든 컬럼을 이미 담고 있어 프롬프트에서
+          자동으로 뺍니다. 프롬프트가 3분의 1가량 줄고 결과 SQL은 같습니다.
         </div>
 
         <h3>예시로 보는 변환 과정</h3>
@@ -459,8 +469,10 @@ LIMIT 1000</pre>
           <li><strong>이중 읽기 전용</strong> — SQL 검증기가 SELECT 외 명령을 막고, DB 세션 자체도 읽기 전용(<code>default_transaction_read_only</code>)으로 엽니다.</li>
           <li><strong>결과 제한</strong> — 한 번에 최대 1,000행까지만 돌려줍니다.</li>
           <li><strong>이름 검증</strong> — 테이블 바로 보기의 테이블·컬럼 이름은 실제 스키마에 있는지 확인한 뒤에만 SQL에 넣습니다.</li>
-          <li><strong>접속 정보 암호화</strong> — 조회 대상 DB의 비밀번호는 암호화(Fernet)해 저장합니다.</li>
-          <li><strong>DB 분리</strong> — 운영 정보(kfms)와 조회 대상(retail)을 서로 다른 DB로 나눕니다.</li>
+          <li><strong>비밀 정보 암호화</strong> — 조회 대상 DB 비밀번호와 LLM API 키는 암호화(Fernet)해 저장하고, 화면으로는 다시 보내지 않습니다.</li>
+          <li><strong>DB 분리·차단</strong> — 운영 정보(kfms)와 조회 대상(retail)을 서로 다른 DB로 나누고, 운영 정보 DB는 조회 대상으로 등록할 수 없게 막습니다.</li>
+          <li><strong>LLM에 데이터 미전송</strong> — LLM에는 스키마와 질문만 보내고 실제 데이터 값은 보내지 않습니다.</li>
+          <li><strong>외부 전송 경고</strong> — Groq나 사내망 밖 주소의 LLM을 고르면 설정 화면에 외부 전송 경고가 표시됩니다.</li>
         </ul>
       </section>
 
@@ -469,8 +481,8 @@ LIMIT 1000</pre>
         <h2>데이터 구성</h2>
         <p>
           법인카드 원천 데이터는 <code>card_data</code> 한 테이블에 모여 있고, 용도별로
-          나눠 보는 <strong>뷰</strong>가 있습니다. 질문할 때는 뷰 이름 대신
-          "승인내역에서", "매입내역에서"처럼 우리말로 대상을 밝혀 주면 정확해집니다.
+          나눠 보는 <strong>뷰</strong>가 있습니다. 질문할 때 "승인내역에서", "매입내역에서"처럼
+          우리말로 대상을 밝히면 LLM이 알맞은 뷰를 고릅니다. 어느 테이블을 쓸지 따로 고를 필요는 없습니다.
         </p>
         <table class="grid-table">
           <thead><tr><th>이름</th><th>내용</th></tr></thead>
@@ -490,6 +502,11 @@ LIMIT 1000</pre>
           머리글에 마우스를 올리면 정의서의 전체 이름을 볼 수 있습니다.
         </p>
         <p>
+          정의서 이름이 길거나 쓰지 않는 용어가 들어 있는 컬럼은 짧은 이름으로 보여 줍니다.
+          예를 들어 <code>appramt</code>(공급가액[승인금액,현지금액])는 <strong>승인금액</strong>,
+          <code>apprtot</code>는 <strong>승인합계</strong>로 표시됩니다.
+        </p>
+        <p>
           합계·건수 같은 계산 결과는 "승인금액 합계", "건수"처럼 한글로 표시됩니다.
         </p>
       </section>
@@ -498,7 +515,7 @@ LIMIT 1000</pre>
       <section id="query">
         <h2>질의 사용법</h2>
         <ol class="steps">
-          <li>왼쪽 트리에서 <strong>연결</strong>(예: Retail Sales DB)을 누릅니다. 상단 바에 연결 이름이 표시됩니다.</li>
+          <li>상단 바의 <strong>연결 선택</strong>에서 데이터베이스(예: KFMS Demo DB)를 고릅니다. 연결이 하나뿐이면 자동으로 선택됩니다.</li>
           <li>질문 칸에 한국어로 질문을 적습니다.</li>
           <li>
             버튼을 누릅니다.
@@ -544,7 +561,12 @@ LIMIT 1000</pre>
         <ul>
           <li><em>Add Connection</em>으로 이름·호스트·포트·DB 이름·계정을 입력해 연결을 추가합니다.</li>
           <li><strong>Read-Only(읽기 전용)</strong>를 켜 두기를 권장합니다.</li>
+          <li>
+            <em>수정</em>으로 연결 이름이나 접속 정보를 바꿉니다. 비밀번호 칸은 바꿀 때만 입력하고,
+            비워 두면 기존 비밀번호가 유지됩니다. 이름만 바꾸면 조회 중인 연결은 끊기지 않습니다.
+          </li>
           <li><em>Test</em>로 연결이 되는지 확인하고, 필요 없는 연결은 삭제합니다.</li>
+          <li>KFMS 운영 정보 DB(kfms)는 접속 정보가 들어 있어 조회 대상으로 등록하거나 바꿀 수 없습니다.</li>
           <li>Active가 켜진 연결만 왼쪽 트리에 나타납니다.</li>
         </ul>
         <h3>엑셀 파일 올리기</h3>
@@ -556,6 +578,33 @@ LIMIT 1000</pre>
             다 쓴 파일은 목록에서 직접 삭제하세요.
           </li>
         </ul>
+      </section>
+
+      <!-- 6-1 -->
+      <section id="settings">
+        <h2>LLM 설정</h2>
+        <p>상단 바의 <strong>설정</strong>에서 질문을 SQL로 바꿀 LLM 서빙 플랫폼을 고릅니다.</p>
+        <table class="grid-table">
+          <thead><tr><th>플랫폼</th><th>특징</th><th>입력할 것</th></tr></thead>
+          <tbody>
+            <tr><td>Ollama</td><td>사내 서버의 로컬 LLM, 명령줄로 모델 설치</td><td>서버 주소 → 설치된 모델 목록에서 선택</td></tr>
+            <tr><td>LM Studio</td><td>PC에서 화면으로 모델을 받아 실행</td><td>주소(기본 <code>http://localhost:1234/v1</code>), 모델</td></tr>
+            <tr><td>vLLM</td><td>GPU 서버용 고성능 서빙 엔진</td><td>주소(예: <code>http://서버:8001/v1</code>), 모델, 필요하면 API 키</td></tr>
+            <tr><td>OpenAI 호환 (기타)</td><td>llama.cpp · LocalAI · SGLang · TGI · OpenAI 등</td><td><code>/v1</code>로 끝나는 주소, 모델, 필요하면 API 키</td></tr>
+            <tr><td>Groq <span class="sev medium">외부</span></td><td>외부 클라우드 API, 빠른 응답</td><td>API 키, 모델</td></tr>
+          </tbody>
+        </table>
+        <ol class="steps">
+          <li>플랫폼 카드를 고르고 서버 주소를 넣은 뒤 <em>목록 불러오기</em>로 서버에 있는 모델을 불러와 고릅니다.</li>
+          <li><em>연결 테스트</em>로 서버가 응답하는지, 고른 모델이 서버에 있는지 확인합니다. 저장하지 않은 입력값으로 시험합니다.</li>
+          <li><em>저장</em>하면 다음 질문부터 바로 적용됩니다. 서버를 다시 시작할 필요가 없습니다.</li>
+        </ol>
+        <div class="note">
+          플랫폼마다 설정이 따로 저장되어 바꿔 가며 쓸 수 있습니다. API 키는 암호화되어 저장되고
+          화면에는 끝 4자리만 표시되며, 키 칸을 비워 두고 저장하면 기존 키가 유지됩니다.
+          vLLM은 기본 포트 8000이 KFMS 서버와 겹치므로 <code>--port 8001</code>처럼 다른 포트로 실행하세요.
+          사내망 밖 주소나 Groq를 고르면 질문과 테이블·컬럼 구조가 외부로 전송된다는 경고가 표시됩니다.
+        </div>
       </section>
 
       <!-- 7 -->
@@ -624,7 +673,7 @@ LIMIT 1000</pre>
         <h2>문제 해결</h2>
         <dl class="faq">
           <dt>버튼이 눌리지 않아요.</dt>
-          <dd>왼쪽 트리에서 연결을 먼저 선택하세요. 연결이 선택되지 않으면 질문·점검 버튼이 꺼져 있습니다.</dd>
+          <dd>상단 바의 연결 선택에서 데이터베이스를 먼저 고르세요. 연결이 선택되지 않으면 질문·점검 버튼이 꺼져 있습니다.</dd>
 
           <dt>트리에 "스키마를 불러올 수 없습니다"가 나와요.</dt>
           <dd>
@@ -636,6 +685,25 @@ LIMIT 1000</pre>
           <dd>
             SQL 탭에서 어떤 테이블·조건으로 조회했는지 확인하세요. 대상(승인내역 등)과
             기간을 질문에 분명히 적으면 대부분 해결됩니다.
+          </dd>
+
+          <dt>SQL이 만들어지지 않거나 오류가 나요.</dt>
+          <dd>
+            상단 바의 <strong>설정</strong>에서 <em>연결 테스트</em>를 눌러 LLM 서버가 응답하는지,
+            고른 모델이 서버에 있는지 확인하세요. 임베딩 전용 모델(embed, bge 등)은 SQL을 만들 수 없습니다.
+          </dd>
+
+          <dt>SQL 생성이 오래 걸려요.</dt>
+          <dd>
+            사내 서버의 큰 모델은 한 번에 수십 초가 걸릴 수 있습니다(최대 2분까지 기다립니다).
+            더 작은 모델로 바꾸거나 GPU 서버의 vLLM, 외부 Groq를 고르면 빨라집니다.
+          </dd>
+
+          <dt>LM Studio나 vLLM에 연결되지 않아요.</dt>
+          <dd>
+            LM Studio는 Developer 탭에서 서버를 시작했는지, 다른 PC라면 'Serve on Local Network'를 켰는지
+            확인하세요. vLLM은 KFMS와 겹치지 않는 포트(예: 8001)로 실행하고, 주소가 <code>/v1</code>로
+            끝나는지 확인하세요.
           </dd>
 
           <dt>"SQL Blocked"가 나와요.</dt>
@@ -664,6 +732,7 @@ const sections = [
   { id: 'data', title: '데이터 구성' },
   { id: 'query', title: '질의 사용법' },
   { id: 'databases', title: '데이터 (연결 관리)' },
+  { id: 'settings', title: 'LLM 설정' },
   { id: 'history', title: '이력' },
   { id: 'anomaly', title: '이상거래 점검' },
   { id: 'faq', title: '문제 해결' },
@@ -725,6 +794,14 @@ onMounted(async () => {
   background: #fff;
   border: 1px solid #d3dae3;
   align-self: flex-start;
+}
+
+.toc-title small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #8a94a3;
 }
 
 .toc-title {
@@ -871,6 +948,26 @@ em {
 .mock-body {
   display: flex;
   height: 170px;
+}
+
+.mock-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 13%;
+  padding: 8px 0;
+  background: #eef1f5;
+  border-right: 1px solid #d3dae3;
+  color: #1a5fa8;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.mock-fold-btn {
+  float: right;
+  font-weight: 400;
+  color: #8a94a3;
 }
 
 .mock-side {

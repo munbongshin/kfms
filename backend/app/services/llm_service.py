@@ -2,11 +2,31 @@
 LLM Service for orchestrating LLM provider calls.
 Handles SQL generation and visualization recommendations.
 """
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 
 from app.llm.factory import create_provider
 from app.llm.base import BaseLLMProvider
+from app.llm.settings_resolver import LLMConfig
 from app.db.connection_pool import DatabaseConnectionPool
+
+
+# Union tables whose views together expose every column. The table is left out
+# of the prompt only while all of its views are present, since otherwise some
+# source would be reachable through the union table alone.
+UNION_TABLES_COVERED_BY_VIEWS: Dict[str, Tuple[str, ...]] = {
+    "card_data": ("v_approval", "v_acquire", "v_bill", "v_card_info", "v_card_dept"),
+}
+
+
+def prompt_schema(schema: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]:
+    """The schema the LLM is asked against: every table, minus union tables
+    that their views already cover (fewer tokens, same answers)."""
+    omit = {
+        table
+        for table, views in UNION_TABLES_COVERED_BY_VIEWS.items()
+        if table in schema and all(v in schema for v in views)
+    }
+    return {name: cols for name, cols in schema.items() if name not in omit}
 
 
 class LLMService:
@@ -14,15 +34,16 @@ class LLMService:
     Service for managing LLM operations.
     """
 
-    def __init__(self, provider_type: Optional[str] = None):
+    def __init__(self, provider_type: Optional[str] = None, config: Optional[LLMConfig] = None):
         """
         Initialize LLM service.
 
         Args:
             provider_type: LLM provider type ('ollama' or 'groq')
-                          If None, uses default from settings
+                          If None, uses the configured provider
+            config: Settings chosen on the settings screen; .env when omitted
         """
-        self.provider: BaseLLMProvider = create_provider(provider_type)
+        self.provider: BaseLLMProvider = create_provider(provider_type, config)
 
     async def generate_sql(
         self,
@@ -62,6 +83,8 @@ class LLMService:
         if not schema:
             raise ValueError(f"No schema found for database {database_id}")
 
+        schema = prompt_schema(schema)
+
         # Generate SQL using LLM
         try:
             sql = await self.provider.generate_sql(
@@ -72,7 +95,7 @@ class LLMService:
 
             return {
                 "sql": sql,
-                "provider": self.provider.__class__.__name__.replace('Provider', '').lower(),
+                "provider": self.provider.name,
                 "model": self.provider.model,
                 "schema_used": schema
             }
@@ -139,14 +162,18 @@ class LLMService:
             return False
 
 
-def get_llm_service(provider_type: Optional[str] = None) -> LLMService:
+def get_llm_service(
+    provider_type: Optional[str] = None,
+    config: Optional[LLMConfig] = None,
+) -> LLMService:
     """
     Get LLM service instance.
 
     Args:
         provider_type: Provider type override
+        config: Settings chosen on the settings screen; .env when omitted
 
     Returns:
         LLMService instance
     """
-    return LLMService(provider_type=provider_type)
+    return LLMService(provider_type=provider_type, config=config)

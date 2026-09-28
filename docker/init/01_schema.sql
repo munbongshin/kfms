@@ -37,6 +37,13 @@ CREATE TABLE anomaly_review (
 
 CREATE INDEX idx_anomaly_review_lookup ON anomaly_review(database_id, rule_code);
 
+CREATE TABLE llm_settings (
+    id          INTEGER PRIMARY KEY,
+    provider    VARCHAR(40),                -- ollama, lmstudio, vllm, openai_compatible, groq
+    profiles    JSON NOT NULL DEFAULT '{}', -- per-platform settings; api_key Fernet-encrypted
+    updated_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE database_connections (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,

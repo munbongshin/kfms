@@ -3,9 +3,34 @@
     <header class="top-bar">
       <span class="brand">KFMS</span>
       <span class="top-right">
-        <el-tag v-if="databaseStore.activeConnection" size="small" type="success">
-          {{ databaseStore.activeConnection.name }}
-        </el-tag>
+        <!-- The connection every screen works on. It lives here, not in the
+             tree, because the tree is shown on the query screen only. -->
+        <label class="conn-picker" title="조회할 데이터베이스 연결">
+          <el-icon><Coin /></el-icon>
+          <el-select
+            v-model="activeConnection"
+            size="small"
+            placeholder="연결 선택"
+            no-data-text="등록된 연결이 없습니다"
+            style="width: 180px"
+          >
+            <el-option
+              v-for="c in databaseStore.activeConnections"
+              :key="c.id"
+              :label="c.name"
+              :value="c.id"
+            />
+          </el-select>
+        </label>
+        <button
+          class="help-btn"
+          :class="{ active: route.name === 'settings' }"
+          title="질문을 SQL로 바꿀 LLM 선택"
+          @click="router.push({ name: 'settings' })"
+        >
+          <el-icon><Setting /></el-icon>
+          설정
+        </button>
         <button
           class="help-btn"
           :class="{ active: route.name === 'help' }"
@@ -19,16 +44,21 @@
     </header>
 
     <div class="body">
-      <aside class="sidebar" :class="{ collapsed }">
-        <FunctionTabs :collapsed="collapsed" />
+      <!-- The rail of function tabs is the same on every screen. The query
+           screen opens a table panel beside it, since the tree only helps
+           when asking questions. -->
+      <aside class="rail">
+        <FunctionTabs @reselect="onReselect" />
+      </aside>
 
-        <div v-show="!collapsed" class="tree-area">
+      <aside v-if="showTree && !collapsed" class="tree-panel">
+        <div class="panel-head">
+          <span>테이블</span>
+          <button class="panel-close" title="테이블 목록 접기" @click="toggle">«</button>
+        </div>
+        <div class="tree-area">
           <SchemaTree />
         </div>
-
-        <button class="collapse-toggle" :title="collapsed ? '펼치기' : '접기'" @click="toggle">
-          {{ collapsed ? '»' : '«' }}
-        </button>
       </aside>
 
       <main class="content">
@@ -39,9 +69,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { QuestionFilled } from '@element-plus/icons-vue'
+import { Coin, QuestionFilled, Setting } from '@element-plus/icons-vue'
 import FunctionTabs from './FunctionTabs.vue'
 import SchemaTree from './SchemaTree.vue'
 import { useDatabaseStore } from '../../stores/database'
@@ -52,6 +82,15 @@ const databaseStore = useDatabaseStore()
 const route = useRoute()
 const router = useRouter()
 const collapsed = ref(false)
+
+const showTree = computed(() => route.name === 'query')
+
+const activeConnection = computed({
+  get: () => databaseStore.activeConnectionId ?? undefined,
+  set: (id: number | undefined) => {
+    if (id) databaseStore.setActiveConnection(id)
+  },
+})
 
 onMounted(() => {
   collapsed.value = localStorage.getItem(STORAGE_KEY) === 'true'
@@ -64,6 +103,11 @@ watch(collapsed, (v) => localStorage.setItem(STORAGE_KEY, String(v)))
 
 function toggle() {
   collapsed.value = !collapsed.value
+}
+
+/** Clicking the query tab while on it folds or unfolds its table panel. */
+function onReselect(name: string) {
+  if (name === 'query') toggle()
 }
 </script>
 
@@ -89,6 +133,14 @@ function toggle() {
   font-size: 15px;
   letter-spacing: 0.5px;
   color: #fff;
+}
+
+.conn-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #c9d6ea;
+  font-size: 14px;
 }
 
 .top-right {
@@ -123,19 +175,48 @@ function toggle() {
   min-height: 0;
 }
 
-.sidebar {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 260px;
+.rail {
+  width: 72px;
+  flex-shrink: 0;
   background: #f7f8fa;
   border-right: 1px solid #d3dae3;
-  flex-shrink: 0;
-  transition: width 0.15s ease;
 }
 
-.sidebar.collapsed {
-  width: 48px;
+.tree-panel {
+  display: flex;
+  flex-direction: column;
+  width: 250px;
+  flex-shrink: 0;
+  background: #fbfcfd;
+  border-right: 1px solid #d3dae3;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 34px;
+  padding: 0 6px 0 12px;
+  border-bottom: 1px solid #e4e7ed;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f3a66;
+  flex-shrink: 0;
+}
+
+.panel-close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: #8a94a3;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.panel-close:hover {
+  background: #eef1f5;
+  color: #1a5fa8;
 }
 
 .tree-area {
@@ -143,16 +224,6 @@ function toggle() {
   overflow: auto;
   padding: 8px;
   min-height: 0;
-}
-
-.collapse-toggle {
-  height: 26px;
-  border: none;
-  border-top: 1px solid #d3dae3;
-  background: #eef1f5;
-  color: #909399;
-  cursor: pointer;
-  flex-shrink: 0;
 }
 
 .content {

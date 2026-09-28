@@ -155,3 +155,25 @@ class AnomalyReview(Base):
     reviewed_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class LLMSetting(Base):
+    """Which LLM answers questions, as chosen on the settings screen.
+
+    A single row (id = 1). `profiles` holds each serving platform's settings,
+    {name: {base_url, model, api_key}}, so switching platforms loses nothing;
+    api_key values are Fernet-encrypted. Anything never saved falls back to .env.
+    """
+
+    __tablename__ = "llm_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider: Mapped[Optional[str]] = mapped_column(
+        String(40), nullable=True, comment="Chosen platform: ollama, lmstudio, vllm, openai_compatible, groq"
+    )
+    profiles: Mapped[dict] = mapped_column(
+        JSON, nullable=False, default=dict, comment="Per-platform settings; api_key encrypted"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )

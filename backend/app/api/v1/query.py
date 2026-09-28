@@ -11,6 +11,8 @@ from app.dependencies import get_db, get_db_pool
 from app.db.connection_pool import DatabaseConnectionPool
 from app.db.repositories.history import HistoryRepository
 from app.services.llm_service import get_llm_service
+from app.api.v1.llm_settings import current_llm_config
+from app.llm.settings_resolver import LLMConfig
 from app.services.query_service import QueryService
 
 
@@ -52,13 +54,16 @@ class GenerateAndExecuteRequest(BaseModel):
 
 def get_query_service(
     db: AsyncSession = Depends(get_db),
-    pool: DatabaseConnectionPool = Depends(get_db_pool)
+    pool: DatabaseConnectionPool = Depends(get_db_pool),
+    llm_config: LLMConfig = Depends(current_llm_config),
 ) -> QueryService:
     """
     Dependency for getting QueryService instance.
     """
     history_repo = HistoryRepository(db)
-    llm_service = get_llm_service()
+    # The LLM chosen on the settings screen, read per request so a change
+    # applies to the next question without a restart.
+    llm_service = get_llm_service(config=llm_config)
     return QueryService(
         connection_pool=pool,
         history_repo=history_repo,
@@ -69,7 +74,8 @@ def get_query_service(
 @router.post("/generate")
 async def generate_sql(
     request: GenerateRequest,
-    service: QueryService = Depends(get_query_service)
+    service: QueryService = Depends(get_query_service),
+    llm_config: LLMConfig = Depends(current_llm_config),
 ):
     """
     Generate SQL from natural language question.
@@ -80,7 +86,7 @@ async def generate_sql(
     try:
         # Override LLM provider if specified
         if request.llm_provider:
-            service.llm_service = get_llm_service(request.llm_provider)
+            service.llm_service = get_llm_service(request.llm_provider, llm_config)
 
         result = await service.generate_sql(
             question=request.question,
@@ -164,7 +170,8 @@ async def execute_query(
 @router.post("/generate-and-execute")
 async def generate_and_execute(
     request: GenerateAndExecuteRequest,
-    service: QueryService = Depends(get_query_service)
+    service: QueryService = Depends(get_query_service),
+    llm_config: LLMConfig = Depends(current_llm_config),
 ):
     """
     Generate SQL and execute in one step.
@@ -174,7 +181,7 @@ async def generate_and_execute(
     try:
         # Override LLM provider if specified
         if request.llm_provider:
-            service.llm_service = get_llm_service(request.llm_provider)
+            service.llm_service = get_llm_service(request.llm_provider, llm_config)
 
         result = await service.generate_and_execute(
             question=request.question,

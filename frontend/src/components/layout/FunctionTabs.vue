@@ -6,10 +6,10 @@
       class="tab"
       :class="{ active: route.name === tab.name }"
       :title="tab.label"
-      @click="router.push({ name: tab.name })"
+      @click="select(tab.name)"
     >
       <el-icon><component :is="tab.icon" /></el-icon>
-      <span v-if="!collapsed" class="label">{{ tab.label }}</span>
+      <span class="label">{{ tab.label }}</span>
     </button>
   </nav>
 </template>
@@ -18,10 +18,16 @@
 import { useRoute, useRouter } from 'vue-router'
 import { ChatLineSquare, Coin, Clock, Warning } from '@element-plus/icons-vue'
 
-defineProps<{ collapsed: boolean }>()
+// Clicking the tab already open is reported, so the shell can fold its panel.
+const emit = defineEmits<{ reselect: [name: string] }>()
 
 const route = useRoute()
 const router = useRouter()
+
+function select(name: string) {
+  if (route.name === name) emit('reselect', name)
+  else router.push({ name })
+}
 
 const tabs = [
   { name: 'query', label: '질의', icon: ChatLineSquare },
@@ -32,34 +38,39 @@ const tabs = [
 </script>
 
 <style scoped>
+/* A vertical rail of icon-over-label tabs, the same on every screen. */
 .function-tabs {
   display: flex;
-  border-bottom: 1px solid #e4e7ed;
+  flex-direction: column;
 }
 
 .tab {
-  flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px 4px;
+  gap: 3px;
+  padding: 12px 0 10px;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-left: 3px solid transparent;
   background: transparent;
   color: #606266;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
+}
+
+.tab .el-icon {
+  font-size: 18px;
 }
 
 .tab:hover {
   color: #409eff;
-  background: #f5f7fa;
+  background: #f0f4f9;
 }
 
 .tab.active {
   color: #409eff;
-  border-bottom-color: #409eff;
+  border-left-color: #409eff;
+  background: #eaf2fd;
   font-weight: 600;
 }
 </style>

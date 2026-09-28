@@ -96,6 +96,52 @@ export interface SchemaInfo {
   }
 }
 
+export type LLMProviderName = 'ollama' | 'lmstudio' | 'vllm' | 'openai_compatible' | 'groq'
+
+/** One serving platform as the server describes it — never with its API key. */
+export interface LLMPlatform {
+  name: LLMProviderName
+  label: string
+  protocol: 'ollama' | 'openai'
+  description: string
+  hint: string
+  api_key: 'none' | 'optional' | 'required'
+  fixed_base_url: boolean
+  external: boolean
+  default_base_url: string
+  base_url: string
+  model: string
+  api_key_set: boolean
+  api_key_hint: string | null
+}
+
+export interface LLMSettings {
+  provider: LLMProviderName
+  /** 'saved' once saved from the settings screen; 'env' means .env defaults. */
+  source: 'saved' | 'env'
+  platforms: LLMPlatform[]
+}
+
+export interface LLMProfileUpdate {
+  base_url?: string
+  model?: string
+  /** Blank keeps the stored key. */
+  api_key?: string
+  clear_api_key?: boolean
+}
+
+export interface LLMSettingsUpdate {
+  provider: LLMProviderName
+  profiles: Partial<Record<LLMProviderName, LLMProfileUpdate>>
+}
+
+export interface LLMTestResult {
+  ok: boolean
+  message: string
+  models?: string[]
+  elapsed_ms?: number
+}
+
 // API Methods
 export const api = {
   // Health check
@@ -231,6 +277,30 @@ export const api = {
   },
 
   // History operations
+  llmSettings: {
+    async get(): Promise<LLMSettings> {
+      const response = await apiClient.get('/llm-settings')
+      return response.data
+    },
+
+    async save(data: LLMSettingsUpdate): Promise<LLMSettings> {
+      const response = await apiClient.put('/llm-settings', data)
+      return response.data
+    },
+
+    /** Checks the form as it stands, saved or not. */
+    async test(data: LLMSettingsUpdate): Promise<LLMTestResult> {
+      const response = await apiClient.post('/llm-settings/test', data)
+      return response.data
+    },
+
+    /** Models offered by the chosen platform's server, per the form as it stands. */
+    async models(data: LLMSettingsUpdate): Promise<string[]> {
+      const response = await apiClient.post('/llm-settings/models', data)
+      return response.data.models
+    },
+  },
+
   history: {
     async list(params?: {
       database_id?: string
