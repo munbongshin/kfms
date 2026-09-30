@@ -3,17 +3,17 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>Ask a Question</span>
+          <span>{{ $t('질문 입력') }}</span>
         </div>
       </template>
 
       <el-form>
         <div v-if="queryStore.canFollowUp" class="follow-up">
-          <el-checkbox v-model="queryStore.followUp">앞 질문에 이어서 묻기</el-checkbox>
+          <el-checkbox v-model="queryStore.followUp">{{ $t('앞 질문에 이어서 묻기') }}</el-checkbox>
           <span class="follow-hint">
             {{ queryStore.followUp
-              ? `"${shorten(queryStore.queryResults?.question)}" 결과를 이어서 좁히거나 바꿔 물을 수 있습니다 (예: 그중 상위 5개만)`
-              : '새 질문으로 처음부터 만듭니다' }}
+              ? $t('"{q}" 결과를 이어서 좁히거나 바꿔 물을 수 있습니다 (예: 그중 상위 5개만)', { q: shorten(queryStore.queryResults?.question) })
+              : $t('새 질문으로 처음부터 만듭니다') }}
           </span>
         </div>
 
@@ -22,7 +22,7 @@
             v-model="queryStore.currentQuestion"
             type="textarea"
             :rows="4"
-            placeholder="Example: Show me the top 10 customers by revenue this year"
+            :placeholder="$t('예: 올해 매출이 가장 큰 고객 10명을 보여줘')"
             :disabled="queryStore.loading"
           />
         </el-form-item>
@@ -38,7 +38,7 @@
               :disabled="!queryStore.currentQuestion.trim() || !databaseStore.activeConnectionId"
             >
               <el-icon><MagicStick /></el-icon>
-              Generate SQL
+              {{ $t('SQL 생성') }}
             </el-button>
 
             <el-button
@@ -48,7 +48,7 @@
               :disabled="!queryStore.currentQuestion.trim() || !databaseStore.activeConnectionId"
             >
               <el-icon><CaretRight /></el-icon>
-              {{ auth.isAdmin ? 'Generate & Execute' : '질문하기' }}
+              {{ auth.isAdmin ? $t('생성 후 실행') : $t('질문하기') }}
             </el-button>
 
             <el-button
@@ -56,7 +56,7 @@
               :disabled="queryStore.loading"
             >
               <el-icon><RefreshLeft /></el-icon>
-              Clear
+              {{ $t('지우기') }}
             </el-button>
           </div>
         </el-form-item>
@@ -66,7 +66,7 @@
           type="info"
           :closable="false"
           show-icon
-          title="상단의 연결 선택에서 데이터베이스를 고르세요"
+          :title="$t('상단의 연결 선택에서 데이터베이스를 고르세요')"
         />
       </el-form>
     </el-card>

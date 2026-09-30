@@ -175,11 +175,11 @@ class ExcelService:
         """
         # Validate file type
         if not file.filename:
-            raise ValueError("No filename provided")
+            raise ValueError("파일 이름이 없습니다")
 
         ext = file.filename.lower().split('.')[-1]
         if ext not in ['xls', 'xlsx']:
-            raise ValueError("Only .xls and .xlsx files are supported")
+            raise ValueError(".xls, .xlsx 파일만 올릴 수 있습니다")
 
         # Read Excel file
         try:
@@ -192,10 +192,10 @@ class ExcelService:
                 df = pd.read_excel(content, engine='xlrd')
 
         except Exception as e:
-            raise ValueError(f"Failed to parse Excel file: {str(e)}")
+            raise ValueError(f"엑셀 파일을 읽지 못했습니다: {str(e)}")
 
         if df.empty:
-            raise ValueError("Excel file is empty")
+            raise ValueError("엑셀 파일에 내용이 없습니다")
 
         # The table is named after the file unless the user chose a name.
         name = table_name_from(table_name or file.filename)
@@ -373,7 +373,7 @@ class ExcelService:
         """
         upload = await self.get_upload_by_id(upload_id)
         if not upload:
-            raise ValueError(f"Upload {upload_id} not found")
+            raise ValueError(f"{upload_id}번 업로드를 찾을 수 없습니다")
 
         # Query table
         preview_sql = f"SELECT * FROM {quote_relation(upload.table_name)} LIMIT {int(limit)}"

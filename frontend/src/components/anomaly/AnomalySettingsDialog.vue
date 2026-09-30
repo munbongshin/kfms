@@ -1,15 +1,18 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="점검 기준"
+    :title="$t('점검 기준')"
     width="760px"
     @update:model-value="emit('update:modelValue', $event)"
     @open="load"
   >
     <p class="intro">
-      이상거래 점검이 쓰는 기준 값입니다.
-      <template v-if="auth.isAuditor">바꾸면 <strong>다음 조회부터</strong> 적용됩니다. 이미 검토한 판정은 그대로 남고, 기준이 바뀌어 거래 내용이 달라진 건은 "검토 후 변경됨"으로 다시 표시됩니다. 바꾼 내용은 <em>변경 이력</em>에 남고 이전 값으로 되돌릴 수 있습니다.</template>
-      <template v-else>기준은 관리자와 감사담당만 바꿀 수 있습니다.</template>
+      {{ $t('이상거래 점검이 쓰는 기준 값입니다.') }}
+      <span
+        v-if="auth.isAuditor"
+        v-html="$th('바꾸면 <strong>다음 조회부터</strong> 적용됩니다. 이미 검토한 판정은 그대로 남고, 기준이 바뀌어 거래 내용이 달라진 건은 “검토 후 변경됨”으로 다시 표시됩니다. 바꾼 내용은 <em>변경 이력</em>에 남고 이전 값으로 되돌릴 수 있습니다.')"
+      ></span>
+      <template v-else>{{ $t('기준은 관리자와 감사담당만 바꿀 수 있습니다.') }}</template>
     </p>
 
     <div v-loading="loading">
@@ -18,7 +21,7 @@
           <span class="name">{{ rule.label }}</span>
           <span class="sev" :class="draft[rule.template].severity">{{ severityName(draft[rule.template].severity) }}</span>
           <span class="spacer" />
-          <label class="mini">심각도</label>
+          <label class="mini">{{ $t('심각도') }}</label>
           <el-select
             v-model="draft[rule.template].severity"
             size="small"
@@ -27,10 +30,10 @@
           >
             <el-option v-for="o in severityOptions(rule)" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
-          <label class="mini">사용</label>
+          <label class="mini">{{ $t('사용') }}</label>
           <el-switch v-model="draft[rule.template].enabled" size="small" :disabled="!auth.isAuditor" />
         </div>
-        <p v-if="isOff(rule)" class="off-note">사용을 꺼서 이 규칙으로는 점검하지 않습니다. 아래 값은 다시 켤 때 쓰입니다.</p>
+        <p v-if="isOff(rule)" class="off-note">{{ $t('사용을 꺼서 이 규칙으로는 점검하지 않습니다. 아래 값은 다시 켤 때 쓰입니다.') }}</p>
 
         <div v-for="p in detailParams(rule)" :key="p.key" class="param">
           <label class="lbl">{{ p.label }}</label>
@@ -56,7 +59,7 @@
                 <el-autocomplete
                   v-model="row.name"
                   size="small"
-                  placeholder="업종명"
+                  :placeholder="$t('업종명')"
                   :disabled="!auth.isAuditor"
                   :fetch-suggestions="suggestCategory"
                   value-key="name"
@@ -72,11 +75,11 @@
                   :disabled="!auth.isAuditor"
                   controls-position="right"
                 />
-                <span class="won">원 이상</span>
-                <button v-if="auth.isAuditor" class="link" @click="removeRow(rule.template, p.key, i)">삭제</button>
+                <span class="won">{{ $t('원 이상') }}</span>
+                <button v-if="auth.isAuditor" class="link" @click="removeRow(rule.template, p.key, i)">{{ $t('삭제') }}</button>
               </div>
-              <button v-if="auth.isAuditor" class="link add" @click="addRow(rule.template, p.key, rule)">+ 업종 추가</button>
-              <span v-if="!draft[rule.template][p.key].length" class="none">모든 업종이 위의 기준 금액을 씁니다</span>
+              <button v-if="auth.isAuditor" class="link add" @click="addRow(rule.template, p.key, rule)">{{ $t('+ 업종 추가') }}</button>
+              <span v-if="!draft[rule.template][p.key].length" class="none">{{ $t('모든 업종이 위의 기준 금액을 씁니다') }}</span>
             </div>
 
             <TagListEditor
@@ -90,10 +93,10 @@
 
             <div class="meta">
               <span class="hint">{{ p.hint }}</span>
-              <button v-if="p.key === 'auto_holidays'" class="link show" @click="showHolidays = true">적용되는 공휴일 보기</button>
+              <button v-if="p.key === 'auto_holidays'" class="link show" @click="showHolidays = true">{{ $t('적용되는 공휴일 보기') }}</button>
               <span v-if="changed(rule.template, p)" class="changed">
-                기본값: {{ display(p) }}
-                <button v-if="auth.isAuditor" class="link" @click="reset(rule.template, p)">되돌리기</button>
+                {{ $t('기본값: {v}', { v: display(p) }) }}
+                <button v-if="auth.isAuditor" class="link" @click="reset(rule.template, p)">{{ $t('되돌리기') }}</button>
               </span>
             </div>
           </div>
@@ -102,9 +105,9 @@
     </div>
 
     <template #footer>
-      <el-button class="history-btn" @click="showHistory = true">변경 이력</el-button>
-      <el-button @click="emit('update:modelValue', false)">{{ auth.isAuditor ? '취소' : '닫기' }}</el-button>
-      <el-button v-if="auth.isAuditor" type="primary" :loading="saving" :disabled="!dirty" @click="save">저장</el-button>
+      <el-button class="history-btn" @click="showHistory = true">{{ $t('변경 이력') }}</el-button>
+      <el-button @click="emit('update:modelValue', false)">{{ auth.isAuditor ? $t('취소') : $t('닫기') }}</el-button>
+      <el-button v-if="auth.isAuditor" type="primary" :loading="saving" :disabled="!dirty" @click="save">{{ $t('저장') }}</el-button>
     </template>
   </el-dialog>
 
@@ -121,6 +124,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '../../i18n'
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../../services/api'
@@ -162,9 +166,9 @@ const databaseStore = useDatabaseStore()
 // Merchant categories in the data: suggested while typing, and used to flag names that match nothing.
 const categories = ref<Suggestion[]>([])
 
-const checkDate = (item: string) => (isIsoDate(item) ? '' : `'${item}'은(는) YYYY-MM-DD 형식의 날짜가 아닙니다`)
+const checkDate = (item: string) => (isIsoDate(item) ? '' : t("'{item}'은(는) YYYY-MM-DD 형식의 날짜가 아닙니다", { item }))
 const listPlaceholder = (p: Param) =>
-  p.unit === 'dates' ? '예: 2026-05-05' : p.key === 'watch_mcc' ? '업종명 (예: 영화관)' : '한 개씩 입력하고 Enter'
+  p.unit === 'dates' ? t('예: 2026-05-05') : p.key === 'watch_mcc' ? t('업종명 (예: 영화관)') : t('한 개씩 입력하고 Enter')
 
 function suggestCategory(query: string, cb: (items: Suggestion[]) => void) {
   const q = query.trim().toLowerCase()
@@ -182,7 +186,7 @@ async function loadCategories() {
 }
 
 const SEVERITY_NAMES: Record<string, string> = { high: '높음', medium: '보통', low: '낮음' }
-const severityName = (s: string) => SEVERITY_NAMES[s] || s
+const severityName = (s: string) => (SEVERITY_NAMES[s] ? t(SEVERITY_NAMES[s]) : s)
 
 /** Each rule's own controls, minus the two shown in its header. */
 const detailParams = (rule: Rule) => rule.params.filter((p) => p.key !== 'enabled' && p.key !== 'severity')
@@ -227,9 +231,9 @@ function normal(p: Param, value: any) {
 
 function display(p: Param) {
   const value = p.default
-  if (p.kind === 'switch') return value ? '켜짐' : '꺼짐'
-  if (p.kind === 'map') return Object.keys(value || {}).length ? `${Object.keys(value).length}개` : '없음'
-  return Array.isArray(value) ? `${value.length}개` : String(value)
+  if (p.kind === 'switch') return value ? t('켜짐') : t('꺼짐')
+  if (p.kind === 'map') return Object.keys(value || {}).length ? t('{n}개', { n: Object.keys(value).length }) : t('없음')
+  return Array.isArray(value) ? t('{n}개', { n: value.length }) : String(value)
 }
 
 const changed = (template: string, p: Param) =>
@@ -249,7 +253,7 @@ async function load() {
       data.rules.map((r: Rule) => [r.template, Object.fromEntries(r.params.map((p) => [p.key, toEditable(p, p.value)]))])
     )
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '점검 기준을 불러오지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('점검 기준을 불러오지 못했습니다'))
   } finally {
     loading.value = false
   }
@@ -278,11 +282,11 @@ async function save() {
       ])
     )
     await api.anomaly.saveSettings(overrides)
-    ElMessage.success('점검 기준을 저장했습니다. 다음 조회부터 적용됩니다.')
+    ElMessage.success(t('점검 기준을 저장했습니다. 다음 조회부터 적용됩니다.'))
     emit('saved')
     emit('update:modelValue', false)
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '저장하지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('저장하지 못했습니다'))
   } finally {
     saving.value = false
   }

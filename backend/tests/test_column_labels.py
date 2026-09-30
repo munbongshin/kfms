@@ -166,3 +166,32 @@ def test_a_sheet_without_the_two_columns_is_refused_with_a_reason():
 def test_a_repeated_column_keeps_the_last_label():
     items, _ = parse_label_sheet([["column", "label"], ["appramt", "승인금액"], ["appramt", "승인 공급가액"]])
     assert [(i.column_name, i.label) for i in items] == [("appramt", "승인 공급가액")]
+
+
+# --- the exported sheet can be read back, in either language --------------------------------------
+
+def test_the_korean_export_header_is_read_back_including_its_table_column():
+    items, problems = parse_label_sheet([
+        ["컬럼명", "한글명", "테이블(비우면 전체)", "DB 설명", "쓰이는 테이블"],
+        ["appramt", "승인 공급가액", "v_approval", "공급가액", "v_approval"],
+    ])
+    assert problems == []
+    assert (items[0].table_key, items[0].column_name, items[0].label) == ("v_approval", "appramt", "승인 공급가액")
+
+
+def test_the_english_export_header_is_read_back_too():
+    items, problems = parse_label_sheet([
+        ["Column", "Korean name", "Table (blank = all)", "DB comment", "Tables using it"],
+        ["appramt", "승인금액", "", "공급가액", "card_data, v_approval"],
+        ["appramt", "승인 공급가액", "v_approval", "공급가액", "v_approval"],
+    ])
+    assert problems == []
+    assert [(i.table_key, i.label) for i in items] == [(None, "승인금액"), ("v_approval", "승인 공급가액")]
+
+
+def test_the_tables_using_it_column_is_not_mistaken_for_the_table_column():
+    items, _ = parse_label_sheet([
+        ["column", "label", "tables using it"],
+        ["appramt", "승인금액", "card_data, v_approval"],
+    ])
+    assert items[0].table_key is None

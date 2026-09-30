@@ -1,16 +1,15 @@
 <template>
   <div class="eval">
-    <p class="intro">
-      질문과 <b>정답 SQL</b>을 저장해 두고, 지금 선택한 LLM이 같은 결과를 내는지 자동으로 채점합니다.
-      LLM이나 모델을 바꿀 때 정확도가 좋아졌는지 나빠졌는지 바로 비교할 수 있습니다. 채점은 <b>실행 결과</b>가 같은지로 하므로
-      컬럼 이름·순서나 행 순서가 달라도 맞으면 정답입니다. 채점하는 동안에는 북마크 예시를 쓰지 않습니다(정답이 그대로 들어가기 때문입니다).
-    </p>
+    <p
+      class="intro"
+      v-html="$th('질문과 <b>정답 SQL</b>을 저장해 두고, 지금 선택한 LLM이 같은 결과를 내는지 자동으로 채점합니다. LLM이나 모델을 바꿀 때 정확도가 좋아졌는지 나빠졌는지 바로 비교할 수 있습니다. 채점은 <b>실행 결과</b>가 같은지로 하므로 컬럼 이름·순서나 행 순서가 달라도 맞으면 정답입니다. 채점하는 동안에는 북마크 예시를 쓰지 않습니다(정답이 그대로 들어가기 때문입니다).')"
+    ></p>
 
     <div class="bar">
-      <span class="db">대상 DB: <b>{{ databaseStore.activeConnection?.name || '없음' }}</b></span>
-      <button class="btn" :disabled="!database" @click="importBookmarks">북마크에서 가져오기</button>
+      <span class="db" v-html="$th('대상 DB: <b>{name}</b>', { name: databaseStore.activeConnection?.name || t('없음') })"></span>
+      <button class="btn" :disabled="!database" @click="importBookmarks">{{ $t('북마크에서 가져오기') }}</button>
       <button class="btn primary" :disabled="!database || !cases.length || running" @click="start">
-        {{ running ? '채점 중…' : `평가 실행 (${cases.length}건)` }}
+        {{ running ? $t('채점 중…') : $t('평가 실행 ({n}건)', { n: cases.length }) }}
       </button>
     </div>
 
@@ -18,11 +17,11 @@
     <div v-if="shown" class="run">
       <div class="run-head">
         <span class="rate" :class="rateClass">{{ rate }}%</span>
-        <span>{{ shown.passed }} / {{ shown.total }} 정답</span>
+        <span>{{ $t('{passed} / {total} 정답', { passed: shown.passed, total: shown.total }) }}</span>
         <span class="muted">· {{ shown.provider || '…' }} {{ shown.model }}</span>
-        <span v-if="shown.status === 'running'" class="muted">· 진행 {{ shown.done }} / {{ shown.total }}</span>
-        <span v-if="shown.seconds" class="muted">· {{ shown.seconds }}초</span>
-        <el-tag v-if="shown.status === 'error'" type="danger" size="small">오류</el-tag>
+        <span v-if="shown.status === 'running'" class="muted">· {{ $t('진행 {done} / {total}', { done: shown.done, total: shown.total }) }}</span>
+        <span v-if="shown.seconds" class="muted">· {{ $t('{n}초', { n: shown.seconds }) }}</span>
+        <el-tag v-if="shown.status === 'error'" type="danger" size="small">{{ $t('오류') }}</el-tag>
       </div>
       <el-progress v-if="shown.status === 'running'" :percentage="Math.round((shown.done / Math.max(shown.total, 1)) * 100)" :stroke-width="6" />
       <el-alert v-if="shown.error" type="error" :closable="false" show-icon :title="shown.error" />
@@ -31,62 +30,62 @@
         <el-table-column type="expand">
           <template #default="{ row }">
             <div class="sqls">
-              <div><b>정답 SQL</b><pre>{{ row.expected_sql }}</pre></div>
-              <div><b>생성한 SQL</b><pre>{{ row.generated_sql || '(생성 실패)' }}</pre></div>
+              <div><b>{{ $t('정답 SQL') }}</b><pre>{{ row.expected_sql }}</pre></div>
+              <div><b>{{ $t('생성한 SQL') }}</b><pre>{{ row.generated_sql || $t('(생성 실패)') }}</pre></div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="결과" width="80" align="center">
+        <el-table-column :label="$t('결과')" width="80" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.passed ? 'success' : 'danger'" size="small">{{ row.passed ? '정답' : '오답' }}</el-tag>
+            <el-tag :type="row.passed ? 'success' : 'danger'" size="small">{{ row.passed ? $t('정답') : $t('오답') }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="question" label="질문" min-width="240" show-overflow-tooltip />
-        <el-table-column prop="reason" label="사유" min-width="240" show-overflow-tooltip />
+        <el-table-column prop="question" :label="$t('질문')" min-width="240" show-overflow-tooltip />
+        <el-table-column prop="reason" :label="$t('사유')" min-width="240" show-overflow-tooltip />
       </el-table>
     </div>
 
     <!-- History of runs -->
-    <div class="section">실행 기록</div>
-    <el-table :data="runs" size="small" border empty-text="아직 채점한 기록이 없습니다" @row-click="openRun">
-      <el-table-column label="시각" width="170">
+    <div class="section">{{ $t('실행 기록') }}</div>
+    <el-table :data="runs" size="small" border :empty-text="$t('아직 채점한 기록이 없습니다')" @row-click="openRun">
+      <el-table-column :label="$t('시각')" width="170">
         <template #default="{ row }">{{ fmt(row.started_at) }}</template>
       </el-table-column>
       <el-table-column label="LLM" min-width="200">
         <template #default="{ row }">{{ row.provider }} {{ row.model }}</template>
       </el-table-column>
-      <el-table-column label="정확도" width="150">
+      <el-table-column :label="$t('정확도')" width="150">
         <template #default="{ row }">
           <b>{{ row.total ? Math.round((row.passed * 1000) / row.total) / 10 : 0 }}%</b>
           <span class="muted"> ({{ row.passed }}/{{ row.total }})</span>
         </template>
       </el-table-column>
-      <el-table-column label="시간" width="90">
-        <template #default="{ row }">{{ row.seconds ? `${row.seconds}초` : '—' }}</template>
+      <el-table-column :label="$t('시간')" width="90">
+        <template #default="{ row }">{{ row.seconds ? $t('{n}초', { n: row.seconds }) : '—' }}</template>
       </el-table-column>
-      <el-table-column label="상태" width="90" align="center">
+      <el-table-column :label="$t('상태')" width="90" align="center">
         <template #default="{ row }">
           <el-tag :type="row.status === 'done' ? 'success' : row.status === 'running' ? 'warning' : 'danger'" size="small">
-            {{ { done: '완료', running: '진행 중', error: '오류' }[row.status as string] || row.status }}
+            {{ { done: $t('완료'), running: $t('진행 중'), error: $t('오류') }[row.status as string] || row.status }}
           </el-tag>
         </template>
       </el-table-column>
     </el-table>
 
     <!-- Cases -->
-    <div class="section">평가 사례 <span class="muted">({{ cases.length }}건)</span></div>
+    <div class="section">{{ $t('평가 사례') }} <span class="muted">({{ $t('{n}건', { n: cases.length }) }})</span></div>
     <div class="form">
-      <el-input v-model="newQuestion" placeholder="질문 (예: 카테고리별 총 매출액을 보여줘)" style="width: 320px" />
-      <el-input v-model="newSql" type="textarea" :rows="2" placeholder="정답 SQL (SELECT)" style="flex: 1; min-width: 300px" />
-      <button class="btn primary" :disabled="!newQuestion.trim() || !newSql.trim() || !database" @click="addCase">사례 추가</button>
+      <el-input v-model="newQuestion" :placeholder="$t('질문 (예: 카테고리별 총 매출액을 보여줘)')" style="width: 320px" />
+      <el-input v-model="newSql" type="textarea" :rows="2" :placeholder="$t('정답 SQL (SELECT)')" style="flex: 1; min-width: 300px" />
+      <button class="btn primary" :disabled="!newQuestion.trim() || !newSql.trim() || !database" @click="addCase">{{ $t('사례 추가') }}</button>
     </div>
-    <el-table :data="cases" size="small" border empty-text="사례가 없습니다. 북마크에서 가져오거나 직접 추가하세요." style="margin-top: 8px">
-      <el-table-column prop="question" label="질문" min-width="240" show-overflow-tooltip />
-      <el-table-column prop="expected_sql" label="정답 SQL" min-width="360" show-overflow-tooltip />
+    <el-table :data="cases" size="small" border :empty-text="$t('사례가 없습니다. 북마크에서 가져오거나 직접 추가하세요.')" style="margin-top: 8px">
+      <el-table-column prop="question" :label="$t('질문')" min-width="240" show-overflow-tooltip />
+      <el-table-column prop="expected_sql" :label="$t('정답 SQL')" min-width="360" show-overflow-tooltip />
       <el-table-column label="" width="80" align="center">
         <template #default="{ row }">
-          <el-popconfirm title="이 사례를 삭제할까요?" @confirm="removeCase(row.id)">
-            <template #reference><button class="link danger">삭제</button></template>
+          <el-popconfirm :title="$t('이 사례를 삭제할까요?')" @confirm="removeCase(row.id)">
+            <template #reference><button class="link danger">{{ $t('삭제') }}</button></template>
           </el-popconfirm>
         </template>
       </el-table-column>
@@ -95,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatDateTime, t } from '../../i18n'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../../services/api'
@@ -116,7 +116,7 @@ const rate = computed(() =>
   shown.value?.total ? Math.round((shown.value.passed * 1000) / shown.value.total) / 10 : 0
 )
 const rateClass = computed(() => (rate.value >= 80 ? 'good' : rate.value >= 50 ? 'mid' : 'bad'))
-const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '—')
+const fmt = (iso: string | null) => (iso ? formatDateTime(iso) : '—')
 
 async function loadCases() {
   if (!database.value) return
@@ -149,7 +149,7 @@ async function start() {
     watchRun()
     await loadRuns()
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '시작하지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('시작하지 못했습니다'))
   }
 }
 
@@ -161,7 +161,7 @@ async function openRun(row: any) {
 async function importBookmarks() {
   if (!database.value) return
   const { added } = await api.evaluation.importBookmarks(database.value)
-  ElMessage.success(added ? `북마크 ${added}건을 사례로 추가했습니다` : '새로 추가할 북마크가 없습니다')
+  ElMessage.success(added ? t('북마크 {n}건을 사례로 추가했습니다', { n: added }) : t('새로 추가할 북마크가 없습니다'))
   await loadCases()
 }
 
@@ -173,7 +173,7 @@ async function addCase() {
     newSql.value = ''
     await loadCases()
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '추가하지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('추가하지 못했습니다'))
   }
 }
 

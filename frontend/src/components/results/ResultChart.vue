@@ -24,7 +24,7 @@
       <v-chart :option="chartOption" :autoresize="true" style="height: 460px" />
     </div>
 
-    <el-empty v-else description="Cannot generate chart for this data" />
+    <el-empty v-else :description="$t('이 데이터로는 차트를 만들 수 없습니다')" />
   </div>
 </template>
 

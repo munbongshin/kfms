@@ -2,8 +2,8 @@
   <el-card v-if="bookmarks.length > 0" class="bookmark-bar">
     <template #header>
       <div class="header">
-        <span>⭐ 자주 쓰는 질문</span>
-        <span class="hint">저장된 질문을 바로 실행합니다</span>
+        <span>{{ $t('⭐ 자주 쓰는 질문') }}</span>
+        <span class="hint">{{ $t('저장된 질문을 바로 실행합니다') }}</span>
       </div>
     </template>
     <div class="items">

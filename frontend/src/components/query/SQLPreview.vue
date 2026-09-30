@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="queryStore.showSQLPreview"
-    title="Review Generated SQL"
+    :title="$t('생성된 SQL 확인')"
     width="800px"
     :close-on-click-modal="false"
   >
@@ -15,11 +15,11 @@
       >
         <template #title>
           <div v-if="!queryStore.validationResult.is_safe">
-            <strong>⚠️ SQL Blocked</strong>
-            <p>This query cannot be executed due to safety concerns:</p>
+            <strong>{{ $t('⚠️ SQL이 차단되었습니다') }}</strong>
+            <p>{{ $t('안전상의 이유로 이 쿼리는 실행할 수 없습니다:') }}</p>
           </div>
           <div v-else>
-            <strong>Validation Warnings:</strong>
+            <strong>{{ $t('검증 경고:') }}</strong>
           </div>
         </template>
         <ul>
@@ -32,10 +32,10 @@
       <!-- SQL Display -->
       <div class="sql-container">
         <div class="sql-header">
-          <span>Generated SQL</span>
+          <span>{{ $t('생성된 SQL') }}</span>
           <el-button size="small" @click="copySQLToClipboard">
             <el-icon><CopyDocument /></el-icon>
-            Copy
+            {{ $t('복사') }}
           </el-button>
         </div>
         <pre class="sql-code">{{ queryStore.generatedSQL }}</pre>
@@ -44,13 +44,13 @@
 
       <!-- Question Display -->
       <div class="question-display">
-        <strong>Original Question:</strong>
+        <strong>{{ $t('원래 질문:') }}</strong>
         <p>{{ queryStore.currentQuestion }}</p>
       </div>
     </div>
 
     <template #footer>
-      <el-button @click="queryStore.cancelExecution()">Cancel</el-button>
+      <el-button @click="queryStore.cancelExecution()">{{ $t('취소') }}</el-button>
       <el-button
         v-if="queryStore.validationResult?.is_safe"
         type="primary"
@@ -58,13 +58,14 @@
         :loading="queryStore.loading"
       >
         <el-icon><CaretRight /></el-icon>
-        Execute Query
+        {{ $t('쿼리 실행') }}
       </el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
+import { t } from '../../i18n'
 import { computed } from 'vue'
 import { CopyDocument, CaretRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -77,9 +78,9 @@ const guidance = computed(() => {
   const g = queryStore.generationInfo
   if (!g) return []
   const parts: string[] = []
-  if (g.attempts > 1) parts.push(`오류를 고치며 ${g.attempts}번 만에 생성`)
-  if (g.examples_used) parts.push(`북마크 예시 ${g.examples_used}개 참고`)
-  if (g.terms_used.length) parts.push(`용어 적용: ${g.terms_used.join(', ')}`)
+  if (g.attempts > 1) parts.push(t('오류를 고치며 {n}번 만에 생성', { n: g.attempts }))
+  if (g.examples_used) parts.push(t('북마크 예시 {n}개 참고', { n: g.examples_used }))
+  if (g.terms_used.length) parts.push(t('용어 적용: {terms}', { terms: g.terms_used.join(', ') }))
   return parts
 })
 
@@ -94,7 +95,7 @@ async function handleExecute() {
 function copySQLToClipboard() {
   if (navigator.clipboard) {
     navigator.clipboard.writeText(queryStore.generatedSQL)
-    ElMessage.success('SQL copied to clipboard')
+    ElMessage.success(t('SQL을 복사했습니다'))
   }
 }
 </script>

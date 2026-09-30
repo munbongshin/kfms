@@ -8,19 +8,19 @@
         :type="isUnknown(item) ? 'warning' : 'info'"
         effect="plain"
         size="small"
-        :title="isUnknown(item) ? '현재 데이터에서 찾지 못한 이름입니다. 띄어쓰기까지 같아야 맞습니다.' : ''"
+        :title="isUnknown(item) ? $t('현재 데이터에서 찾지 못한 이름입니다. 띄어쓰기까지 같아야 맞습니다.') : ''"
         @close="remove(item)"
       >
         {{ item }}
       </el-tag>
     </div>
-    <div v-else class="empty">{{ emptyText }}</div>
+    <div v-else class="empty">{{ $t(emptyText) }}</div>
 
     <div v-if="!disabled" class="adder">
       <el-autocomplete
         v-model="draft"
         size="small"
-        :placeholder="placeholder"
+        :placeholder="$t(placeholder)"
         :fetch-suggestions="suggest"
         value-key="name"
         :trigger-on-focus="false"
@@ -31,37 +31,38 @@
       >
         <template #default="{ item }">
           <span>{{ item.name }}</span>
-          <small class="count">{{ item.count.toLocaleString() }}건</small>
+          <small class="count">{{ $t('{n}건', { n: item.count.toLocaleString() }) }}</small>
         </template>
       </el-autocomplete>
-      <el-button size="small" :disabled="!draft.trim()" @click="addOne">추가</el-button>
-      <el-button size="small" @click="openBulk">일괄 추가</el-button>
-      <el-popconfirm v-if="modelValue.length" title="목록을 모두 지울까요?" @confirm="emit('update:modelValue', [])">
-        <template #reference><button class="link">전체 삭제</button></template>
+      <el-button size="small" :disabled="!draft.trim()" @click="addOne">{{ $t('추가') }}</el-button>
+      <el-button size="small" @click="openBulk">{{ $t('일괄 추가') }}</el-button>
+      <el-popconfirm v-if="modelValue.length" :title="$t('목록을 모두 지울까요?')" @confirm="emit('update:modelValue', [])">
+        <template #reference><button class="link">{{ $t('전체 삭제') }}</button></template>
       </el-popconfirm>
     </div>
-    <div class="count-line">{{ modelValue.length }}개</div>
+    <div class="count-line">{{ $t('{n}개', { n: modelValue.length }) }}</div>
 
-    <el-dialog v-model="bulkOpen" title="일괄 추가" width="480px" append-to-body>
+    <el-dialog v-model="bulkOpen" :title="$t('일괄 추가')" width="480px" append-to-body>
       <p class="bulk-note">
-        여러 개를 한꺼번에 붙여 넣습니다. 한 줄에 하나씩, 또는 쉼표(,) · 세미콜론(;) · 탭으로 나눠 적으면 됩니다. 엑셀에서 한 열을 복사해 붙여 넣어도 됩니다.
+        {{ $t('여러 개를 한꺼번에 붙여 넣습니다. 한 줄에 하나씩, 또는 쉼표(,) · 세미콜론(;) · 탭으로 나눠 적으면 됩니다. 엑셀에서 한 열을 복사해 붙여 넣어도 됩니다.') }}
       </p>
-      <el-input v-model="bulkText" type="textarea" :rows="8" :placeholder="placeholder" />
+      <el-input v-model="bulkText" type="textarea" :rows="8" :placeholder="$t(placeholder)" />
       <div class="preview">
-        <span>새로 추가 <b>{{ preview.added.length }}</b>개</span>
-        <span v-if="preview.duplicates.length">이미 있음 {{ preview.duplicates.length }}개(건너뜀)</span>
-        <span v-if="preview.invalid.length" class="bad">형식 오류 {{ preview.invalid.length }}개: {{ preview.invalid.slice(0, 3).join(', ') }}{{ preview.invalid.length > 3 ? ' …' : '' }}</span>
-        <span v-if="preview.unknown.length" class="warn">데이터에 없는 이름 {{ preview.unknown.length }}개</span>
+        <span v-html="$th('새로 추가 <b>{n}</b>개', { n: preview.added.length })"></span>
+        <span v-if="preview.duplicates.length">{{ $t('이미 있음 {n}개(건너뜀)', { n: preview.duplicates.length }) }}</span>
+        <span v-if="preview.invalid.length" class="bad">{{ $t('형식 오류 {n}개: {items}', { n: preview.invalid.length, items: preview.invalid.slice(0, 3).join(', ') + (preview.invalid.length > 3 ? ' …' : '') }) }}</span>
+        <span v-if="preview.unknown.length" class="warn">{{ $t('데이터에 없는 이름 {n}개', { n: preview.unknown.length }) }}</span>
       </div>
       <template #footer>
-        <el-button @click="bulkOpen = false">취소</el-button>
-        <el-button type="primary" :disabled="!preview.added.length" @click="addBulk">{{ preview.added.length }}개 추가</el-button>
+        <el-button @click="bulkOpen = false">{{ $t('취소') }}</el-button>
+        <el-button type="primary" :disabled="!preview.added.length" @click="addBulk">{{ $t('{n}개 추가', { n: preview.added.length }) }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from '../../i18n'
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { mergeItems, parseItems } from '../../utils/listInput'
@@ -122,7 +123,7 @@ function addOne() {
     return
   }
   const merged = add([item])
-  if (!merged.added.length) ElMessage.info(`'${item}'은(는) 이미 목록에 있습니다`)
+  if (!merged.added.length) ElMessage.info(t("'{item}'은(는) 이미 목록에 있습니다", { item }))
   draft.value = ''
 }
 
@@ -155,7 +156,7 @@ const preview = computed(() => {
 
 function addBulk() {
   add(preview.value.added)
-  ElMessage.success(`${preview.value.added.length}개를 추가했습니다`)
+  ElMessage.success(t('{n}개를 추가했습니다', { n: preview.value.added.length }))
   bulkOpen.value = false
 }
 </script>

@@ -9,7 +9,7 @@
         collapse-tags
         collapse-tags-tooltip
         size="small"
-        placeholder="전체 컬럼"
+        :placeholder="$t('전체 컬럼')"
         style="width: 260px"
         @visible-change="applyColumnsOnClose"
       >
@@ -20,8 +20,8 @@
           :value="c"
         />
       </el-select>
-      <span class="count">{{ shownColumnCount }} / {{ preview.columns.length }} 컬럼</span>
-      <button v-if="selectedColumns.length" class="link" @click="clearColumns">전체 보기</button>
+      <span class="count">{{ $t('{shown} / {total} 컬럼', { shown: shownColumnCount, total: preview.columns.length }) }}</span>
+      <button v-if="selectedColumns.length" class="link" @click="clearColumns">{{ $t('전체 보기') }}</button>
     </div>
 
     <div class="table-container" v-if="results.results.length > 0">
@@ -79,7 +79,7 @@
       />
     </div>
 
-    <el-empty v-else description="No results found" />
+    <el-empty v-else :description="$t('결과가 없습니다')" />
   </div>
 </template>
 

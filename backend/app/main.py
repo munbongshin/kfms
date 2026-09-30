@@ -4,7 +4,9 @@ Text-to-SQL service with LLM integration (Ollama + Groq).
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Response
 from fastapi.responses import JSONResponse
+from app.i18n import language_of, translate_body
 import asyncio
 from contextlib import asynccontextmanager
 
@@ -106,6 +108,22 @@ async def audit_requests(request, call_next):
     except Exception:
         pass  # the log must never break the request it describes
     return response
+
+
+@app.middleware("http")
+async def answer_in_the_screen_language(request, call_next):
+    """English screens get English messages: the server writes Korean and this
+    translates the JSON on its way out (see app/i18n.py)."""
+    response = await call_next(request)
+    lang = language_of(request.headers.get("accept-language"))
+    if lang != "en" or not request.url.path.startswith("/api/"):
+        return response
+    if not response.headers.get("content-type", "").startswith("application/json"):
+        return response
+    body = b"".join([chunk async for chunk in response.body_iterator])
+    headers = {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
+    return Response(content=translate_body(body, lang), status_code=response.status_code,
+                    headers=headers, media_type="application/json")
 
 
 # Configure CORS

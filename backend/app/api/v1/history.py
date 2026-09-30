@@ -123,7 +123,7 @@ async def list_history(
     except Exception as e:
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch history: {str(e)}"
+            detail=f"이력을 불러오지 못했습니다: {str(e)}"
         )
 
 
@@ -146,7 +146,7 @@ async def get_history(
         if not history:
             raise HTTPException(
                 status_code=http_status.HTTP_404_NOT_FOUND,
-                detail=f"History {history_id} not found"
+                detail=f"{history_id}번 이력을 찾을 수 없습니다"
             )
 
         results = mask_results(history.results, user.role) if history.results else history.results
@@ -178,7 +178,7 @@ async def get_history(
     except Exception as e:
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error(user.role, f"Failed to get history: {str(e)}")
+            detail=safe_error(user.role, f"이력을 불러오지 못했습니다: {str(e)}")
         )
 
 
@@ -204,7 +204,7 @@ async def set_bookmark(
     if not record:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
-            detail=f"History {history_id} not found"
+            detail=f"{history_id}번 이력을 찾을 수 없습니다"
         )
 
     return _list_item(record, user.role)
@@ -244,7 +244,7 @@ async def delete_history(
         if not deleted:
             raise HTTPException(
                 status_code=http_status.HTTP_404_NOT_FOUND,
-                detail=f"History {history_id} not found"
+                detail=f"{history_id}번 이력을 찾을 수 없습니다"
             )
 
         return None
@@ -254,7 +254,7 @@ async def delete_history(
     except Exception as e:
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete history: {str(e)}"
+            detail=f"이력을 삭제하지 못했습니다: {str(e)}"
         )
 
 
@@ -292,5 +292,5 @@ async def get_history_stats(
     except Exception as e:
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get stats: {str(e)}"
+            detail=f"통계를 불러오지 못했습니다: {str(e)}"
         )

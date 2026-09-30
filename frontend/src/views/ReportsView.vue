@@ -1,42 +1,42 @@
 <template>
   <div class="reports-view">
     <div class="page-title">
-      <h2>보고서</h2>
-      <span class="sub">저장한 질문이 정한 시각에 자동 실행되고, 최근 결과가 여기에 남습니다.</span>
+      <h2>{{ $t('보고서') }}</h2>
+      <span class="sub">{{ $t('저장한 질문이 정한 시각에 자동 실행되고, 최근 결과가 여기에 남습니다.') }}</span>
     </div>
 
-    <el-table :data="reports" size="small" border v-loading="loading" empty-text="저장된 보고서가 없습니다. 질의 결과 위의 '보고서로 저장'으로 만드세요.">
-      <el-table-column prop="name" label="이름" min-width="180" show-overflow-tooltip />
-      <el-table-column label="주기" width="150">
+    <el-table :data="reports" size="small" border v-loading="loading" :empty-text="$t('저장된 보고서가 없습니다. 질의 결과 위의 \'보고서로 저장\'으로 만드세요.')">
+      <el-table-column prop="name" :label="$t('이름')" min-width="180" show-overflow-tooltip />
+      <el-table-column :label="$t('주기')" width="150">
         <template #default="{ row }">{{ schedule(row) }}</template>
       </el-table-column>
-      <el-table-column label="마지막 실행" width="220">
+      <el-table-column :label="$t('마지막 실행')" width="220">
         <template #default="{ row }">
           <template v-if="row.last_run_at">
             <el-tag :type="row.last_status === 'ok' ? 'success' : 'danger'" size="small">
-              {{ row.last_status === 'ok' ? `${(row.last_row_count ?? 0).toLocaleString()}행` : '오류' }}
+              {{ row.last_status === 'ok' ? $t('{n}행', { n: (row.last_row_count ?? 0).toLocaleString() }) : $t('오류') }}
             </el-tag>
             <span class="time">{{ fmt(row.last_run_at) }}</span>
           </template>
-          <span v-else class="muted">아직 실행 전</span>
+          <span v-else class="muted">{{ $t('아직 실행 전') }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="다음 실행" width="170">
+      <el-table-column :label="$t('다음 실행')" width="170">
         <template #default="{ row }">
           <span v-if="row.is_active">{{ fmt(row.next_run_at) }}</span>
-          <el-tag v-else size="small" type="info">일시중지</el-tag>
+          <el-tag v-else size="small" type="info">{{ $t('일시중지') }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="created_by" label="만든 사람" width="110" />
+      <el-table-column prop="created_by" :label="$t('만든 사람')" width="110" />
       <el-table-column label="" width="260" align="center">
         <template #default="{ row }">
-          <button class="link" @click="open(row)">결과</button>
+          <button class="link" @click="open(row)">{{ $t('결과') }}</button>
           <button class="link" :disabled="running === row.id" @click="runNow(row)">
-            {{ running === row.id ? '실행 중…' : '지금 실행' }}
+            {{ running === row.id ? $t('실행 중…') : $t('지금 실행') }}
           </button>
-          <button class="link" @click="toggle(row)">{{ row.is_active ? '중지' : '재개' }}</button>
-          <el-popconfirm title="이 보고서를 삭제할까요?" @confirm="remove(row)">
-            <template #reference><button class="link danger">삭제</button></template>
+          <button class="link" @click="toggle(row)">{{ row.is_active ? $t('중지') : $t('재개') }}</button>
+          <el-popconfirm :title="$t('이 보고서를 삭제할까요?')" @confirm="remove(row)">
+            <template #reference><button class="link danger">{{ $t('삭제') }}</button></template>
           </el-popconfirm>
         </template>
       </el-table-column>
@@ -45,11 +45,11 @@
     <el-dialog v-model="showResult" :title="current?.name" width="900px">
       <div v-if="current" class="detail">
         <div v-if="auth.isAdmin" class="sqlbox">{{ current.sql }}</div>
-        <el-alert v-if="current.last_status === 'error'" type="error" :closable="false" show-icon :title="current.last_error || '오류'" />
+        <el-alert v-if="current.last_status === 'error'" type="error" :closable="false" show-icon :title="current.last_error || $t('오류')" />
         <p v-else-if="current.last_run_at" class="note">
-          {{ fmt(current.last_run_at) }} 실행 · 전체 {{ (current.last_row_count ?? 0).toLocaleString() }}행 중 앞 {{ results.length }}행을 보관합니다.
+          {{ $t('{when} 실행 · 전체 {total}행 중 앞 {kept}행을 보관합니다.', { when: fmt(current.last_run_at), total: (current.last_row_count ?? 0).toLocaleString(), kept: results.length }) }}
         </p>
-        <p v-else class="note">아직 실행되지 않았습니다. '지금 실행'을 눌러 보세요.</p>
+        <p v-else class="note">{{ $t('아직 실행되지 않았습니다. \'지금 실행\'을 눌러 보세요.') }}</p>
         <el-table v-if="results.length" :data="results" size="small" border max-height="420">
           <el-table-column v-for="c in columns" :key="c" :prop="c" :label="c" min-width="120" show-overflow-tooltip />
         </el-table>
@@ -59,6 +59,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatDateTime, t } from '../i18n'
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, type Report } from '../services/api'
@@ -76,16 +77,16 @@ const current = ref<(Report & { results?: any[] }) | null>(null)
 const results = computed(() => current.value?.results || [])
 const columns = computed(() => (results.value.length ? Object.keys(results.value[0]) : []))
 
-const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '—')
+const fmt = (iso: string | null) => (iso ? formatDateTime(iso) : '—')
 
-const schedule = (r: Report) => describeSchedule(r.frequency, r.hour, r.weekday, r.day)
+const schedule = (r: Report) => describeSchedule(r.frequency, r.hour, r.weekday, r.day, t)
 
 async function load() {
   loading.value = true
   try {
     reports.value = await api.reports.list()
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '보고서를 불러오지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('보고서를 불러오지 못했습니다'))
   } finally {
     loading.value = false
   }
@@ -96,7 +97,7 @@ async function open(r: Report) {
     current.value = await api.reports.get(r.id)
     showResult.value = true
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '결과를 불러오지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('결과를 불러오지 못했습니다'))
   }
 }
 
@@ -107,7 +108,7 @@ async function runNow(r: Report) {
     await load()
     showResult.value = true
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '실행하지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('실행하지 못했습니다'))
   } finally {
     running.value = null
   }
@@ -118,7 +119,7 @@ async function toggle(r: Report) {
     await api.reports.setActive(r.id, !r.is_active)
     await load()
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '변경하지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('변경하지 못했습니다'))
   }
 }
 
@@ -127,7 +128,7 @@ async function remove(r: Report) {
     await api.reports.remove(r.id)
     await load()
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '삭제하지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('삭제하지 못했습니다'))
   }
 }
 

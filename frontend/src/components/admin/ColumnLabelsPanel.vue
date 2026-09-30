@@ -1,25 +1,23 @@
 <template>
   <div class="labels">
-    <p class="intro">
-      결과 표와 스키마 트리에 보이는 <b>한글 컬럼명</b>을 여기서 관리합니다. 정하지 않은 컬럼은 DB의
-      <b>COMMENT(설명)</b>가 그대로 쓰이고, 여기서 정한 이름이 있으면 그것이 우선합니다. 이름은 <b>컬럼명 기준</b>이라
-      한 번 정하면 같은 이름을 쓰는 모든 테이블·뷰에 적용되고, 특정 테이블만 다르게 부르고 싶을 때만 <b>테이블별 예외</b>를 추가합니다.
-      LLM에게 보내는 컬럼 설명에도 같은 이름이 쓰입니다.
-    </p>
+    <p
+      class="intro"
+      v-html="$th('결과 표와 스키마 트리에 보이는 <b>한글 컬럼명</b>을 여기서 관리합니다. 정하지 않은 컬럼은 DB의 <b>COMMENT(설명)</b>가 그대로 쓰이고, 여기서 정한 이름이 있으면 그것이 우선합니다. 이름은 <b>컬럼명 기준</b>이라 한 번 정하면 같은 이름을 쓰는 모든 테이블·뷰에 적용되고, 특정 테이블만 다르게 부르고 싶을 때만 <b>테이블별 예외</b>를 추가합니다. LLM에게 보내는 컬럼 설명에도 같은 이름이 쓰입니다.')"
+    ></p>
 
     <div class="bar">
       <span class="field">
-        연결
+        {{ $t('연결') }}
         <el-select v-model="connectionId" size="small" style="width: 200px" @change="load">
           <el-option v-for="c in databaseStore.activeConnections" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
       </span>
-      <el-input v-model="filter" size="small" clearable placeholder="컬럼명 · 한글명 · 테이블 검색" style="width: 240px" />
-      <el-checkbox v-model="onlyUnmapped" size="small">미매핑만 ({{ summary.unmapped }})</el-checkbox>
+      <el-input v-model="filter" size="small" clearable :placeholder="$t('컬럼명 · 한글명 · 테이블 검색')" style="width: 240px" />
+      <el-checkbox v-model="onlyUnmapped" size="small">{{ $t('미매핑만 ({n})', { n: summary.unmapped }) }}</el-checkbox>
       <span class="spacer" />
-      <button class="btn" :disabled="!connectionId" @click="download">엑셀 내려받기</button>
+      <button class="btn" :disabled="!connectionId" @click="download">{{ $t('엑셀 내려받기') }}</button>
       <button class="btn" :disabled="!connectionId || importing" @click="picker?.click()">
-        {{ importing ? '올리는 중…' : '엑셀 올리기' }}
+        {{ importing ? $t('올리는 중…') : $t('엑셀 올리기') }}
       </button>
       <input ref="picker" type="file" accept=".xlsx" hidden @change="upload" />
     </div>
@@ -27,8 +25,11 @@
     <div class="progress" :class="{ complete: summary.total > 0 && summary.unmapped === 0 }">
       <el-progress :percentage="percent" :stroke-width="8" :show-text="false" />
       <span>
-        컬럼명 {{ summary.total }}개 중 <b>{{ summary.mapped }}개</b> 이름 있음
-        <template v-if="summary.unmapped">· <em>{{ summary.unmapped }}개는 DB 설명도 없어 영문 그대로 보입니다</em></template>
+        <span v-html="$th('컬럼명 {total}개 중 <b>{mapped}개</b> 이름 있음', { total: summary.total, mapped: summary.mapped })"></span>
+        <template v-if="summary.unmapped">
+          ·
+          <em>{{ $t('{n}개는 DB 설명도 없어 영문 그대로 보입니다', { n: summary.unmapped }) }}</em>
+        </template>
       </span>
     </div>
 
@@ -38,14 +39,14 @@
       :closable="true"
       show-icon
       class="result"
-      :title="`엑셀 반영: ${result.applied}개 저장, ${result.unchanged}개는 이미 같은 이름${result.problems.length ? `, ${result.problems.length}개 건너뜀` : ''}`"
+      :title="importTitle(result)"
       @close="result = null"
     >
       <ul v-if="result.problems.length" class="problems">
         <li v-for="(p, i) in result.problems.slice(0, 8)" :key="i">
-          <template v-if="p.row">{{ p.row }}행: </template>{{ p.reason }}
+          <template v-if="p.row">{{ $t('{n}행:', { n: p.row }) }} </template>{{ p.reason }}
         </li>
-        <li v-if="result.problems.length > 8">… 외 {{ result.problems.length - 8 }}건</li>
+        <li v-if="result.problems.length > 8">{{ $t('… 외 {n}건', { n: result.problems.length - 8 }) }}</li>
       </ul>
     </el-alert>
 
@@ -55,27 +56,27 @@
       size="small"
       border
       max-height="440"
-      empty-text="표시할 컬럼이 없습니다"
+      :empty-text="$t('표시할 컬럼이 없습니다')"
     >
-      <el-table-column label="컬럼명" width="190" show-overflow-tooltip>
+      <el-table-column :label="$t('컬럼명')" width="190" show-overflow-tooltip>
         <template #default="{ row }"><code>{{ row.name }}</code></template>
       </el-table-column>
-      <el-table-column label="테이블" width="90" align="center">
+      <el-table-column :label="$t('테이블')" width="90" align="center">
         <template #default="{ row }">
-          <el-tooltip :content="row.tables.join(', ') || '(이 연결에 없는 컬럼)'" placement="top">
-            <span :class="{ gone: !row.tables.length }">{{ row.tables.length || '없음' }}</span>
+          <el-tooltip :content="row.tables.join(', ') || $t('(이 연결에 없는 컬럼)')" placement="top">
+            <span :class="{ gone: !row.tables.length }">{{ row.tables.length || $t('없음') }}</span>
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column label="DB 설명 (COMMENT)" min-width="180" show-overflow-tooltip>
+      <el-table-column :label="$t('DB 설명 (COMMENT)')" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">{{ row.comment || '—' }}</template>
       </el-table-column>
-      <el-table-column label="한글명" min-width="230">
+      <el-table-column :label="$t('한글명')" min-width="230">
         <template #default="{ row }">
           <el-input
             v-model="drafts[row.name]"
             size="small"
-            :placeholder="row.comment || '한글명 입력'"
+            :placeholder="row.comment || $t('한글명 입력')"
             maxlength="100"
             :class="{ custom: row.source === 'connection' }"
             @change="save(row)"
@@ -83,66 +84,66 @@
           />
         </template>
       </el-table-column>
-      <el-table-column label="출처" width="96" align="center">
+      <el-table-column :label="$t('출처')" width="96" align="center">
         <template #default="{ row }">
-          <el-tag v-if="row.source === 'connection'" size="small" type="success">지정</el-tag>
-          <el-tag v-else-if="row.source === 'comment'" size="small" type="info">DB 설명</el-tag>
-          <el-tag v-else-if="row.source === 'name'" size="small" type="info">한글 컬럼명</el-tag>
-          <el-tag v-else size="small" type="danger">없음</el-tag>
+          <el-tag v-if="row.source === 'connection'" size="small" type="success">{{ $t('지정') }}</el-tag>
+          <el-tag v-else-if="row.source === 'comment'" size="small" type="info">{{ $t('DB 설명') }}</el-tag>
+          <el-tag v-else-if="row.source === 'name'" size="small" type="info">{{ $t('한글 컬럼명') }}</el-tag>
+          <el-tag v-else size="small" type="danger">{{ $t('없음') }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="테이블별 예외" min-width="220">
+      <el-table-column :label="$t('테이블별 예외')" min-width="220">
         <template #default="{ row }">
           <span v-for="e in row.exceptions" :key="e.id" class="exc">
             {{ e.table_key }}: <b>{{ e.label }}</b>
-            <button class="x" title="예외 삭제" @click="removeException(e.id)">×</button>
+            <button class="x" :title="$t('예외 삭제')" @click="removeException(e.id)">×</button>
           </span>
-          <button v-if="row.tables.length > 1" class="link" @click="openException(row)">+ 예외</button>
+          <button v-if="row.tables.length > 1" class="link" @click="openException(row)">{{ $t('+ 예외') }}</button>
         </template>
       </el-table-column>
       <el-table-column label="" width="70" align="center">
         <template #default="{ row }">
-          <button v-if="row.id" class="link danger" title="지정한 이름을 지우고 DB 설명으로 되돌립니다" @click="clear(row)">
-            되돌리기
+          <button v-if="row.id" class="link danger" :title="$t('지정한 이름을 지우고 DB 설명으로 되돌립니다')" @click="clear(row)">
+            {{ $t('되돌리기') }}
           </button>
         </template>
       </el-table-column>
     </el-table>
 
     <!-- A different name for one table only -->
-    <el-dialog v-model="exceptionOpen" title="테이블별 예외" width="420px" append-to-body>
-      <p class="exc-note">
-        <code>{{ exceptionRow?.name }}</code> 을(를) 선택한 테이블에서만 다른 이름으로 부릅니다.
-        결과에는 컬럼명만 담겨 있어, 질문의 SQL이 읽는 테이블의 이름이 우선 쓰입니다.
-      </p>
+    <el-dialog v-model="exceptionOpen" :title="$t('테이블별 예외')" width="420px" append-to-body>
+      <p
+        class="exc-note"
+        v-html="$th('<code>{name}</code> 을(를) 선택한 테이블에서만 다른 이름으로 부릅니다. 결과에는 컬럼명만 담겨 있어, 질문의 SQL이 읽는 테이블의 이름이 우선 쓰입니다.', { name: exceptionRow?.name ?? '' })"
+      ></p>
       <div class="exc-form">
-        <el-select v-model="exceptionTable" placeholder="테이블" size="small">
+        <el-select v-model="exceptionTable" :placeholder="$t('테이블')" size="small">
           <el-option v-for="t in exceptionRow?.tables || []" :key="t" :label="t" :value="t" />
         </el-select>
-        <el-input v-model="exceptionLabel" size="small" placeholder="한글명" maxlength="100" />
+        <el-input v-model="exceptionLabel" size="small" :placeholder="$t('한글명')" maxlength="100" />
       </div>
       <template #footer>
-        <el-button @click="exceptionOpen = false">취소</el-button>
-        <el-button type="primary" :disabled="!exceptionTable || !exceptionLabel.trim()" @click="saveException">저장</el-button>
+        <el-button @click="exceptionOpen = false">{{ $t('취소') }}</el-button>
+        <el-button type="primary" :disabled="!exceptionTable || !exceptionLabel.trim()" @click="saveException">{{ $t('저장') }}</el-button>
       </template>
     </el-dialog>
 
-    <h4 class="terms-title">계산 컬럼 용어 <small>(모든 연결 공통)</small></h4>
-    <p class="intro small">
-      <code>SUM(승인금액)</code> 같은 계산 컬럼은 컬럼명에 아래 용어를 붙여 <b>승인금액 합계</b>처럼 표시합니다.
-      "계산값"은 PostgreSQL이 이름을 붙이지 못한 식(<code>?column?</code>)의 이름입니다.
-    </p>
+    <h4 class="terms-title">{{ $t('계산 컬럼 용어') }} <small>{{ $t('(모든 연결 공통)') }}</small></h4>
+    <p
+      class="intro small"
+      v-html="$th('<code>SUM(승인금액)</code> 같은 계산 컬럼은 컬럼명에 아래 용어를 붙여 <b>승인금액 합계</b>처럼 표시합니다. <b>계산값</b>은 PostgreSQL이 이름을 붙이지 못한 식(<code>?column?</code>)의 이름입니다.')"
+    ></p>
     <el-table :data="terms" size="small" border>
-      <el-table-column label="함수" width="140"><template #default="{ row }"><code>{{ row.func }}</code></template></el-table-column>
-      <el-table-column label="기본값" width="140" prop="default" />
-      <el-table-column label="표시 이름" min-width="200">
+      <el-table-column :label="$t('함수')" width="140"><template #default="{ row }"><code>{{ row.func }}</code></template></el-table-column>
+      <el-table-column :label="$t('기본값')" width="140" prop="default" />
+      <el-table-column :label="$t('표시 이름')" min-width="200">
         <template #default="{ row }">
           <el-input v-model="termDrafts[row.func]" size="small" maxlength="50" :class="{ custom: row.customized }" @change="saveTerm(row)" />
         </template>
       </el-table-column>
       <el-table-column label="" width="90" align="center">
         <template #default="{ row }">
-          <button v-if="row.customized" class="link" @click="resetTerm(row)">기본값으로</button>
+          <button v-if="row.customized" class="link" @click="resetTerm(row)">{{ $t('기본값으로') }}</button>
         </template>
       </el-table-column>
     </el-table>
@@ -150,6 +151,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '../../i18n'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
@@ -196,6 +198,12 @@ const visibleRows = computed(() => {
   })
 })
 
+/** The title of the result box after an Excel sheet is applied. */
+function importTitle(r: ColumnLabelImportResult) {
+  const head = t('엑셀 반영: {applied}개 저장, {unchanged}개는 이미 같은 이름', { applied: r.applied, unchanged: r.unchanged })
+  return r.problems.length ? `${head}${t(', {n}개 건너뜀', { n: r.problems.length })}` : head
+}
+
 function fail(e: any, fallback: string) {
   const detail = e?.response?.data?.detail
   ElMessage.error(typeof detail === 'string' ? detail : fallback)
@@ -211,7 +219,7 @@ async function load() {
     summary.value = data.summary
     for (const r of data.columns) drafts[r.name] = r.source === 'connection' ? r.label || '' : ''
   } catch (e) {
-    fail(e, '컬럼 목록을 불러오지 못했습니다')
+    fail(e, t('컬럼 목록을 불러오지 못했습니다'))
   } finally {
     loading.value = false
   }
@@ -231,10 +239,10 @@ async function save(row: ColumnLabelRow) {
     await api.columnLabels.set(connectionId.value, { column_name: row.name, label: value })
     await load()
     await refreshScreens()
-    ElMessage.success(value ? `${row.name} → ${value}` : `${row.name}: DB 설명으로 되돌렸습니다`)
+    ElMessage.success(value ? `${row.name} → ${value}` : t('{name}: DB 설명으로 되돌렸습니다', { name: row.name }))
   } catch (e) {
     drafts[row.name] = current
-    fail(e, '저장하지 못했습니다')
+    fail(e, t('저장하지 못했습니다'))
   }
 }
 
@@ -261,9 +269,9 @@ async function saveException() {
     exceptionOpen.value = false
     await load()
     await refreshScreens()
-    ElMessage.success('테이블별 예외를 저장했습니다')
+    ElMessage.success(t('테이블별 예외를 저장했습니다'))
   } catch (e) {
-    fail(e, '저장하지 못했습니다')
+    fail(e, t('저장하지 못했습니다'))
   }
 }
 
@@ -274,7 +282,7 @@ async function removeException(id: number) {
     await load()
     await refreshScreens()
   } catch (e) {
-    fail(e, '삭제하지 못했습니다')
+    fail(e, t('삭제하지 못했습니다'))
   }
 }
 
@@ -285,11 +293,11 @@ async function download() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `컬럼_한글명_${databaseStore.activeConnections.find((c) => c.id === connectionId.value)?.name || connectionId.value}.xlsx`
+    a.download = `${t('컬럼_한글명')}_${databaseStore.activeConnections.find((c) => c.id === connectionId.value)?.name || connectionId.value}.xlsx`
     a.click()
     URL.revokeObjectURL(url)
   } catch (e) {
-    fail(e, '내려받지 못했습니다')
+    fail(e, t('내려받지 못했습니다'))
   }
 }
 
@@ -304,7 +312,7 @@ async function upload(event: Event) {
     await load()
     await refreshScreens()
   } catch (e) {
-    fail(e, '엑셀을 반영하지 못했습니다')
+    fail(e, t('엑셀을 반영하지 못했습니다'))
   } finally {
     importing.value = false
   }
@@ -321,7 +329,7 @@ async function loadTerms() {
   try {
     takeTerms(await api.expressionTerms.list())
   } catch (e) {
-    fail(e, '용어를 불러오지 못했습니다')
+    fail(e, t('용어를 불러오지 못했습니다'))
   }
 }
 
@@ -337,7 +345,7 @@ async function saveTerm(row: ExpressionTermRow) {
     ElMessage.success(`${row.func} → ${value}`)
   } catch (e) {
     termDrafts[row.func] = row.label
-    fail(e, '저장하지 못했습니다')
+    fail(e, t('저장하지 못했습니다'))
   }
 }
 
@@ -345,7 +353,7 @@ async function resetTerm(row: ExpressionTermRow) {
   try {
     takeTerms(await api.expressionTerms.reset(row.func))
   } catch (e) {
-    fail(e, '되돌리지 못했습니다')
+    fail(e, t('되돌리지 못했습니다'))
   }
 }
 

@@ -2,6 +2,7 @@
  * Database Store (Pinia)
  * Manages database connections state
  */
+import { t } from '../i18n'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
@@ -67,7 +68,7 @@ export const useDatabaseStore = defineStore('database', () => {
         }
       }
     } catch (error: any) {
-      ElMessage.error('Failed to fetch database connections')
+      ElMessage.error(t('연결 목록을 불러오지 못했습니다'))
       console.error(error)
     } finally {
       loading.value = false
@@ -85,10 +86,10 @@ export const useDatabaseStore = defineStore('database', () => {
         activeConnectionId.value = newConnection.id
       }
 
-      ElMessage.success(`Connection "${newConnection.name}" created successfully`)
+      ElMessage.success(t('"{name}" 연결을 추가했습니다', { name: newConnection.name }))
       return newConnection
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Failed to create connection'
+      const message = error.response?.data?.detail || t('연결을 추가하지 못했습니다')
       ElMessage.error(message)
       throw error
     } finally {
@@ -103,16 +104,16 @@ export const useDatabaseStore = defineStore('database', () => {
 
       if (result.status === 'success') {
         ElMessage.success({
-          message: `Connection successful!\nDatabase: ${result.database}\nUser: ${result.user}`,
+          message: t('연결에 성공했습니다\n데이터베이스: {database}\n사용자: {user}', { database: result.database ?? '', user: result.user ?? '' }),
           duration: 3000
         })
       } else {
-        ElMessage.error(`Connection failed: ${result.error}`)
+        ElMessage.error(t('연결에 실패했습니다: {error}', { error: result.error ?? '' }))
       }
 
       return result
     } catch (error: any) {
-      ElMessage.error('Failed to test connection')
+      ElMessage.error(t('연결을 테스트하지 못했습니다'))
       throw error
     } finally {
       loading.value = false
@@ -133,10 +134,10 @@ export const useDatabaseStore = defineStore('database', () => {
         activeConnectionId.value = activeConnections.value[0]?.id || null
       }
 
-      ElMessage.success(`"${updated.name}" 연결을 수정했습니다`)
+      ElMessage.success(t('"{name}" 연결을 수정했습니다', { name: updated.name }))
       return updated
     } catch (error: any) {
-      ElMessage.error(error.response?.data?.detail || '연결을 수정하지 못했습니다')
+      ElMessage.error(error.response?.data?.detail || t('연결을 수정하지 못했습니다'))
       throw error
     } finally {
       loading.value = false
@@ -154,7 +155,7 @@ export const useDatabaseStore = defineStore('database', () => {
       if (index !== -1) {
         const deletedName = connections.value[index].name
         connections.value.splice(index, 1)
-        ElMessage.success(`Connection "${deletedName}" deleted`)
+        ElMessage.success(t('"{name}" 연결을 삭제했습니다', { name: deletedName }))
       }
 
       // Clear active if it was deleted
@@ -162,7 +163,7 @@ export const useDatabaseStore = defineStore('database', () => {
         activeConnectionId.value = connections.value[0]?.id || null
       }
     } catch (error: any) {
-      ElMessage.error('Failed to delete connection')
+      ElMessage.error(t('연결을 삭제하지 못했습니다'))
       throw error
     } finally {
       loading.value = false

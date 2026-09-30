@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import { t } from '../i18n'
 import { useAuthStore } from '../stores/auth'
 
 const routes: Array<RouteRecordRaw> = [
@@ -10,19 +11,19 @@ const routes: Array<RouteRecordRaw> = [
     path: '/query',
     name: 'query',
     component: () => import('../views/QueryView.vue'),
-    meta: { title: 'Query' }
+    meta: { title: '질의' }
   },
   {
     path: '/databases',
     name: 'databases',
     component: () => import('../views/DatabaseView.vue'),
-    meta: { title: 'Databases', roles: ['admin'] }
+    meta: { title: '데이터', roles: ['admin'] }
   },
   {
     path: '/history',
     name: 'history',
     component: () => import('../views/HistoryView.vue'),
-    meta: { title: 'History' }
+    meta: { title: '이력' }
   }
   ,{
     path: '/reports',
@@ -34,7 +35,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/anomaly',
     name: 'anomaly',
     component: () => import('../views/AnomalyView.vue'),
-    meta: { title: 'Anomaly', roles: ['admin', 'auditor'] }
+    meta: { title: '점검', roles: ['admin', 'auditor'] }
   }
   ,{
     path: '/settings',
@@ -46,7 +47,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/admin',
     name: 'admin',
     component: () => import('../views/AdminView.vue'),
-    meta: { title: '사용자·감사 로그', roles: ['admin'] }
+    meta: { title: '관리', roles: ['admin'] }
   }
   ,{
     path: '/login',
@@ -68,7 +69,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  document.title = `${to.meta.title || 'KFMS'} - Knowledge Flow Management System`
+  document.title = `${to.meta.title ? t(String(to.meta.title)) : 'KFMS'} - Knowledge Flow Management System`
 
   const auth = useAuthStore()
   try {

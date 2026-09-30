@@ -8,18 +8,18 @@
 
     <el-card v-if="!queryStore.queryResults" class="help-card">
       <template #header>
-        <span>💡 Example Questions</span>
+        <span>{{ $t('💡 질문 예시') }}</span>
       </template>
       <ul class="examples">
-        <li>"카테고리별 총 매출을 보여줘"</li>
-        <li>"월별 매출 추이를 보여줘"</li>
-        <li>"30대 고객의 총 구매 금액은?"</li>
-        <li>"가장 많이 구매한 고객 TOP 5"</li>
+        <li>{{ $t('"카테고리별 총 매출을 보여줘"') }}</li>
+        <li>{{ $t('"월별 매출 추이를 보여줘"') }}</li>
+        <li>{{ $t('"30대 고객의 총 구매 금액은?"') }}</li>
+        <li>{{ $t('"가장 많이 구매한 고객 TOP 5"') }}</li>
       </ul>
       <el-alert type="info" :closable="false" show-icon>
         <template #title>
-          <template v-if="auth.isAdmin">질문을 SQL로 변환한 뒤, 실행 전에 확인을 거칩니다.</template>
-          <template v-else>질문을 적고 <b>질문하기</b>를 누르면 결과가 바로 표로 나옵니다.</template>
+          <template v-if="auth.isAdmin">{{ $t('질문을 SQL로 변환한 뒤, 실행 전에 확인을 거칩니다.') }}</template>
+          <span v-else v-html="$t('질문을 적고 <b>질문하기</b>를 누르면 결과가 바로 표로 나옵니다.')"></span>
         </template>
       </el-alert>
     </el-card>

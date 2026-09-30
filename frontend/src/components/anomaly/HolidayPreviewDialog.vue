@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="적용되는 공휴일"
+    :title="$t('적용되는 공휴일')"
     width="640px"
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
@@ -10,98 +10,99 @@
     <!-- Where the list comes from, and whether a newly announced holiday has been picked up -->
     <section class="status">
       <div class="line">
-        <span class="k">내장 달력</span>
-        <span>holidays {{ status?.package_version || '—' }} <small>(설날·추석·대체공휴일 자동 계산)</small></span>
+        <span class="k">{{ $t('내장 달력') }}</span>
+        <span>holidays {{ status?.package_version || '—' }} <small>{{ $t('(설날·추석·대체공휴일 자동 계산)') }}</small></span>
       </div>
       <div class="line">
-        <span class="k">동기화</span>
+        <span class="k">{{ $t('동기화') }}</span>
         <span v-if="status?.last_synced_at">
           {{ fmt(status.last_synced_at) }} ·
           <b :class="status.last_status">{{ statusText }}</b>
-          <template v-if="status.last_source"> · 출처 {{ SOURCE_NAMES[status.last_source] || status.last_source }}</template>
-          · 받은 공휴일 {{ status.synced_count }}일
+          <template v-if="status.last_source"> · {{ $t('출처 {name}', { name: sourceName(status.last_source) }) }}</template>
+          · {{ $t('받은 공휴일 {n}일', { n: status.synced_count }) }}
         </span>
-        <span v-else class="muted">아직 동기화한 적이 없습니다 (하루에 한 번 자동으로 받아 옵니다)</span>
+        <span v-else class="muted">{{ $t('아직 동기화한 적이 없습니다 (하루에 한 번 자동으로 받아 옵니다)') }}</span>
       </div>
       <p v-if="status?.last_error" class="err">{{ status.last_error }}</p>
       <div class="actions">
-        <el-button size="small" :loading="syncing" @click="syncNow">지금 동기화</el-button>
+        <el-button size="small" :loading="syncing" @click="syncNow">{{ $t('지금 동기화') }}</el-button>
         <el-button v-if="auth.isAdmin" size="small" @click="openKey">
-          공식 서비스키 {{ status?.key_saved ? '(저장됨)' : '설정' }}
+          {{ status?.key_saved ? $t('공식 서비스키 (저장됨)') : $t('공식 서비스키 설정') }}
         </el-button>
         <span class="hint">
-          {{ status?.key_saved ? '공식(공공데이터포털)을 먼저 쓰고, 실패하면 구글 캘린더로 대신합니다' : '서비스키가 없어 구글 공개 캘린더에서 받습니다' }}
+          {{ status?.key_saved ? $t('공식(공공데이터포털)을 먼저 쓰고, 실패하면 구글 캘린더로 대신합니다') : $t('서비스키가 없어 구글 공개 캘린더에서 받습니다') }}
         </span>
       </div>
     </section>
 
     <!-- Is this date counted? -->
     <section class="check">
-      <strong>날짜 확인</strong>
-      <el-date-picker v-model="checkDate" type="date" value-format="YYYY-MM-DD" size="small" placeholder="날짜 선택" style="width: 160px" />
-      <el-button size="small" type="primary" :disabled="!checkDate" :loading="checking" @click="checkOne">확인</el-button>
+      <strong>{{ $t('날짜 확인') }}</strong>
+      <el-date-picker v-model="checkDate" type="date" value-format="YYYY-MM-DD" size="small" :placeholder="$t('날짜 선택')" style="width: 160px" />
+      <el-button size="small" type="primary" :disabled="!checkDate" :loading="checking" @click="checkOne">{{ $t('확인') }}</el-button>
       <div v-if="answer" class="answer" :class="answer.holiday ? 'yes' : 'no'">
         <div>
           <b>{{ answer.date }} ({{ answer.weekday }})</b>
           — {{ answer.message }}
         </div>
         <div v-if="answer.reason === 'not_found' || answer.reason === 'excluded'" class="answer-actions">
-          <el-button v-if="answer.reason === 'not_found'" size="small" @click="addExtra">추가 공휴일로 등록</el-button>
-          <el-button v-if="answer.reason === 'excluded'" size="small" @click="undoException">제외 취소</el-button>
+          <el-button v-if="answer.reason === 'not_found'" size="small" @click="addExtra">{{ $t('추가 공휴일로 등록') }}</el-button>
+          <el-button v-if="answer.reason === 'excluded'" size="small" @click="undoException">{{ $t('제외 취소') }}</el-button>
         </div>
       </div>
     </section>
 
     <div class="year">
       <el-button size="small" :disabled="year <= 2000" @click="move(-1)">◀</el-button>
-      <strong>{{ year }}년</strong>
+      <strong>{{ $t('{y}년', { y: year }) }}</strong>
       <el-button size="small" :disabled="year >= 2100" @click="move(1)">▶</el-button>
-      <el-checkbox v-model="onlyTemporary" size="small">임시공휴일·새로 반영된 날만</el-checkbox>
-      <span class="total">{{ activeCount }}일</span>
+      <el-checkbox v-model="onlyTemporary" size="small">{{ $t('임시공휴일·새로 반영된 날만') }}</el-checkbox>
+      <span class="total">{{ $t('{n}일', { n: activeCount }) }}</span>
     </div>
 
-    <el-table v-loading="loading" :data="shownRows" size="small" border max-height="300" empty-text="해당하는 공휴일이 없습니다">
-      <el-table-column label="날짜" width="150">
+    <el-table v-loading="loading" :data="shownRows" size="small" border max-height="300" :empty-text="$t('해당하는 공휴일이 없습니다')">
+      <el-table-column :label="$t('날짜')" width="150">
         <template #default="{ row }">
           <span :class="{ struck: row.excluded }">{{ row.date }} ({{ weekday(row.date) }})</span>
         </template>
       </el-table-column>
-      <el-table-column label="이름" min-width="150">
+      <el-table-column :label="$t('이름')" min-width="150">
         <template #default="{ row }">
-          <span :class="{ struck: row.excluded }">{{ row.name || '(이름 없음)' }}</span>
-          <el-tag v-if="row.temporary" size="small" type="warning" effect="plain" class="ml">임시</el-tag>
+          <span :class="{ struck: row.excluded }">{{ row.name || $t('(이름 없음)') }}</span>
+          <el-tag v-if="row.temporary" size="small" type="warning" effect="plain" class="ml">{{ $t('임시') }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="구분" width="120" align="center">
+      <el-table-column :label="$t('구분')" width="120" align="center">
         <template #default="{ row }">
-          <el-tag v-if="row.excluded" size="small" type="danger">제외됨</el-tag>
-          <el-tag v-else-if="row.source === 'extra'" size="small" type="success">추가</el-tag>
-          <el-tag v-else-if="row.new" size="small" type="warning">새로 반영</el-tag>
-          <el-tag v-else-if="row.source === 'synced'" size="small">동기화</el-tag>
-          <el-tag v-else size="small" type="info">내장</el-tag>
+          <el-tag v-if="row.excluded" size="small" type="danger">{{ $t('제외됨') }}</el-tag>
+          <el-tag v-else-if="row.source === 'extra'" size="small" type="success">{{ $t('추가') }}</el-tag>
+          <el-tag v-else-if="row.new" size="small" type="warning">{{ $t('새로 반영') }}</el-tag>
+          <el-tag v-else-if="row.source === 'synced'" size="small">{{ $t('동기화') }}</el-tag>
+          <el-tag v-else size="small" type="info">{{ $t('내장') }}</el-tag>
         </template>
       </el-table-column>
     </el-table>
 
     <template #footer>
-      <el-button @click="emit('update:modelValue', false)">닫기</el-button>
+      <el-button @click="emit('update:modelValue', false)">{{ $t('닫기') }}</el-button>
     </template>
 
-    <el-dialog v-model="keyOpen" title="공공데이터포털 서비스키" width="460px" append-to-body>
-      <p class="note">
-        공공데이터포털(data.go.kr)에서 <b>한국천문연구원 특일 정보</b> 활용 신청 후 발급되는 무료 서비스키입니다.
-        저장한 키는 암호화되고 화면에 다시 나타나지 않습니다. 비워서 저장하면 키를 지우고 구글 캘린더만 씁니다.
-      </p>
-      <el-input v-model="keyText" type="password" show-password placeholder="서비스키 (Encoding · Decoding 어느 것이나)" autocomplete="off" />
+    <el-dialog v-model="keyOpen" :title="$t('공공데이터포털 서비스키')" width="460px" append-to-body>
+      <p
+        class="note"
+        v-html="$th('공공데이터포털(data.go.kr)에서 <b>한국천문연구원 특일 정보</b> 활용 신청 후 발급되는 무료 서비스키입니다. 저장한 키는 암호화되고 화면에 다시 나타나지 않습니다. 비워서 저장하면 키를 지우고 구글 캘린더만 씁니다.')"
+      ></p>
+      <el-input v-model="keyText" type="password" show-password :placeholder="$t('서비스키 (Encoding · Decoding 어느 것이나)')" autocomplete="off" />
       <template #footer>
-        <el-button @click="keyOpen = false">취소</el-button>
-        <el-button type="primary" :loading="savingKey" @click="saveKey">저장</el-button>
+        <el-button @click="keyOpen = false">{{ $t('취소') }}</el-button>
+        <el-button type="primary" :loading="savingKey" @click="saveKey">{{ $t('저장') }}</el-button>
       </template>
     </el-dialog>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
+import { formatDateTime, t } from '../../i18n'
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../../services/api'
@@ -161,12 +162,13 @@ const keyText = ref('')
 const savingKey = ref(false)
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토']
-const weekday = (iso: string) => DAYS[new Date(`${iso}T00:00:00Z`).getUTCDay()]
-const fmt = (iso: string) => new Date(iso).toLocaleString('ko-KR')
+const weekday = (iso: string) => t(DAYS[new Date(`${iso}T00:00:00Z`).getUTCDay()])
+const sourceName = (key: string) => (SOURCE_NAMES[key] ? t(SOURCE_NAMES[key]) : key)
+const fmt = (iso: string) => formatDateTime(iso)
 const shownRows = computed(() => (onlyTemporary.value ? rows.value.filter((r) => r.temporary || r.new) : rows.value))
 const activeCount = computed(() => shownRows.value.filter((r) => !r.excluded).length)
 const statusText = computed(() =>
-  status.value?.last_status === 'ok' ? '성공' : status.value?.last_status === 'partial' ? '일부만 성공' : '실패'
+  status.value?.last_status === 'ok' ? t('성공') : status.value?.last_status === 'partial' ? t('일부만 성공') : t('실패')
 )
 
 function settings() {
@@ -178,7 +180,7 @@ async function load() {
   try {
     rows.value = (await api.anomaly.holidayPreview({ year: year.value, ...settings() })).holidays
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '공휴일을 불러오지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('공휴일을 불러오지 못했습니다'))
     rows.value = []
   } finally {
     loading.value = false
@@ -210,10 +212,10 @@ async function syncNow() {
   try {
     status.value = await api.anomaly.holidaySync()
     await load()
-    if (status.value?.last_status === 'ok') ElMessage.success('공휴일을 새로 받아 왔습니다')
-    else ElMessage.warning(status.value?.last_error || '동기화하지 못했습니다')
+    if (status.value?.last_status === 'ok') ElMessage.success(t('공휴일을 새로 받아 왔습니다'))
+    else ElMessage.warning(status.value?.last_error || t('동기화하지 못했습니다'))
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '동기화하지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('동기화하지 못했습니다'))
   } finally {
     syncing.value = false
   }
@@ -229,7 +231,7 @@ async function checkOne() {
       await load()
     }
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '확인하지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('확인하지 못했습니다'))
   } finally {
     checking.value = false
   }
@@ -237,12 +239,12 @@ async function checkOne() {
 
 function addExtra() {
   emit('add-extra', checkDate.value)
-  ElMessage.success('추가 공휴일에 넣었습니다 (저장하면 적용됩니다)')
+  ElMessage.success(t('추가 공휴일에 넣었습니다 (저장하면 적용됩니다)'))
 }
 
 function undoException() {
   emit('remove-exception', checkDate.value)
-  ElMessage.success('제외를 취소했습니다 (저장하면 적용됩니다)')
+  ElMessage.success(t('제외를 취소했습니다 (저장하면 적용됩니다)'))
 }
 
 function openKey() {
@@ -255,9 +257,9 @@ async function saveKey() {
   try {
     status.value = await api.anomaly.holidayKey(keyText.value)
     keyOpen.value = false
-    ElMessage.success(keyText.value.trim() ? '서비스키를 저장했습니다. 지금 동기화로 확인해 보세요.' : '서비스키를 지웠습니다')
+    ElMessage.success(keyText.value.trim() ? t('서비스키를 저장했습니다. 지금 동기화로 확인해 보세요.') : t('서비스키를 지웠습니다'))
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '저장하지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('저장하지 못했습니다'))
   } finally {
     savingKey.value = false
   }

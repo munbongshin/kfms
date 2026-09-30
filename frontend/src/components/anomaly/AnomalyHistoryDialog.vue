@@ -1,34 +1,34 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="점검 기준 변경 이력"
+    :title="$t('점검 기준 변경 이력')"
     width="680px"
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
     @open="load"
   >
     <p class="intro">
-      누가 언제 어떤 기준을 바꿨는지 최근 순으로 보여 줍니다.
-      <template v-if="auth.isAuditor"><em>이 변경 이전으로</em>를 누르면 그 변경을 하기 전의 값으로 되돌립니다. 되돌리는 것도 새 변경으로 남습니다.</template>
+      {{ $t('누가 언제 어떤 기준을 바꿨는지 최근 순으로 보여 줍니다.') }}
+      <span v-if="auth.isAuditor" v-html="$th('<em>이 변경 이전으로</em>를 누르면 그 변경을 하기 전의 값으로 되돌립니다. 되돌리는 것도 새 변경으로 남습니다.')"></span>
     </p>
 
-    <el-empty v-if="!loading && !entries.length" description="아직 바꾼 기록이 없습니다" :image-size="60" />
+    <el-empty v-if="!loading && !entries.length" :description="$t('아직 바꾼 기록이 없습니다')" :image-size="60" />
 
     <div v-loading="loading" class="list">
       <article v-for="e in entries" :key="e.id" class="entry">
         <header>
           <span class="when">{{ fmt(e.changed_at) }}</span>
-          <span class="who">{{ e.changed_by || '알 수 없음' }}</span>
+          <span class="who">{{ e.changed_by || $t('알 수 없음') }}</span>
           <span class="spacer" />
           <el-popconfirm
             v-if="auth.isAuditor"
-            title="이 변경을 하기 전의 값으로 되돌릴까요?"
-            confirm-button-text="되돌리기"
-            cancel-button-text="취소"
+            :title="$t('이 변경을 하기 전의 값으로 되돌릴까요?')"
+            :confirm-button-text="$t('되돌리기')"
+            :cancel-button-text="$t('취소')"
             @confirm="restore(e)"
           >
             <template #reference>
-              <button class="link" :disabled="busy === e.id">{{ busy === e.id ? '되돌리는 중…' : '이 변경 이전으로' }}</button>
+              <button class="link" :disabled="busy === e.id">{{ busy === e.id ? $t('되돌리는 중…') : $t('이 변경 이전으로') }}</button>
             </template>
           </el-popconfirm>
         </header>
@@ -42,12 +42,13 @@
     </div>
 
     <template #footer>
-      <el-button @click="emit('update:modelValue', false)">닫기</el-button>
+      <el-button @click="emit('update:modelValue', false)">{{ $t('닫기') }}</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
+import { formatDateTime, t } from '../../i18n'
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, type AnomalySettingHistory } from '../../services/api'
@@ -61,14 +62,14 @@ const entries = ref<AnomalySettingHistory[]>([])
 const loading = ref(false)
 const busy = ref<number | null>(null)
 
-const fmt = (iso: string) => new Date(iso).toLocaleString('ko-KR')
+const fmt = (iso: string) => formatDateTime(iso)
 
 async function load() {
   loading.value = true
   try {
     entries.value = await api.anomaly.settingsHistory()
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '변경 이력을 불러오지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('변경 이력을 불러오지 못했습니다'))
   } finally {
     loading.value = false
   }
@@ -78,11 +79,11 @@ async function restore(entry: AnomalySettingHistory) {
   busy.value = entry.id
   try {
     await api.anomaly.restoreSettings(entry.id)
-    ElMessage.success('이전 값으로 되돌렸습니다. 다음 조회부터 적용됩니다.')
+    ElMessage.success(t('이전 값으로 되돌렸습니다. 다음 조회부터 적용됩니다.'))
     await load()
     emit('restored')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '되돌리지 못했습니다')
+    ElMessage.error(e.response?.data?.detail || t('되돌리지 못했습니다'))
   } finally {
     busy.value = null
   }

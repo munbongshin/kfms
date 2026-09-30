@@ -82,10 +82,10 @@ class LLMService:
         try:
             schema = await connection_pool.get_schema(database_id)
         except Exception as e:
-            raise ValueError(f"Failed to fetch schema for database {database_id}: {str(e)}")
+            raise ValueError(f"{database_id}번 연결의 스키마를 읽지 못했습니다: {str(e)}")
 
         if not schema:
-            raise ValueError(f"No schema found for database {database_id}")
+            raise ValueError(f"{database_id}번 연결에 조회할 수 있는 테이블이 없습니다")
 
         schema = apply_labels(analysis_schema(schema, excluded_tables), label_overrides or [])
         tables = await connection_pool.get_tables(database_id)
@@ -110,7 +110,7 @@ class LLMService:
                 "schema_used": schema
             }
         except Exception as e:
-            raise Exception(f"Failed to generate SQL: {str(e)}")
+            raise Exception(f"SQL을 생성하지 못했습니다: {str(e)}")
 
     async def recommend_visualization(
         self,

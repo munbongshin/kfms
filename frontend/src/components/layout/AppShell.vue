@@ -3,22 +3,23 @@
     <header class="top-bar">
       <span class="brand">KFMS</span>
       <span class="top-right">
-        <button class="who" :title="`역할: ${roleLabel} — 눌러서 내 정보 편집`" @click="showProfile = true">
+        <button class="who" :title="$t('역할: {role} — 눌러서 내 정보 편집', { role: roleLabel })" @click="showProfile = true">
           <el-icon><User /></el-icon>
           {{ auth.user?.display_name || auth.user?.username }}
           <em>{{ roleLabel }}</em>
         </button>
         <MyProfileDialog v-model="showProfile" />
-        <button class="logout" @click="signOut">로그아웃</button>
+        <LanguageSwitch />
+        <button class="logout" @click="signOut">{{ $t('로그아웃') }}</button>
         <!-- The connection every screen works on. It lives here, not in the
              tree, because the tree is shown on the query screen only. -->
-        <label class="conn-picker" title="조회할 데이터베이스 연결">
+        <label class="conn-picker" :title="$t('조회할 데이터베이스 연결')">
           <el-icon><Coin /></el-icon>
           <el-select
             v-model="activeConnection"
             size="small"
-            placeholder="연결 선택"
-            no-data-text="등록된 연결이 없습니다"
+            :placeholder="$t('연결 선택')"
+            :no-data-text="$t('등록된 연결이 없습니다')"
             style="width: 180px"
           >
             <el-option
@@ -42,15 +43,15 @@
 
       <aside v-if="showTree && !collapsed" class="tree-panel">
         <div class="panel-head">
-          <span>테이블</span>
+          <span>{{ $t('테이블') }}</span>
           <span class="panel-actions">
             <button
               class="panel-close"
-              title="데이터베이스에서 테이블 목록을 다시 읽습니다"
+              :title="$t('데이터베이스에서 테이블 목록을 다시 읽습니다')"
               :disabled="refreshing || !databaseStore.activeConnectionId"
               @click="refreshTables"
             >⟳</button>
-            <button class="panel-close" title="테이블 목록 접기" @click="toggle">«</button>
+            <button class="panel-close" :title="$t('테이블 목록 접기')" @click="toggle">«</button>
           </span>
         </div>
         <div class="tree-area">
@@ -66,11 +67,13 @@
 </template>
 
 <script setup lang="ts">
+import { roleName } from '../../i18n'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Coin, User } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
 import MyProfileDialog from './MyProfileDialog.vue'
+import LanguageSwitch from './LanguageSwitch.vue'
 import FunctionTabs from './FunctionTabs.vue'
 import SchemaTree from './SchemaTree.vue'
 import { useDatabaseStore } from '../../stores/database'
@@ -83,8 +86,7 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const showProfile = ref(false)
-const ROLE_LABELS: Record<string, string> = { admin: '관리자', auditor: '감사담당', viewer: '조회' }
-const roleLabel = computed(() => ROLE_LABELS[auth.role || ''] || '')
+const roleLabel = computed(() => roleName(auth.role))
 
 function signOut() {
   auth.logout()

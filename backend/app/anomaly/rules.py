@@ -310,7 +310,7 @@ def detect_split_payment(rows: List[Row], params: Dict[str, Any]) -> List[Findin
                     rule_code=params["code"],
                     subject=subject,
                     severity=params["severity"],
-                    summary=f"동일 가맹점 {span} {won(total)}",
+                    summary=f"동일 가맹점 {span} {int(total):,}원",
                     transactions=run,
                     amount=total,
                     occurred_on=date.fromisoformat(day),

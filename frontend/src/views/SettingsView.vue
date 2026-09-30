@@ -1,22 +1,22 @@
 <template>
   <div class="settings-view">
     <div class="page-title">
-      <h2>LLM 설정</h2>
+      <h2>{{ $t('LLM 설정') }}</h2>
       <span v-if="saved" class="in-use">
-        현재 사용 중:
+        {{ $t('현재 사용 중:') }}
         <strong>{{ platformOf(saved.provider)?.label }}</strong>
-        · {{ platformOf(saved.provider)?.model || '모델 없음' }}
-        <em v-if="saved.source === 'env'">(.env 기본값)</em>
+        · {{ platformOf(saved.provider)?.model || $t('모델 없음') }}
+        <em v-if="saved.source === 'env'">{{ $t('(.env 기본값)') }}</em>
       </span>
     </div>
 
-    <p class="notice">
-      질문을 SQL로 바꿀 LLM 서빙 플랫폼을 고릅니다. 저장하면 <strong>다음 질문부터 바로 적용</strong>되며,
-      서버를 다시 시작할 필요가 없습니다. 플랫폼마다 설정이 따로 저장되어 바꿔 가며 쓸 수 있습니다.
-    </p>
+    <p
+      class="notice"
+      v-html="$th('질문을 SQL로 바꿀 LLM 서빙 플랫폼을 고릅니다. 저장하면 <strong>다음 질문부터 바로 적용</strong>되며, 서버를 다시 시작할 필요가 없습니다. 플랫폼마다 설정이 따로 저장되어 바꿔 가며 쓸 수 있습니다.')"
+    ></p>
 
     <div v-loading="loading" class="panel">
-      <div class="section-title">서빙 플랫폼</div>
+      <div class="section-title">{{ $t('서빙 플랫폼') }}</div>
       <div class="platforms">
         <label
           v-for="p in platforms"
@@ -28,8 +28,8 @@
           <div>
             <div class="p-name">
               {{ p.label }}
-              <span v-if="saved?.provider === p.name" class="badge">사용 중</span>
-              <span v-if="p.external" class="badge ext">외부</span>
+              <span v-if="saved?.provider === p.name" class="badge">{{ $t('사용 중') }}</span>
+              <span v-if="p.external" class="badge ext">{{ $t('외부') }}</span>
             </div>
             <div class="p-desc">{{ p.description }}</div>
           </div>
@@ -43,19 +43,19 @@
           :closable="false"
           show-icon
           class="external"
-          title="외부 인터넷 서비스입니다. 질문과 테이블·컬럼 구조(한글명 포함)가 외부로 전송됩니다. 실제 거래 데이터 값은 전송되지 않습니다."
+          :title="$t('외부 인터넷 서비스입니다. 질문과 테이블·컬럼 구조(한글명 포함)가 외부로 전송됩니다. 실제 거래 데이터 값은 전송되지 않습니다.')"
         />
 
-        <div class="section-title">{{ active.label }} 설정</div>
+        <div class="section-title">{{ $t('{name} 설정', { name: active.label }) }}</div>
         <p class="hint">{{ active.hint }}</p>
 
         <div class="fields">
-          <label class="lbl">서버 주소</label>
+          <label class="lbl">{{ $t('서버 주소') }}</label>
           <div class="ctl">
             <el-input
               v-model="draft.base_url"
               :disabled="active.fixed_base_url"
-              :placeholder="active.default_base_url || 'http://서버:포트/v1'"
+              :placeholder="active.default_base_url || $t('http://서버:포트/v1')"
               style="width: 380px"
               @change="loadModels"
             />
@@ -64,14 +64,14 @@
               class="link"
               @click="draft.base_url = active.default_base_url"
             >
-              기본값
+              {{ $t('기본값') }}
             </button>
           </div>
 
           <template v-if="active.api_key !== 'none'">
             <label class="lbl">
-              API 키
-              <small v-if="active.api_key === 'optional'">(선택)</small>
+              {{ $t('API 키') }}
+              <small v-if="active.api_key === 'optional'">{{ $t('(선택)') }}</small>
             </label>
             <div class="ctl">
               <el-input
@@ -79,37 +79,37 @@
                 type="password"
                 show-password
                 autocomplete="new-password"
-                :placeholder="active.api_key_set ? `저장된 키 ${active.api_key_hint} — 바꿀 때만 입력` : active.api_key === 'required' ? 'API 키 입력' : '서버가 키를 요구할 때만 입력'"
+                :placeholder="active.api_key_set ? $t('저장된 키 {hint} — 바꿀 때만 입력', { hint: active.api_key_hint ?? '' }) : active.api_key === 'required' ? $t('API 키 입력') : $t('서버가 키를 요구할 때만 입력')"
                 style="width: 380px"
               />
               <button v-if="active.api_key_set && !draft.clear_api_key" class="link" @click="draft.clear_api_key = true">
-                저장된 키 삭제
+                {{ $t('저장된 키 삭제') }}
               </button>
               <span v-if="draft.clear_api_key" class="field-warn">
-                저장하면 키가 삭제됩니다
-                <button class="link" @click="draft.clear_api_key = false">취소</button>
+                {{ $t('저장하면 키가 삭제됩니다') }}
+                <button class="link" @click="draft.clear_api_key = false">{{ $t('취소') }}</button>
               </span>
-              <div class="field-hint">키는 암호화되어 저장되고, 화면으로는 다시 보내지 않습니다.</div>
+              <div class="field-hint">{{ $t('키는 암호화되어 저장되고, 화면으로는 다시 보내지 않습니다.') }}</div>
             </div>
           </template>
 
-          <label class="lbl">모델</label>
+          <label class="lbl">{{ $t('모델') }}</label>
           <div class="ctl">
             <el-select
               v-model="draft.model"
               filterable
               allow-create
               default-first-option
-              placeholder="모델 선택 또는 입력"
+              :placeholder="$t('모델 선택 또는 입력')"
               style="width: 380px"
               :loading="modelsLoading"
             >
               <el-option v-for="m in models" :key="m" :label="m" :value="m" />
             </el-select>
-            <button class="link" :disabled="modelsLoading" @click="loadModels">목록 불러오기</button>
+            <button class="link" :disabled="modelsLoading" @click="loadModels">{{ $t('목록 불러오기') }}</button>
             <div v-if="modelsError" class="field-error">{{ modelsError }}</div>
             <div v-else-if="models.length" class="field-hint">
-              서버에서 쓸 수 있는 모델 {{ models.length }}개 · 임베딩 전용 모델(embed, bge 등)은 SQL 생성에 쓸 수 없습니다
+              {{ $t('서버에서 쓸 수 있는 모델 {n}개 · 임베딩 전용 모델(embed, bge 등)은 SQL 생성에 쓸 수 없습니다', { n: models.length }) }}
             </div>
           </div>
         </div>
@@ -123,38 +123,38 @@
 
       <div class="actions">
         <button class="btn" :disabled="testing || saving" @click="runTest">
-          {{ testing ? '확인 중…' : '연결 테스트' }}
+          {{ testing ? $t('확인 중…') : $t('연결 테스트') }}
         </button>
         <button class="btn primary" :disabled="saving || testing || !dirty" @click="save">
-          {{ saving ? '저장 중…' : '저장' }}
+          {{ saving ? $t('저장 중…') : $t('저장') }}
         </button>
-        <button v-if="dirty" class="link" @click="reset">변경 취소</button>
+        <button v-if="dirty" class="link" @click="reset">{{ $t('변경 취소') }}</button>
       </div>
     </div>
 
     <!-- Business glossary -->
     <div class="panel glossary">
-      <div class="section-title">업무 용어집</div>
-      <p class="hint">
-        질문에 용어가 들어 있으면 뜻을 LLM에 함께 알려 줍니다. 예: <b>고액</b> = 한 건 결제금액이 50만원 이상.
-        같은 용어는 항상 같은 조건으로 해석됩니다.
-      </p>
+      <div class="section-title">{{ $t('업무 용어집') }}</div>
+      <p
+        class="hint"
+        v-html="$th('질문에 용어가 들어 있으면 뜻을 LLM에 함께 알려 줍니다. 예: <b>고액</b> = 한 건 결제금액이 50만원 이상. 같은 용어는 항상 같은 조건으로 해석됩니다.')"
+      ></p>
       <div class="term-form">
-        <el-input v-model="newTerm" placeholder="용어 (예: 고액)" style="width: 180px" />
-        <el-input v-model="newDefinition" placeholder="뜻 (예: 한 건 결제금액이 50만원 이상)" style="flex: 1" @keyup.enter="addTerm" />
+        <el-input v-model="newTerm" :placeholder="$t('용어 (예: 고액)')" style="width: 180px" />
+        <el-input v-model="newDefinition" :placeholder="$t('뜻 (예: 한 건 결제금액이 50만원 이상)')" style="flex: 1" @keyup.enter="addTerm" />
         <button class="btn primary" :disabled="!newTerm.trim() || !newDefinition.trim()" @click="addTerm">
-          {{ editingId ? '수정 저장' : '추가' }}
+          {{ editingId ? $t('수정 저장') : $t('추가') }}
         </button>
-        <button v-if="editingId" class="link" @click="cancelEdit">취소</button>
+        <button v-if="editingId" class="link" @click="cancelEdit">{{ $t('취소') }}</button>
       </div>
-      <el-table :data="terms" size="small" border empty-text="등록된 용어가 없습니다" style="margin-top: 10px">
-        <el-table-column prop="term" label="용어" width="180" />
-        <el-table-column prop="definition" label="뜻" show-overflow-tooltip />
+      <el-table :data="terms" size="small" border :empty-text="$t('등록된 용어가 없습니다')" style="margin-top: 10px">
+        <el-table-column prop="term" :label="$t('용어')" width="180" />
+        <el-table-column prop="definition" :label="$t('뜻')" show-overflow-tooltip />
         <el-table-column label="" width="130" align="center">
           <template #default="{ row }">
-            <button class="link" @click="editTerm(row)">수정</button>
-            <el-popconfirm title="이 용어를 삭제할까요?" @confirm="removeTerm(row.id)">
-              <template #reference><button class="link danger">삭제</button></template>
+            <button class="link" @click="editTerm(row)">{{ $t('수정') }}</button>
+            <el-popconfirm :title="$t('이 용어를 삭제할까요?')" @confirm="removeTerm(row.id)">
+              <template #reference><button class="link danger">{{ $t('삭제') }}</button></template>
             </el-popconfirm>
           </template>
         </el-table-column>
@@ -164,6 +164,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '../i18n'
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
@@ -194,7 +195,7 @@ async function loadTerms() {
   try {
     terms.value = await api.glossary.list()
   } catch {
-    ElMessage.error('용어집을 불러오지 못했습니다')
+    ElMessage.error(t('용어집을 불러오지 못했습니다'))
   }
 }
 
@@ -208,7 +209,7 @@ async function addTerm() {
     cancelEdit()
     await loadTerms()
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.detail || '저장하지 못했습니다')
+    ElMessage.error(error.response?.data?.detail || t('저장하지 못했습니다'))
   }
 }
 
@@ -229,7 +230,7 @@ async function removeTerm(id: number) {
     await api.glossary.remove(id)
     await loadTerms()
   } catch {
-    ElMessage.error('삭제하지 못했습니다')
+    ElMessage.error(t('삭제하지 못했습니다'))
   }
 }
 
@@ -310,7 +311,7 @@ async function loadModels() {
     models.value = await api.llmSettings.models(payload())
   } catch (error: any) {
     models.value = []
-    modelsError.value = error.response?.data?.detail || '모델 목록을 받지 못했습니다'
+    modelsError.value = error.response?.data?.detail || t('모델 목록을 받지 못했습니다')
   } finally {
     modelsLoading.value = false
   }
@@ -323,7 +324,7 @@ async function runTest() {
     testResult.value = await api.llmSettings.test(payload())
     if (testResult.value.models?.length) models.value = testResult.value.models
   } catch (error: any) {
-    testResult.value = { ok: false, message: error.response?.data?.detail || '테스트하지 못했습니다' }
+    testResult.value = { ok: false, message: error.response?.data?.detail || t('테스트하지 못했습니다') }
   } finally {
     testing.value = false
   }
@@ -333,9 +334,9 @@ async function save() {
   saving.value = true
   try {
     fill(await api.llmSettings.save(payload()))
-    ElMessage.success('LLM 설정을 저장했습니다. 다음 질문부터 적용됩니다.')
+    ElMessage.success(t('LLM 설정을 저장했습니다. 다음 질문부터 적용됩니다.'))
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.detail || '저장하지 못했습니다')
+    ElMessage.error(error.response?.data?.detail || t('저장하지 못했습니다'))
   } finally {
     saving.value = false
   }
@@ -360,7 +361,7 @@ onMounted(async () => {
   try {
     fill(await api.llmSettings.get())
   } catch {
-    ElMessage.error('LLM 설정을 불러오지 못했습니다')
+    ElMessage.error(t('LLM 설정을 불러오지 못했습니다'))
   } finally {
     loading.value = false
   }

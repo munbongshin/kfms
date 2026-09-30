@@ -76,7 +76,7 @@ async def upload_excel(
     if len(content) > max_size:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File too large. Maximum size: {settings.EXCEL_UPLOAD_MAX_SIZE_MB}MB"
+            detail=f"파일이 너무 큽니다. 최대 {settings.EXCEL_UPLOAD_MAX_SIZE_MB}MB까지 올릴 수 있습니다"
         )
 
     # Reset file pointer
@@ -102,7 +102,7 @@ async def upload_excel(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {str(e)}"
+            detail=f"엑셀을 올리지 못했습니다: {str(e)}"
         )
 
 
@@ -159,7 +159,7 @@ async def list_uploads(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list uploads: {str(e)}"
+            detail=f"업로드 목록을 읽지 못했습니다: {str(e)}"
         )
 
 
@@ -192,7 +192,7 @@ async def preview_upload(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Preview failed: {str(e)}"
+            detail=f"미리보기에 실패했습니다: {str(e)}"
         )
 
 
@@ -216,7 +216,7 @@ async def delete_upload(
         if not deleted:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Upload {upload_id} not found"
+                detail=f"{upload_id}번 업로드를 찾을 수 없습니다"
             )
 
         return None
@@ -226,7 +226,7 @@ async def delete_upload(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Delete failed: {str(e)}"
+            detail=f"삭제하지 못했습니다: {str(e)}"
         )
 
 
@@ -247,11 +247,11 @@ async def cleanup_expired(
 
         return {
             "cleaned_up": count,
-            "message": f"Cleaned up {count} expired upload(s)"
+            "message": f"만료된 업로드 {count}개를 정리했습니다"
         }
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Cleanup failed: {str(e)}"
+            detail=f"정리하지 못했습니다: {str(e)}"
         )

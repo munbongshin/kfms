@@ -3,6 +3,7 @@
  * Typed Axios client for KFMS backend API
  */
 import axios, { AxiosInstance } from 'axios'
+import { locale } from '../i18n'
 
 // API Base URL from environment
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
@@ -25,6 +26,8 @@ apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem(TOKEN_KEY)
     if (token) config.headers.Authorization = `Bearer ${token}`
+    // The server words its messages in the language chosen on screen.
+    config.headers['Accept-Language'] = locale.value
     return config
   },
   (error) => {

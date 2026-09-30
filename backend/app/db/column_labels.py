@@ -158,12 +158,14 @@ def merge_expression_terms(stored: Mapping[str, str]) -> List[Dict[str, Any]]:
 # --- reading a sheet of names ---------------------------------------------------------------
 
 _COLUMN_HEADERS = {"컬럼명", "컬럼", "영문명", "영문컬럼명", "column", "columnname", "field", "fieldname", "name"}
-_LABEL_HEADERS = {"한글명", "한글컬럼명", "한글", "표시명", "라벨", "label", "displayname", "display", "korean"}
+_LABEL_HEADERS = {"한글명", "한글컬럼명", "한글", "표시명", "라벨", "label", "displayname", "display", "korean", "koreanname"}
 _TABLE_HEADERS = {"테이블", "테이블명", "table", "tablename"}
 
 
 def _norm(value: Any) -> str:
-    return "".join(str(value or "").lower().replace("_", "").split())
+    # "테이블(비우면 전체)" and "Table (blank = all)" are the exported headers: read them without the note.
+    text = re.sub(r"[(（].*?[)）]", "", str(value or ""))
+    return "".join(text.lower().replace("_", "").split())
 
 
 def parse_label_sheet(rows: Sequence[Sequence[Any]]) -> Tuple[List[Override], List[Dict[str, Any]]]:

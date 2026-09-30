@@ -94,7 +94,7 @@
             </div>
             <div class="mock-main">
               <b class="mock-no">⑤</b>
-              <div class="mock-card"><strong>질문 입력</strong><span>질문하기 · (관리자) Generate SQL</span></div>
+              <div class="mock-card"><strong>질문 입력</strong><span>질문하기 · (관리자) SQL 생성</span></div>
               <div class="mock-card"><strong>자주 쓰는 질문</strong><span>★ 북마크한 질문 버튼</span></div>
               <div class="mock-card grow"><strong>결과</strong><span>표 · 차트 (관리자는 SQL 탭도)</span></div>
             </div>
@@ -107,6 +107,8 @@
               <td>
                 로그인한 <strong>내 이름과 역할</strong>(누르면 이름·비밀번호를 고치는 <em>내 정보</em> 창), <em>로그아웃</em>,
                 조회할 데이터베이스를 고르는 <em>연결 선택</em>이 있습니다. 모든 화면이 여기서 고른 연결을 대상으로 동작합니다.
+                <em>한글 | EN</em> 버튼으로 화면 언어를 바꿀 수 있습니다(로그인 화면에도 있습니다). 고른 언어는 이 브라우저에 기억되고,
+                화면 문구와 서버의 안내·오류 메시지가 함께 바뀝니다. 데이터베이스의 값, 컬럼 한글명, 저장된 질문은 그대로 보이며, 이 도움말은 한글로만 제공됩니다.
               </td>
             </tr>
             <tr>
@@ -423,7 +425,7 @@
             <g class="flow-line muted">
               <line x1="360" y1="326" x2="360" y2="364" />
             </g>
-            <text x="368" y="350" class="note-t">Generate &amp; Execute는 바로 실행</text>
+            <text x="368" y="350" class="note-t">생성 후 실행은 바로 실행</text>
 
             <!-- Numbered exchanges -->
             <g class="flow-line">
@@ -626,9 +628,9 @@ LIMIT 1000</pre>
             <table class="kv inner">
               <tbody>
                 <tr><th>질문하기</th><td>(관리자 외) 질문을 SQL로 바꿔 바로 실행하고 결과만 보여 줍니다. SQL·데이터베이스 오류 내용은 볼 수 없습니다.</td></tr>
-                <tr><th>Generate SQL</th><td>(관리자) SQL만 만들어 확인 창에 보여 줍니다. 내용을 보고 <em>Execute Query</em>로 실행합니다.</td></tr>
-                <tr><th>Generate &amp; Execute</th><td>(관리자) SQL을 만들어 바로 실행합니다.</td></tr>
-                <tr><th>Clear</th><td>질문과 결과를 지웁니다.</td></tr>
+                <tr><th>SQL 생성</th><td>(관리자) SQL만 만들어 확인 창에 보여 줍니다. 내용을 보고 <em>쿼리 실행</em>으로 실행합니다.</td></tr>
+                <tr><th>생성 후 실행</th><td>(관리자) SQL을 만들어 바로 실행합니다.</td></tr>
+                <tr><th>지우기</th><td>질문과 결과를 지웁니다.</td></tr>
               </tbody>
             </table>
           </li>
@@ -707,15 +709,23 @@ LIMIT 1000</pre>
         <p>이 화면(연결 관리 · 분석 대상 · 엑셀 올리기)은 <strong>관리자만</strong> 보이고 쓸 수 있습니다. 다른 역할은 메뉴가 보이지 않고, 주소로 들어가도 질의 화면으로 돌아갑니다.</p>
         <h3>데이터베이스 연결</h3>
         <ul>
-          <li><em>Add Connection</em>으로 이름·호스트·포트·DB 이름·계정을 입력해 연결을 추가합니다.</li>
-          <li><strong>Read-Only(읽기 전용)</strong>를 켜 두기를 권장합니다.</li>
+          <li><em>연결 추가</em>로 이름·호스트·포트·데이터베이스 이름·사용자·비밀번호를 입력해 연결을 추가합니다.</li>
+          <li><strong>읽기 전용</strong>을 켜 두기를 권장합니다.</li>
           <li>
             <em>수정</em>으로 연결 이름이나 접속 정보를 바꿉니다. 비밀번호 칸은 바꿀 때만 입력하고,
             비워 두면 기존 비밀번호가 유지됩니다. 이름만 바꾸면 조회 중인 연결은 끊기지 않습니다.
           </li>
-          <li><em>Test</em>로 연결이 되는지 확인하고, 필요 없는 연결은 삭제합니다.</li>
+          <li><em>연결 테스트</em>로 연결이 되는지 확인하고, 필요 없는 연결은 삭제합니다.</li>
           <li>KFMS 운영 정보 DB(kfms)는 접속 정보가 들어 있어 조회 대상으로 등록하거나 바꿀 수 없습니다.</li>
-          <li>Active가 켜진 연결만 왼쪽 트리에 나타납니다.</li>
+          <li><em>사용</em>이 켜진 연결만 왼쪽 트리와 상단의 연결 선택에 나타납니다.</li>
+        </ul>
+        <h3>연결을 추가하면</h3>
+        <p>연결을 추가하면 그 데이터베이스로 <strong>바로 질문(Text-to-SQL)할 수 있습니다</strong>. 서버가 접속 정보를 암호화해 저장하고, 처음 쓸 때 테이블·컬럼 구조와 설명(COMMENT)을 읽어 옵니다. 그 연결에서 읽을 수 있는(SELECT 권한이 있는) 테이블은 모두 분석 대상이 됩니다. 다만 다음이 갖춰져야 잘 동작합니다.</p>
+        <ul>
+          <li><strong>LLM</strong> — <em>설정</em> 화면에서 LLM이 선택되어 있고 응답해야 합니다.</li>
+          <li><strong>접속 권한</strong> — 접속 계정이 읽을 수 있는 테이블만 보입니다. KFMS 운영 정보 DB는 등록할 수 없습니다.</li>
+          <li><strong>한글 이름</strong> — 컬럼 설명(COMMENT)이나 <em>관리 → 컬럼 한글명</em>이 있으면 한국어 질문을 더 정확히 이해하고, 결과 머리글도 한글로 나옵니다. 한글명이 없는 영문 컬럼은 관리자가 아닌 사용자에게 "이름 미지정 N"으로 보이므로, 새 연결을 추가한 뒤에는 이름을 정해 두세요.</li>
+          <li><strong>다듬기(선택)</strong> — <em>분석 대상</em>으로 질문에 쓸 테이블을 고르고, <em>설정 → 업무 용어집</em>에 용어를 등록하고, 자주 쓰는 질문을 북마크하면 정확도가 오릅니다.</li>
         </ul>
         <h3>분석 대상 테이블</h3>
         <ul>
@@ -1006,7 +1016,7 @@ LIMIT 1000</pre>
             실행 중인지 확인한 뒤 그 문구를 눌러 다시 불러오세요.
           </dd>
 
-          <dt>SQL 탭이나 Generate SQL 버튼이 안 보여요.</dt>
+          <dt>SQL 탭이나 SQL 생성 버튼이 안 보여요.</dt>
           <dd>
             SQL을 보고 확인하는 기능은 <strong>관리자만</strong> 쓸 수 있습니다. 다른 역할은 <em>질문하기</em> 하나로 질문하고 결과를 표·차트로 봅니다.
             SQL이 꼭 필요하면 관리자에게 요청하세요.

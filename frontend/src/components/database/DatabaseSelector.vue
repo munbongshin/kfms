@@ -2,7 +2,7 @@
   <div class="database-selector">
     <el-select
       v-model="databaseStore.activeConnectionId"
-      placeholder="Select Database"
+      :placeholder="$t('데이터베이스 선택')"
       @change="onDatabaseChange"
       style="width: 250px"
     >
@@ -24,7 +24,7 @@
         {{ databaseStore.activeConnection.database }}
       </el-tag>
       <el-tag v-if="databaseStore.activeConnection.is_read_only" size="small" type="warning">
-        Read-Only
+        {{ $t('읽기 전용') }}
       </el-tag>
     </span>
   </div>

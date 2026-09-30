@@ -3,49 +3,51 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>Database Connections</span>
+          <span>{{ $t('데이터베이스 연결') }}</span>
           <el-button v-if="auth.isAdmin" type="primary" @click="openCreate">
             <el-icon><Plus /></el-icon>
-            Add Connection
+            {{ $t('연결 추가') }}
           </el-button>
         </div>
       </template>
 
       <el-table :data="databaseStore.connections" v-loading="databaseStore.loading">
-        <el-table-column prop="name" label="Name" width="180" />
-        <el-table-column prop="host" label="Host" />
-        <el-table-column prop="port" label="Port" width="80" />
-        <el-table-column prop="database" label="Database" />
-        <el-table-column prop="username" label="Username" width="120" />
-        <el-table-column label="Read-Only" width="100">
+        <el-table-column prop="name" :label="$t('이름')" width="180" />
+        <el-table-column prop="host" :label="$t('호스트')" />
+        <el-table-column prop="port" :label="$t('포트')" width="80" />
+        <el-table-column prop="database" :label="$t('데이터베이스')" />
+        <el-table-column prop="username" :label="$t('사용자')" width="120" />
+        <el-table-column :label="$t('읽기 전용')" width="100">
           <template #default="{ row }">
             <el-tag :type="row.is_read_only ? 'success' : 'warning'" size="small">
-              {{ row.is_read_only ? 'Yes' : 'No' }}
+              {{ row.is_read_only ? $t('예') : $t('아니오') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="Status" width="100">
+        <el-table-column :label="$t('상태')" width="100">
           <template #default="{ row }">
             <el-tag :type="row.is_active ? 'success' : 'info'" size="small">
-              {{ row.is_active ? 'Active' : 'Inactive' }}
+              {{ row.is_active ? $t('사용') : $t('중지') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column v-if="auth.isAdmin" label="Actions" width="340" fixed="right">
+        <el-table-column v-if="auth.isAdmin" :label="$t('작업')" width="340" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="openTargets(row)">
-              분석 대상
+              {{ $t('분석 대상') }}
             </el-button>
             <el-button size="small" @click="openEdit(row)">
               <el-icon><Edit /></el-icon>
-              수정
+              {{ $t('수정') }}
             </el-button>
             <el-button size="small" @click="testConnection(row.id)">
               <el-icon><Connection /></el-icon>
-              Test
+              {{ $t('연결 테스트') }}
             </el-button>
             <el-popconfirm
-              title="Delete this connection?"
+              :title="$t('이 연결을 삭제할까요?')"
+              :confirm-button-text="$t('삭제')"
+              :cancel-button-text="$t('취소')"
               @confirm="deleteConnection(row.id)"
             >
               <template #reference>
@@ -64,46 +66,46 @@
     <!-- Create / Edit Connection Dialog -->
     <el-dialog
       v-model="showCreateDialog"
-      :title="editingId ? '연결 수정' : 'Add Database Connection'"
+      :title="editingId ? $t('연결 수정') : $t('데이터베이스 연결 추가')"
       width="600px"
     >
       <el-form :model="formData" label-width="120px">
-        <el-form-item label="Name">
-          <el-input v-model="formData.name" placeholder="My Database" />
+        <el-form-item :label="$t('이름')">
+          <el-input v-model="formData.name" :placeholder="$t('예: 법인카드 DB')" />
         </el-form-item>
-        <el-form-item label="Host">
+        <el-form-item :label="$t('호스트')">
           <el-input v-model="formData.host" placeholder="localhost" />
         </el-form-item>
-        <el-form-item label="Port">
+        <el-form-item :label="$t('포트')">
           <el-input-number v-model="formData.port" :min="1" :max="65535" />
         </el-form-item>
-        <el-form-item label="Database">
-          <el-input v-model="formData.database" placeholder="mydatabase" />
+        <el-form-item :label="$t('데이터베이스')">
+          <el-input v-model="formData.database" :placeholder="$t('예: retail')" />
         </el-form-item>
-        <el-form-item label="Username">
+        <el-form-item :label="$t('사용자 이름')">
           <el-input v-model="formData.username" placeholder="postgres" />
         </el-form-item>
-        <el-form-item label="Password">
+        <el-form-item :label="$t('비밀번호')">
           <el-input
             v-model="formData.password"
             type="password"
-            :placeholder="editingId ? '바꿀 때만 입력 (비우면 그대로)' : 'Enter password'"
+            :placeholder="editingId ? $t('바꿀 때만 입력 (비우면 그대로)') : $t('비밀번호를 입력하세요')"
             show-password
           />
         </el-form-item>
-        <el-form-item label="Read-Only Mode">
+        <el-form-item :label="$t('읽기 전용')">
           <el-switch v-model="formData.is_read_only" />
-          <span class="hint">Recommended for safety</span>
+          <span class="hint">{{ $t('안전을 위해 켜 두기를 권장합니다') }}</span>
         </el-form-item>
-        <el-form-item label="Active">
+        <el-form-item :label="$t('사용')">
           <el-switch v-model="formData.is_active" />
         </el-form-item>
       </el-form>
 
       <template #footer>
-        <el-button @click="showCreateDialog = false">Cancel</el-button>
+        <el-button @click="showCreateDialog = false">{{ $t('취소') }}</el-button>
         <el-button type="primary" @click="submit" :loading="databaseStore.loading">
-          {{ editingId ? '저장' : 'Create' }}
+          {{ editingId ? $t('저장') : $t('추가') }}
         </el-button>
       </template>
     </el-dialog>

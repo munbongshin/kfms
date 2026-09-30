@@ -1,46 +1,47 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="내 정보"
+    :title="$t('내 정보')"
     width="440px"
     @update:model-value="emit('update:modelValue', $event)"
     @open="reset"
   >
     <div class="fixed">
-      <span>아이디</span><b>{{ auth.user?.username }}</b>
-      <span>역할</span><b>{{ roleLabel }}</b>
+      <span>{{ $t('아이디') }}</span><b>{{ auth.user?.username }}</b>
+      <span>{{ $t('역할') }}</span><b>{{ roleLabel }}</b>
     </div>
-    <p class="hint">아이디와 역할은 관리자만 바꿀 수 있습니다.</p>
+    <p class="hint">{{ $t('아이디와 역할은 관리자만 바꿀 수 있습니다.') }}</p>
 
     <div class="row">
-      <label>이름</label>
-      <el-input v-model="displayName" maxlength="100" placeholder="화면에 표시할 이름" />
+      <label>{{ $t('이름') }}</label>
+      <el-input v-model="displayName" maxlength="100" :placeholder="$t('화면에 표시할 이름')" />
     </div>
 
-    <div class="section">비밀번호 바꾸기 <small>(바꿀 때만 입력)</small></div>
+    <div class="section">{{ $t('비밀번호 바꾸기') }} <small>{{ $t('(바꿀 때만 입력)') }}</small></div>
     <div class="row">
-      <label>현재 비밀번호</label>
+      <label>{{ $t('현재 비밀번호') }}</label>
       <el-input v-model="current" type="password" show-password autocomplete="current-password" />
     </div>
     <div class="row">
-      <label>새 비밀번호</label>
-      <el-input v-model="next" type="password" show-password autocomplete="new-password" placeholder="8자 이상" />
+      <label>{{ $t('새 비밀번호') }}</label>
+      <el-input v-model="next" type="password" show-password autocomplete="new-password" :placeholder="$t('8자 이상')" />
     </div>
     <div class="row">
-      <label>새 비밀번호 확인</label>
+      <label>{{ $t('새 비밀번호 확인') }}</label>
       <el-input v-model="confirm" type="password" show-password autocomplete="new-password" />
     </div>
-    <div v-if="mismatch" class="error">새 비밀번호가 서로 다릅니다</div>
+    <div v-if="mismatch" class="error">{{ $t('새 비밀번호가 서로 다릅니다') }}</div>
     <div v-if="error" class="error">{{ error }}</div>
 
     <template #footer>
-      <el-button @click="emit('update:modelValue', false)">취소</el-button>
-      <el-button type="primary" :loading="saving" :disabled="!canSave" @click="save">저장</el-button>
+      <el-button @click="emit('update:modelValue', false)">{{ $t('취소') }}</el-button>
+      <el-button type="primary" :loading="saving" :disabled="!canSave" @click="save">{{ $t('저장') }}</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
+import { roleName, t } from '../../i18n'
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
@@ -49,8 +50,7 @@ defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 
 const auth = useAuthStore()
-const ROLES: Record<string, string> = { admin: '관리자', auditor: '감사담당', viewer: '조회' }
-const roleLabel = computed(() => ROLES[auth.role || ''] || '')
+const roleLabel = computed(() => roleName(auth.role))
 
 const displayName = ref('')
 const current = ref('')
@@ -85,11 +85,11 @@ async function save() {
       current_password: changingPassword.value ? current.value : undefined,
       new_password: changingPassword.value ? next.value : undefined,
     })
-    ElMessage.success('내 정보를 저장했습니다')
+    ElMessage.success(t('내 정보를 저장했습니다'))
     emit('update:modelValue', false)
   } catch (e: any) {
     const detail = e.response?.data?.detail
-    error.value = typeof detail === 'string' ? detail : '저장하지 못했습니다. 입력을 확인하세요.'
+    error.value = typeof detail === 'string' ? detail : t('저장하지 못했습니다. 입력을 확인하세요.')
   } finally {
     saving.value = false
   }

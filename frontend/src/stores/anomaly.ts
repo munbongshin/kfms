@@ -2,6 +2,7 @@
  * Anomaly Store (Pinia)
  * Findings for the active connection plus reviewer actions.
  */
+import { t } from '../i18n'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -96,7 +97,7 @@ export const useAnomalyStore = defineStore('anomaly', () => {
       const data = await api.anomaly.transactions(databaseId, source, seqs)
       details.value[finding.finding_key] = data.transactions
     } catch (error) {
-      ElMessage.error('거래 상세를 불러오지 못했습니다')
+      ElMessage.error(t('거래 상세를 불러오지 못했습니다'))
     } finally {
       delete detailLoading.value[finding.finding_key]
     }
@@ -118,7 +119,7 @@ export const useAnomalyStore = defineStore('anomaly', () => {
       }
     } catch (error) {
       sources.value = []
-      ElMessage.error('점검 가능한 원천을 불러오지 못했습니다')
+      ElMessage.error(t('점검 가능한 원천을 불러오지 못했습니다'))
     }
   }
 
@@ -141,7 +142,7 @@ export const useAnomalyStore = defineStore('anomaly', () => {
       caveat.value = data.caveat ?? null
     } catch (error) {
       reset()
-      ElMessage.error('점검 결과를 불러오지 못했습니다')
+      ElMessage.error(t('점검 결과를 불러오지 못했습니다'))
     } finally {
       loading.value = false
     }
@@ -166,9 +167,9 @@ export const useAnomalyStore = defineStore('anomaly', () => {
         reviewed_at: updated.reviewed_at,
       }
       finding.stale = false
-      ElMessage.success(status === 'confirmed' ? '확인 처리했습니다' : '정상으로 표시했습니다')
+      ElMessage.success(status === 'confirmed' ? t('확인 처리했습니다') : t('정상으로 표시했습니다'))
     } catch (error) {
-      ElMessage.error('검토 상태를 저장하지 못했습니다')
+      ElMessage.error(t('검토 상태를 저장하지 못했습니다'))
     }
   }
 

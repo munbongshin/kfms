@@ -1,11 +1,11 @@
 <template>
   <div class="anomaly-view">
     <div class="page-title">
-      <h2>이상거래 점검</h2>
+      <h2>{{ $t('이상거래 점검') }}</h2>
       <span class="title-actions">
-        <button class="action" @click="showCriteria = true">점검 기준</button>
+        <button class="action" @click="showCriteria = true">{{ $t('점검 기준') }}</button>
         <button class="action" :disabled="store.loading || !store.findings.length" @click="exportCsv">
-          파일저장
+          {{ $t('파일저장') }}
         </button>
       </span>
     </div>
@@ -13,8 +13,7 @@
     <AnomalySettingsDialog v-model="showCriteria" @saved="refresh" />
 
     <p class="notice">
-      선택한 점검 대상과 기간에서 감사 기준 위반이 의심되는 거래를 찾습니다.
-      판정한 건은 다음 조회부터 상태가 함께 표시됩니다.
+      {{ $t('선택한 점검 대상과 기간에서 감사 기준 위반이 의심되는 거래를 찾습니다. 판정한 건은 다음 조회부터 상태가 함께 표시됩니다.') }}
     </p>
 
     <el-alert
@@ -22,7 +21,7 @@
       type="info"
       :closable="false"
       show-icon
-      title="상단의 연결 선택에서 데이터베이스를 고르세요"
+      :title="$t('상단의 연결 선택에서 데이터베이스를 고르세요')"
     />
 
     <template v-else>
@@ -37,30 +36,30 @@
 
       <div class="search-box">
         <div class="fields">
-          <label class="lbl">점검대상</label>
+          <label class="lbl">{{ $t('점검대상') }}</label>
           <div class="ctl">
             <el-select
               v-model="store.sourceFilter"
               size="small"
-              placeholder="전체"
+              :placeholder="$t('전체')"
               style="width: 190px"
             >
-              <el-option label="전체 (모든 점검대상)" value="" />
+              <el-option :label="$t('전체 (모든 점검대상)')" value="" />
               <el-option
                 v-for="s in store.sources"
                 :key="s.key"
-                :label="`${s.label} (${s.row_count.toLocaleString()}건)`"
+                :label="$t('{label} ({n}건)', { label: s.label, n: s.row_count.toLocaleString() })"
                 :value="s.key"
               />
             </el-select>
           </div>
 
-          <label class="lbl">규칙</label>
+          <label class="lbl">{{ $t('규칙') }}</label>
           <div class="ctl">
             <el-select
               v-model="store.ruleFilter"
               size="small"
-              placeholder="전체"
+              :placeholder="$t('전체')"
               clearable
               style="width: 190px"
             >
@@ -73,14 +72,14 @@
             </el-select>
           </div>
 
-          <label class="lbl">조회기간</label>
+          <label class="lbl">{{ $t('조회기간') }}</label>
           <div class="ctl period">
             <el-date-picker
               v-model="store.dateFrom"
               type="date"
               size="small"
               value-format="YYYY-MM-DD"
-              placeholder="시작일"
+              :placeholder="$t('시작일')"
               clearable
               style="width: 140px"
             />
@@ -90,36 +89,36 @@
               type="date"
               size="small"
               value-format="YYYY-MM-DD"
-              placeholder="종료일"
+              :placeholder="$t('종료일')"
               clearable
               style="width: 140px"
             />
             <span class="quick">
               <button v-for="q in QUICK" :key="q.label" @click="applyQuick(q.months)">
-                {{ q.label }}
+                {{ $t(q.label) }}
               </button>
             </span>
           </div>
 
-          <label class="lbl">검토상태</label>
+          <label class="lbl">{{ $t('검토상태') }}</label>
           <div class="ctl">
             <el-select
               v-model="store.statusFilter"
               size="small"
-              placeholder="전체"
+              :placeholder="$t('전체')"
               clearable
               style="width: 190px"
             >
-              <el-option label="미검토" value="unreviewed" />
-              <el-option label="확인함" value="confirmed" />
-              <el-option label="정상" value="dismissed" />
+              <el-option :label="$t('미검토')" value="unreviewed" />
+              <el-option :label="$t('확인함')" value="confirmed" />
+              <el-option :label="$t('정상')" value="dismissed" />
             </el-select>
           </div>
         </div>
 
         <button class="search" :disabled="store.loading" @click="refresh">
           <el-icon><Search /></el-icon>
-          조회
+          {{ $t('조회') }}
         </button>
       </div>
 
@@ -134,9 +133,7 @@
         </span>
       </div>
 
-      <div class="result-head">
-        조회결과 <strong>{{ store.findings.length }}</strong>건
-      </div>
+      <div class="result-head" v-html="$th('조회결과 <strong>{n}</strong>건', { n: store.findings.length })"></div>
 
       <div class="grid">
         <el-table
@@ -160,16 +157,16 @@
                   <table class="detail-table">
                     <tbody>
                       <tr v-for="pair in pairUp(tx.core)" :key="pair[0].field">
-                        <th>{{ pair[0].label }}</th>
+                        <th>{{ $t(pair[0].label) }}</th>
                         <td>{{ display(pair[0].value) }}</td>
-                        <th>{{ pair[1] ? pair[1].label : '' }}</th>
+                        <th>{{ pair[1] ? $t(pair[1].label) : '' }}</th>
                         <td>{{ pair[1] ? display(pair[1].value) : '' }}</td>
                       </tr>
                     </tbody>
                   </table>
 
                   <button class="link" @click="toggleAll(tx.seq)">
-                    {{ expandedAll.has(tx.seq) ? '전체 숨기기' : `전체 보기 (${tx.rest.length}개 항목)` }}
+                    {{ expandedAll.has(tx.seq) ? $t('전체 숨기기') : $t('전체 보기 ({n}개 항목)', { n: tx.rest.length }) }}
                   </button>
 
                   <table v-if="expandedAll.has(tx.seq)" class="detail-table rest">
@@ -189,43 +186,43 @@
 
           <el-table-column label="No." type="index" width="56" align="center" />
 
-          <el-table-column label="심각도" width="80" align="center">
+          <el-table-column :label="$t('심각도')" width="80" align="center">
             <template #default="{ row }">
               <span class="sev" :class="row.severity">{{ severityLabel(row.severity) }}</span>
             </template>
           </el-table-column>
 
-          <el-table-column prop="occurred_on" label="거래일" width="110" align="center" />
+          <el-table-column prop="occurred_on" :label="$t('거래일')" width="110" align="center" />
 
-          <el-table-column label="점검사유" min-width="280">
+          <el-table-column :label="$t('점검사유')" min-width="280">
             <template #default="{ row }">
               {{ row.summary }}
-              <span v-if="row.stale" class="stale">검토 후 변경됨</span>
+              <span v-if="row.stale" class="stale">{{ $t('검토 후 변경됨') }}</span>
             </template>
           </el-table-column>
 
-          <el-table-column label="금액" width="130" align="right">
+          <el-table-column :label="$t('금액')" width="130" align="right">
             <template #default="{ row }">{{ row.amount.toLocaleString() }}</template>
           </el-table-column>
 
-          <el-table-column label="건수" width="70" align="right">
+          <el-table-column :label="$t('건수')" width="70" align="right">
             <template #default="{ row }">{{ row.transactions.length }}</template>
           </el-table-column>
 
-          <el-table-column label="검토" width="150" align="center" fixed="right">
+          <el-table-column :label="$t('검토')" width="150" align="center" fixed="right">
             <template #default="{ row }">
               <span v-if="!row.review || row.stale" class="review-actions">
-                <button class="mini" @click="store.review(connectionId, row, 'confirmed')">확인</button>
-                <button class="mini" @click="store.review(connectionId, row, 'dismissed')">정상</button>
+                <button class="mini" @click="store.review(connectionId, row, 'confirmed')">{{ $t('확인') }}</button>
+                <button class="mini" @click="store.review(connectionId, row, 'dismissed')">{{ $t('정상') }}</button>
               </span>
               <span v-else class="reviewed" :class="row.review.status">
-                {{ row.review.status === 'dismissed' ? '정상' : '확인함' }}
+                {{ row.review.status === 'dismissed' ? $t('정상') : $t('확인함') }}
               </span>
             </template>
           </el-table-column>
 
           <template #empty>
-            <span class="empty">조회된 건이 없습니다. 기간이나 점검대상을 바꿔 다시 조회하세요.</span>
+            <span class="empty">{{ $t('조회된 건이 없습니다. 기간이나 점검대상을 바꿔 다시 조회하세요.') }}</span>
           </template>
         </el-table>
       </div>
@@ -234,6 +231,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '../i18n'
 import { computed, onMounted, ref, watch } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -303,7 +301,7 @@ function applyQuick(months: number | null) {
 }
 
 function severityLabel(severity: string) {
-  return severity === 'high' ? '높음' : severity === 'medium' ? '보통' : '낮음'
+  return severity === 'high' ? t('높음') : severity === 'medium' ? t('보통') : t('낮음')
 }
 
 function display(value: string | number | null) {
@@ -332,14 +330,14 @@ function toggleAll(seq: number) {
 }
 
 function exportCsv() {
-  const header = ['거래일', '심각도', '점검사유', '금액', '건수', '검토상태']
+  const header = [t('거래일'), t('심각도'), t('점검사유'), t('금액'), t('건수'), t('검토상태')]
   const rows = store.findings.map((f) => [
     f.occurred_on,
     severityLabel(f.severity),
     f.summary,
     String(f.amount),
     String(f.transactions.length),
-    f.review ? (f.review.status === 'dismissed' ? '정상' : '확인함') : '미검토',
+    f.review ? (f.review.status === 'dismissed' ? t('정상') : t('확인함')) : t('미검토'),
   ])
   const csv = [header, ...rows]
     .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
@@ -349,10 +347,10 @@ function exportCsv() {
   const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }))
   const a = document.createElement('a')
   a.href = url
-  a.download = `이상거래점검_${store.dateFrom || '전체'}_${store.dateTo || '전체'}.csv`
+  a.download = `${t('이상거래점검')}_${store.dateFrom || t('전체')}_${store.dateTo || t('전체')}.csv`
   a.click()
   URL.revokeObjectURL(url)
-  ElMessage.success(`${store.findings.length}건을 저장했습니다`)
+  ElMessage.success(t('{n}건을 저장했습니다', { n: store.findings.length }))
 }
 
 function refresh() {

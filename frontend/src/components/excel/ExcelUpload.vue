@@ -3,7 +3,7 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>Upload Excel File</span>
+          <span>{{ $t('엑셀 파일 올리기') }}</span>
           <DatabaseSelector />
         </div>
       </template>
@@ -18,8 +18,8 @@
       >
         <el-icon class="upload-icon"><UploadFilled /></el-icon>
         <div class="upload-text">
-          <p>Drop Excel file here or <em>click to upload</em></p>
-          <p class="hint">Support .xls and .xlsx files (max {{ maxSize }}MB)</p>
+          <p v-html="$t('엑셀 파일을 여기에 끌어 놓거나 <em>클릭해서 선택</em>하세요')"></p>
+          <p class="hint">{{ $t('.xls, .xlsx 파일을 올릴 수 있습니다 (최대 {n}MB)', { n: maxSize }) }}</p>
         </div>
       </el-upload>
 
@@ -35,11 +35,11 @@
       <!-- Named after the file; the user may rename it, and must when the
            name is already taken. -->
       <div v-if="selectedFile" class="table-name">
-        <label class="tn-label">테이블 이름</label>
+        <label class="tn-label">{{ $t('테이블 이름') }}</label>
         <el-input
           v-model="tableName"
           size="default"
-          placeholder="만들 테이블 이름"
+          :placeholder="$t('만들 테이블 이름')"
           style="width: 360px"
           :class="{ taken: nameCheck && !nameCheck.available }"
           @input="scheduleCheck"
@@ -47,15 +47,15 @@
           <template #prepend>kfms_upload.</template>
         </el-input>
         <div class="tn-status">
-          <span v-if="checking" class="muted">확인 중…</span>
+          <span v-if="checking" class="muted">{{ $t('확인 중…') }}</span>
           <template v-else-if="nameCheck">
             <span v-if="!nameCheck.available" class="bad">
-              '{{ nameCheck.conflict_with }}' 테이블이 이미 있습니다 — 다른 이름을 입력하세요
+              {{ $t("'{name}' 테이블이 이미 있습니다 — 다른 이름을 입력하세요", { name: nameCheck.conflict_with ?? '' }) }}
             </span>
             <span v-else class="good">
-              사용할 수 있습니다
+              {{ $t('사용할 수 있습니다') }}
               <template v-if="nameCheck.name !== tableName.trim()">
-                · 실제 이름: <code>{{ nameCheck.key }}</code>
+                {{ $t('· 실제 이름:') }} <code>{{ nameCheck.key }}</code>
               </template>
             </span>
           </template>
@@ -70,7 +70,7 @@
           :disabled="!selectedFile || !databaseStore.activeConnectionId || !canUpload"
         >
           <el-icon><Upload /></el-icon>
-          Upload & Create Table
+          {{ $t('올려서 테이블 만들기') }}
         </el-button>
 
         <el-alert
@@ -80,34 +80,36 @@
           show-icon
         >
           <template #title>
-            Please select a database first
+            {{ $t('먼저 데이터베이스를 선택하세요') }}
           </template>
         </el-alert>
       </div>
 
       <!-- Uploaded Files List -->
       <div v-if="uploads.length > 0" class="uploads-list">
-        <h4>Uploaded Excel Files</h4>
+        <h4>{{ $t('올린 엑셀 파일') }}</h4>
         <el-table :data="uploads" stripe>
-          <el-table-column prop="filename" label="Filename" />
-          <el-table-column prop="table_name" label="Table Name" />
-          <el-table-column label="Rows">
+          <el-table-column prop="filename" :label="$t('파일명')" />
+          <el-table-column prop="table_name" :label="$t('테이블 이름')" />
+          <el-table-column :label="$t('행 수')">
             <template #default="{ row }">{{ row.row_count.toLocaleString() }}</template>
           </el-table-column>
-          <el-table-column label="Expires">
+          <el-table-column :label="$t('만료')">
             <template #default="{ row }">{{ formatExpiry(row.expires_at) }}</template>
           </el-table-column>
-          <el-table-column label="Actions" width="230">
+          <el-table-column :label="$t('작업')" width="230">
             <template #default="{ row }">
-              <el-button size="small" title="만료를 24시간 늘립니다" @click="extendUpload(row.id)">
-                연장
+              <el-button size="small" :title="$t('만료를 24시간 늘립니다')" @click="extendUpload(row.id)">
+                {{ $t('연장') }}
               </el-button>
               <el-button size="small" @click="queryTable(row.table_name)">
                 <el-icon><Search /></el-icon>
-                Query
+                {{ $t('질의') }}
               </el-button>
               <el-popconfirm
-                title="Delete this upload?"
+                :title="$t('이 업로드를 삭제할까요? 만든 테이블도 함께 삭제됩니다')"
+                :confirm-button-text="$t('삭제')"
+                :cancel-button-text="$t('취소')"
                 @confirm="deleteUpload(row.id)"
               >
                 <template #reference>
@@ -125,6 +127,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '../../i18n'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { UploadFilled, Document, Delete, Upload, Search } from '@element-plus/icons-vue'
@@ -207,7 +210,7 @@ function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
-const formatExpiry = (expiresAt: string) => describeExpiry(expiresAt)
+const formatExpiry = (expiresAt: string) => describeExpiry(expiresAt, new Date(), t)
 
 async function uploadFile() {
   if (!selectedFile.value || !databaseStore.activeConnectionId) return
@@ -223,7 +226,7 @@ async function uploadFile() {
     )
 
     ElMessage.success({
-      message: `Excel uploaded! Table "${result.table_name}" created with ${result.row_count} rows.`,
+      message: t('엑셀을 올렸습니다. "{table}" 테이블에 {rows}행이 들어갔습니다.', { table: result.table_name, rows: result.row_count.toLocaleString() }),
       duration: 5000
     })
 
@@ -232,7 +235,7 @@ async function uploadFile() {
     // The new table must show in the query tree without a page reload.
     await refreshTables(databaseStore.activeConnectionId)
   } catch (error: any) {
-    const message = error.response?.data?.detail || 'Upload failed'
+    const message = error.response?.data?.detail || t('엑셀을 올리지 못했습니다')
     ElMessage.error(message)
     // Taken since the last check: show it next to the name field too.
     if (error.response?.status === 409) await checkName()
@@ -262,10 +265,10 @@ async function fetchUploads() {
 async function extendUpload(uploadId: number) {
   try {
     await api.excel.extend(uploadId, 24)
-    ElMessage.success('만료를 24시간 늘렸습니다')
+    ElMessage.success(t('만료를 24시간 늘렸습니다'))
     await fetchUploads()
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.detail || '연장하지 못했습니다')
+    ElMessage.error(error.response?.data?.detail || t('연장하지 못했습니다'))
   }
 }
 
@@ -274,11 +277,11 @@ async function deleteUpload(uploadId: number) {
 
   try {
     await api.excel.delete(uploadId, databaseStore.activeConnectionId)
-    ElMessage.success('Upload deleted')
+    ElMessage.success(t('업로드를 삭제했습니다'))
     await fetchUploads()
     await refreshTables(databaseStore.activeConnectionId)
   } catch (error: any) {
-    ElMessage.error('Failed to delete upload')
+    ElMessage.error(t('업로드를 삭제하지 못했습니다'))
   }
 }
 

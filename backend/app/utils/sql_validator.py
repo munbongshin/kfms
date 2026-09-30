@@ -26,9 +26,9 @@ class SQLValidator:
 
     # Suspicious patterns (potential for data modification)
     SUSPICIOUS_PATTERNS = {
-        'INTO': 'May indicate INSERT INTO',
-        'SET': 'May indicate UPDATE SET',
-        'FROM ONLY': 'May indicate DELETE FROM',
+        'INTO': 'INSERT INTO일 수 있습니다',
+        'SET': 'UPDATE SET일 수 있습니다',
+        'FROM ONLY': 'DELETE FROM일 수 있습니다',
     }
 
     @staticmethod
@@ -53,7 +53,7 @@ class SQLValidator:
             return {
                 "is_safe": False,
                 "is_read_only": False,
-                "warnings": ["Empty SQL query"],
+                "warnings": ["SQL이 비어 있습니다"],
                 "sql_type": None,
                 "cleaned_sql": ""
             }
@@ -68,7 +68,7 @@ class SQLValidator:
                 return {
                     "is_safe": False,
                     "is_read_only": False,
-                    "warnings": ["Failed to parse SQL"],
+                    "warnings": ["SQL을 해석하지 못했습니다"],
                     "sql_type": None,
                     "cleaned_sql": cleaned_sql
                 }
@@ -78,7 +78,7 @@ class SQLValidator:
             return {
                 "is_safe": False,
                 "is_read_only": False,
-                "warnings": [f"Parse error: {str(e)}"],
+                "warnings": [f"SQL 해석 오류: {str(e)}"],
                 "sql_type": None,
                 "cleaned_sql": cleaned_sql
             }
@@ -91,7 +91,7 @@ class SQLValidator:
 
         # Check if statement type is allowed
         if stmt_type not in SQLValidator.ALLOWED_TYPES:
-            warnings.append(f"Operation '{stmt_type}' is blocked in read-only mode")
+            warnings.append(f"'{stmt_type}' 명령은 읽기 전용이라 차단되었습니다")
             return {
                 "is_safe": False,
                 "is_read_only": False,
@@ -106,7 +106,7 @@ class SQLValidator:
             if keyword in sql_upper:
                 # Check if it's actually a keyword (not part of string or identifier)
                 if SQLValidator._is_dangerous_keyword_usage(cleaned_sql, keyword):
-                    warnings.append(f"Dangerous keyword '{keyword}' detected - blocked")
+                    warnings.append(f"위험한 키워드 '{keyword}'가 있어 차단되었습니다")
                     return {
                         "is_safe": False,
                         "is_read_only": False,
@@ -118,14 +118,15 @@ class SQLValidator:
         # Check for suspicious patterns
         for pattern, description in SQLValidator.SUSPICIOUS_PATTERNS.items():
             if pattern in sql_upper:
-                warnings.append(f"Suspicious pattern detected: {description}")
+                warnings.append(f"의심스러운 패턴이 있습니다: {description}")
 
         # Add LIMIT if not present (safety measure)
         if 'LIMIT' not in sql_upper:
-            warnings.append("No LIMIT clause found - will enforce LIMIT 1000")
+            warnings.append("LIMIT이 없어 LIMIT 1000을 적용합니다")
 
-        # Query is safe
-        is_safe = len([w for w in warnings if 'blocked' in w.lower()]) == 0
+        # Everything that blocks has already returned above; what is left are
+        # notes (a suspicious pattern, a missing LIMIT), so the query is safe.
+        is_safe = True
 
         return {
             "is_safe": is_safe,

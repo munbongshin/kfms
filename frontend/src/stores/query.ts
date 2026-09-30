@@ -2,6 +2,7 @@
  * Query Store (Pinia)
  * Manages query execution state
  */
+import { t } from '../i18n'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '../services/api'
@@ -103,21 +104,21 @@ export const useQueryStore = defineStore('query', () => {
       // Check if safe
       if (!result.validation.is_safe) {
         ElMessage.warning({
-          message: 'SQL validation warnings detected. Please review before executing.',
+          message: t('SQL 검증 경고가 있습니다. 실행하기 전에 확인하세요.'),
           duration: 5000
         })
       } else if (result.validation.warnings && result.validation.warnings.length > 0) {
         ElMessage.info({
-          message: `Generated SQL with ${result.validation.warnings.length} warning(s)`,
+          message: t('SQL을 생성했습니다 (경고 {n}건)', { n: result.validation.warnings.length }),
           duration: 3000
         })
       } else {
-        ElMessage.success('SQL generated successfully')
+        ElMessage.success(t('SQL을 생성했습니다'))
       }
 
       return result
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Failed to generate SQL'
+      const message = error.response?.data?.detail || t('SQL을 생성하지 못했습니다')
       ElMessage.error(message)
       throw error
     } finally {
@@ -127,7 +128,7 @@ export const useQueryStore = defineStore('query', () => {
 
   async function executeSQL() {
     if (!pendingExecution.value) {
-      ElMessage.error('No query to execute')
+      ElMessage.error(t('실행할 쿼리가 없습니다'))
       return
     }
 
@@ -153,16 +154,16 @@ export const useQueryStore = defineStore('query', () => {
         showSQLPreview.value = false
 
         ElMessage.success({
-          message: `Query executed successfully. ${result.row_count} rows returned in ${result.execution_time_ms}ms`,
+          message: t('쿼리를 실행했습니다 ({rows}행, {ms}ms)', { rows: Number(result.row_count).toLocaleString(), ms: result.execution_time_ms }),
           duration: 3000
         })
 
         return result
       } else {
-        throw new Error(result.error || 'Execution failed')
+        throw new Error(result.error || t('실행하지 못했습니다'))
       }
     } catch (error: any) {
-      const message = error.response?.data?.detail || error.message || 'Failed to execute query'
+      const message = error.response?.data?.detail || error.message || t('쿼리를 실행하지 못했습니다')
       ElMessage.error(message)
       throw error
     } finally {
@@ -196,7 +197,7 @@ export const useQueryStore = defineStore('query', () => {
         }
         showSQLPreview.value = true
 
-        ElMessage.warning('Please review and confirm SQL execution')
+        ElMessage.warning(t('SQL을 확인하고 실행할지 결정하세요'))
         return
       }
 
@@ -212,13 +213,13 @@ export const useQueryStore = defineStore('query', () => {
           warnings: result.warnings,
         }
 
-        ElMessage.success(`Query executed in ${result.execution_time_ms}ms`)
+        ElMessage.success(t('쿼리를 실행했습니다 ({ms}ms)', { ms: result.execution_time_ms }))
         return result
       }
 
       if (result.error) ElMessage.error(result.error)
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Query failed'
+      const message = error.response?.data?.detail || t('질의에 실패했습니다')
       ElMessage.error(message)
       throw error
     } finally {
@@ -278,7 +279,7 @@ export const useQueryStore = defineStore('query', () => {
       state.page = page
 
       queryResults.value = {
-        question: `[미리보기] ${tableName}`,
+        question: t('[미리보기] {table}', { table: tableName }),
         sql: data.sql ?? '',
         results: data.rows,
         row_count: data.total,
@@ -286,7 +287,7 @@ export const useQueryStore = defineStore('query', () => {
         history_id: 0,
       }
     } catch (error: any) {
-      const message = error.response?.data?.detail || error.message || '테이블을 읽지 못했습니다'
+      const message = error.response?.data?.detail || error.message || t('테이블을 읽지 못했습니다')
       ElMessage.error(message)
       throw error
     } finally {
@@ -312,7 +313,7 @@ export const useQueryStore = defineStore('query', () => {
           })
 
       if (!result.success) {
-        throw new Error(result.error || 'Execution failed')
+        throw new Error(result.error || t('실행하지 못했습니다'))
       }
 
       queryResults.value = {
@@ -325,12 +326,12 @@ export const useQueryStore = defineStore('query', () => {
         warnings: result.warnings,
       }
 
-      ElMessage.success(`저장된 질문 실행 완료 (${result.execution_time_ms}ms)`)
+      ElMessage.success(t('저장된 질문 실행 완료 ({ms}ms)', { ms: result.execution_time_ms }))
       return result
     } catch (error: any) {
       // Saved SQL goes stale when the schema changes, so fall back to
       // regenerating rather than leaving the user at a dead end.
-      ElMessage.warning('저장된 질문이 현재 스키마에서 실패해 다시 만듭니다')
+      ElMessage.warning(t('저장된 질문이 현재 스키마에서 실패해 다시 만듭니다'))
       return await directExecute(question, databaseId)
     } finally {
       loading.value = false

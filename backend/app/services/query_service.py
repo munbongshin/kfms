@@ -230,7 +230,7 @@ class QueryService:
 
             return {
                 "success": False,
-                "error": "SQL validation failed",
+                "error": "SQL 검증에 실패했습니다",
                 "warnings": validation["warnings"],
                 "history_id": history.id
             }
@@ -331,7 +331,7 @@ class QueryService:
                 "success": False,
                 "requires_approval": True,
                 "generation": gen_result,
-                "message": "SQL requires user approval before execution"
+                "message": "실행하려면 SQL 확인과 승인이 필요합니다"
             }
 
         # Execute query

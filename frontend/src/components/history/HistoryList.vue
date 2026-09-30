@@ -3,30 +3,30 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>Query History</span>
+          <span>{{ $t('질의 이력') }}</span>
           <el-button @click="refreshHistory" :loading="loading">
             <el-icon><Refresh /></el-icon>
-            Refresh
+            {{ $t('새로고침') }}
           </el-button>
         </div>
       </template>
 
       <!-- Filters -->
       <div class="filters">
-        <el-select v-model="statusFilter" placeholder="All Status" clearable style="width: 150px">
-          <el-option label="Success" value="success" />
-          <el-option label="Error" value="error" />
-          <el-option label="Pending" value="pending" />
+        <el-select v-model="statusFilter" :placeholder="$t('전체 상태')" clearable style="width: 150px">
+          <el-option :label="$t('성공')" value="success" />
+          <el-option :label="$t('오류')" value="error" />
+          <el-option :label="$t('대기')" value="pending" />
         </el-select>
 
         <el-button @click="applyFilters">
           <el-icon><Filter /></el-icon>
-          Apply Filters
+          {{ $t('조회') }}
         </el-button>
 
         <el-button v-if="auth.isAdmin" type="danger" plain class="clear-all" @click="clearHistory">
           <el-icon><Delete /></el-icon>
-          전체 삭제
+          {{ $t('전체 삭제') }}
         </el-button>
       </div>
 
@@ -52,23 +52,23 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="question" label="Question" min-width="300" show-overflow-tooltip />
+        <el-table-column prop="question" :label="$t('질문')" min-width="300" show-overflow-tooltip />
 
-        <el-table-column label="Status" width="120">
+        <el-table-column :label="$t('상태')" width="120">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
-              {{ row.status }}
+              {{ statusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column label="Rows" width="100">
+        <el-table-column :label="$t('행 수')" width="100">
           <template #default="{ row }">
             {{ row.row_count ? row.row_count.toLocaleString() : '-' }}
           </template>
         </el-table-column>
 
-        <el-table-column label="Time" width="100">
+        <el-table-column :label="$t('소요 시간')" width="100">
           <template #default="{ row }">
             {{ row.execution_time_ms ? row.execution_time_ms + 'ms' : '-' }}
           </template>
@@ -80,21 +80,23 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="Date" width="180">
+        <el-table-column :label="$t('일시')" width="180">
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
 
-        <el-table-column label="Actions" width="200" fixed="right">
+        <el-table-column :label="$t('작업')" width="200" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click.stop="rerunQuery(row)">
               <el-icon><Refresh /></el-icon>
-              Re-run
+              {{ $t('다시 실행') }}
             </el-button>
             <el-popconfirm
               v-if="auth.isAdmin"
-              title="Delete this history?"
+              :title="$t('이 이력을 삭제할까요?')"
+              :confirm-button-text="$t('삭제')"
+              :cancel-button-text="$t('취소')"
               @confirm="deleteHistory(row.id)"
             >
               <template #reference>
@@ -122,30 +124,30 @@
     </el-card>
 
     <!-- Detail Dialog -->
-    <el-dialog v-model="showDetail" title="Query Details" width="800px">
+    <el-dialog v-model="showDetail" :title="$t('질의 상세')" width="800px">
       <div v-if="selectedHistory" class="history-detail">
         <div class="detail-section">
-          <strong>Question:</strong>
+          <strong>{{ $t('질문') }}</strong>
           <p>{{ selectedHistory.question }}</p>
         </div>
         <!-- SQL is for administrators; the server sends it to no one else. -->
         <div v-if="auth.isAdmin" class="detail-section">
-          <strong>SQL:</strong>
+          <strong>SQL</strong>
           <pre class="sql-display">{{ selectedHistory.generated_sql }}</pre>
         </div>
         <div v-if="selectedHistory.error_message" class="detail-section">
-          <strong>Error:</strong>
+          <strong>{{ $t('오류') }}</strong>
           <p class="error-text">{{ selectedHistory.error_message }}</p>
         </div>
         <div class="detail-section">
-          <strong>Metadata:</strong>
+          <strong>{{ $t('정보') }}</strong>
           <ul>
-            <li>Database ID: {{ selectedHistory.database_id }}</li>
-            <li>Status: {{ selectedHistory.status }}</li>
-            <li>Rows: {{ selectedHistory.row_count || 0 }}</li>
-            <li>Execution Time: {{ selectedHistory.execution_time_ms || 0 }}ms</li>
+            <li>{{ $t('데이터베이스 번호: {v}', { v: selectedHistory.database_id }) }}</li>
+            <li>{{ $t('상태: {v}', { v: statusText(selectedHistory.status) }) }}</li>
+            <li>{{ $t('행 수: {v}', { v: selectedHistory.row_count || 0 }) }}</li>
+            <li>{{ $t('실행 시간: {v}ms', { v: selectedHistory.execution_time_ms || 0 }) }}</li>
             <li>LLM: {{ selectedHistory.llm_provider }} ({{ selectedHistory.llm_model }})</li>
-            <li>Created: {{ formatDate(selectedHistory.created_at) }}</li>
+            <li>{{ $t('만든 시각: {v}', { v: formatDate(selectedHistory.created_at) }) }}</li>
           </ul>
         </div>
       </div>
@@ -154,6 +156,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatDateTime, t } from '../../i18n'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Refresh, Filter, Delete, Star, StarFilled } from '@element-plus/icons-vue'
@@ -176,6 +179,9 @@ const totalEstimate = ref(1000)
 const showDetail = ref(false)
 const selectedHistory = ref<any>(null)
 
+const STATUS_TEXT: Record<string, string> = { success: '성공', error: '오류', pending: '대기' }
+const statusText = (status: string) => (STATUS_TEXT[status] ? t(STATUS_TEXT[status]) : status)
+
 function getStatusType(status: string) {
   switch (status) {
     case 'success': return 'success'
@@ -187,7 +193,7 @@ function getStatusType(status: string) {
 
 function formatDate(dateStr: string) {
   const date = new Date(dateStr)
-  return date.toLocaleString()
+  return formatDateTime(date)
 }
 
 async function fetchHistory() {
@@ -200,7 +206,7 @@ async function fetchHistory() {
       offset
     })
   } catch (error) {
-    ElMessage.error('Failed to fetch history')
+    ElMessage.error(t('이력을 불러오지 못했습니다'))
   } finally {
     loading.value = false
   }
@@ -220,7 +226,7 @@ async function viewDetail(row: any) {
     selectedHistory.value = await api.history.get(row.id)
     showDetail.value = true
   } catch (error) {
-    ElMessage.error('Failed to load details')
+    ElMessage.error(t('상세를 불러오지 못했습니다'))
   }
 }
 
@@ -233,9 +239,9 @@ async function toggleBookmark(row: any) {
   try {
     const updated = await api.history.setBookmark(row.id, !row.is_bookmarked)
     row.is_bookmarked = updated.is_bookmarked
-    ElMessage.success(row.is_bookmarked ? '북마크에 추가했습니다' : '북마크를 해제했습니다')
+    ElMessage.success(row.is_bookmarked ? t('북마크에 추가했습니다') : t('북마크를 해제했습니다'))
   } catch (error) {
-    ElMessage.error('Failed to update bookmark')
+    ElMessage.error(t('북마크를 바꾸지 못했습니다'))
   }
 }
 
@@ -243,9 +249,9 @@ async function clearHistory() {
   try {
     // Bookmarks are excluded server-side; say so plainly before deleting.
     await ElMessageBox.confirm(
-      '북마크한 이력은 남기고 나머지를 모두 삭제합니다. 되돌릴 수 없습니다.',
-      '이력 전체 삭제',
-      { confirmButtonText: '삭제', cancelButtonText: '취소', type: 'warning' }
+      t('북마크한 이력은 남기고 나머지를 모두 삭제합니다. 되돌릴 수 없습니다.'),
+      t('이력 전체 삭제'),
+      { confirmButtonText: t('삭제'), cancelButtonText: t('취소'), type: 'warning' }
     )
   } catch {
     return
@@ -253,21 +259,21 @@ async function clearHistory() {
 
   try {
     const result = await api.history.clear(true)
-    ElMessage.success(`${result.deleted}건을 삭제했습니다. 북마크 ${result.kept}건은 유지됩니다.`)
+    ElMessage.success(t('{deleted}건을 삭제했습니다. 북마크 {kept}건은 유지됩니다.', { deleted: result.deleted, kept: result.kept }))
     currentPage.value = 1
     await fetchHistory()
   } catch (error) {
-    ElMessage.error('이력을 삭제하지 못했습니다')
+    ElMessage.error(t('이력을 삭제하지 못했습니다'))
   }
 }
 
 async function deleteHistory(historyId: number) {
   try {
     await api.history.delete(historyId)
-    ElMessage.success('History deleted')
+    ElMessage.success(t('이력을 삭제했습니다'))
     await fetchHistory()
   } catch (error) {
-    ElMessage.error('Failed to delete history')
+    ElMessage.error(t('이력을 삭제하지 못했습니다'))
   }
 }
 

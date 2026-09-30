@@ -3,7 +3,7 @@
     <el-input
       v-model="filterText"
       size="small"
-      placeholder="테이블 · 컬럼 검색"
+      :placeholder="$t('테이블 · 컬럼 검색')"
       clearable
       class="filter"
     >
@@ -13,10 +13,10 @@
     <el-empty
       v-if="databaseStore.activeConnections.length === 0"
       :image-size="60"
-      description="등록된 연결이 없습니다"
+      :description="$t('등록된 연결이 없습니다')"
     >
       <el-button size="small" type="primary" @click="router.push({ name: 'databases' })">
-        연결 추가
+        {{ $t('연결 추가') }}
       </el-button>
     </el-empty>
 
@@ -40,7 +40,7 @@
              anywhere in it counts, not only on the label. -->
         <span class="node" :title="data.title" @dblclick="onNodeDblClick(data)">
           <span class="node-label" :class="[data.kind, { excluded: data.excluded }]">{{ data.label }}</span>
-          <span v-if="data.excluded" class="excluded-tag">분석 제외</span>
+          <span v-if="data.excluded" class="excluded-tag">{{ $t('분석 제외') }}</span>
           <span v-if="data.name" class="node-name">{{ data.name }}</span>
           <span v-if="data.meta" class="node-meta">{{ data.meta }}</span>
         </span>
@@ -50,6 +50,7 @@
 </template>
 
 <script setup lang="ts">
+import { locale, t } from '../../i18n'
 import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
@@ -87,7 +88,7 @@ watch(filterText, (v) => treeRef.value?.filter(v))
 
 const connectionsKey = computed(() =>
   databaseStore.activeConnections.map((c) => `${c.id}:${c.name}:${c.database}`).join('|') +
-    `#${databaseStore.schemaVersion}`
+    `#${databaseStore.schemaVersion}#${locale.value}`  // the tree redraws when the language changes
 )
 
 const KIND_LABELS: Record<string, string> = {
@@ -131,7 +132,7 @@ async function loadNode(node: any, resolve: (nodes: TreeNode[]) => void) {
       if (tables.length === 0) {
         resolve([{
           key: `empty-${data.connectionId}`,
-          label: '테이블이 없습니다',
+          label: t('테이블이 없습니다'),
           kind: 'message' as const,
           connectionId: data.connectionId,
           isLeaf: true,
@@ -151,7 +152,7 @@ async function loadNode(node: any, resolve: (nodes: TreeNode[]) => void) {
             table,
             // The table's description (승인내역 테이블) beside its name.
             meta: info?.comment || undefined,
-            title: [KIND_LABELS[info?.kind || 'table'], info?.comment, info?.excluded ? '분석 제외 — 질문에 쓰이지 않음' : '']
+            title: [t(KIND_LABELS[info?.kind || 'table']), info?.comment, info?.excluded ? t('분석 제외 — 질문에 쓰이지 않음') : '']
               .filter(Boolean)
               .join(' · '),
             excluded: info?.excluded,
@@ -161,7 +162,7 @@ async function loadNode(node: any, resolve: (nodes: TreeNode[]) => void) {
     } catch {
       resolve([{
         key: `err-${data.connectionId}`,
-        label: '스키마를 불러올 수 없습니다 · 다시 시도',
+        label: t('스키마를 불러올 수 없습니다 · 다시 시도'),
         kind: 'message' as const,
         connectionId: data.connectionId,
         isLeaf: true,

@@ -142,7 +142,7 @@ async def create_connection(
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Connection with name '{connection_data.name}' already exists"
+            detail=f"'{connection_data.name}' 이름의 연결이 이미 있습니다"
         )
 
     # Create connection in database
@@ -174,7 +174,7 @@ async def create_connection(
             await repo.delete_connection(db_conn.id)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to add connection to pool: {str(e)}"
+                detail=f"연결을 만들지 못했습니다: {str(e)}"
             )
 
     return DatabaseConnectionResponse(
@@ -217,7 +217,7 @@ async def test_connection(
     if not db_conn:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Connection {connection_id} not found"
+            detail=f"{connection_id}번 연결을 찾을 수 없습니다"
         )
 
     # Add to pool temporarily if not already there
@@ -271,13 +271,13 @@ async def get_schema(
     if not db_conn:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Connection {connection_id} not found"
+            detail=f"{connection_id}번 연결을 찾을 수 없습니다"
         )
 
     if not db_conn.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Connection is not active"
+            detail="사용 중지된 연결입니다"
         )
 
     try:
@@ -310,7 +310,7 @@ async def get_schema(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch schema: {str(e)}"
+            detail=f"스키마를 읽지 못했습니다: {str(e)}"
         )
 
 
@@ -330,7 +330,7 @@ async def set_excluded_tables(
     repo = DatabaseRepository(db)
     db_conn = await repo.get_by_id(connection_id)
     if not db_conn:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Connection {connection_id} not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{connection_id}번 연결을 찾을 수 없습니다")
 
     tables = await pool.get_tables(str(connection_id))
     unknown = [t for t in targets.excluded if t not in tables]
@@ -422,7 +422,7 @@ async def update_connection(
     if not current:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Connection {connection_id} not found"
+            detail=f"{connection_id}번 연결을 찾을 수 없습니다"
         )
 
     fields = changes.model_dump(exclude_none=True)
@@ -502,7 +502,7 @@ async def delete_connection(
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Connection {connection_id} not found"
+            detail=f"{connection_id}번 연결을 찾을 수 없습니다"
         )
 
     return None

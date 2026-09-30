@@ -145,7 +145,7 @@ class DatabaseConnectionPool:
         """
         engine = self.get_engine(connection_id)
         if not engine:
-            raise ValueError(f"Database connection '{connection_id}' not found")
+            raise ValueError(f"{connection_id}번 연결을 찾을 수 없습니다")
 
         async with engine.begin() as conn:
             yield conn

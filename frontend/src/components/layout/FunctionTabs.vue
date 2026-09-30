@@ -7,11 +7,11 @@
         :key="tab.name"
         class="tab"
         :class="{ active: route.name === tab.name }"
-        :title="tab.title || tab.label"
+        :title="$t(tab.title || tab.label)"
         @click="select(tab.name)"
       >
         <el-icon><component :is="tab.icon" /></el-icon>
-        <span class="label">{{ tab.label }}</span>
+        <span class="label">{{ $t(tab.label) }}</span>
       </button>
     </div>
   </nav>

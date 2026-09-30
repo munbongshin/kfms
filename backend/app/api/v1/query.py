@@ -144,7 +144,7 @@ async def generate_sql(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate SQL: {str(e)}"
+            detail=f"SQL을 생성하지 못했습니다: {str(e)}"
         )
 
 
@@ -165,7 +165,7 @@ async def validate_sql(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Validation failed: {str(e)}"
+            detail=f"검증하지 못했습니다: {str(e)}"
         )
 
 
@@ -202,7 +202,7 @@ async def execute_query(
         if not result["success"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.get("error", "Query execution failed")
+                detail=result.get("error", "쿼리를 실행하지 못했습니다")
             )
 
         # Viewers may ask questions but not read card numbers.
@@ -214,7 +214,7 @@ async def execute_query(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Execution failed: {str(e)}"
+            detail=f"실행하지 못했습니다: {str(e)}"
         )
 
 
@@ -270,7 +270,7 @@ async def generate_and_execute(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error(user.role, f"Operation failed: {str(e)}")
+            detail=safe_error(user.role, f"처리하지 못했습니다: {str(e)}")
         )
 
 
@@ -305,7 +305,7 @@ async def rerun_saved(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error(user.role, f"Execution failed: {str(e)}"),
+            detail=safe_error(user.role, f"실행하지 못했습니다: {str(e)}"),
         )
 
     await record(
@@ -316,7 +316,7 @@ async def rerun_saved(
     if not result["success"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=safe_error(user.role, result.get("error", "Query execution failed")),
+            detail=safe_error(user.role, result.get("error", "쿼리를 실행하지 못했습니다")),
         )
     result["results"] = mask_results(result["results"], user.role)
     if not can_see_sql(user.role):

@@ -8,7 +8,7 @@ computed-column terms (합계, 건수 ...) are managed here too.
 from io import BytesIO
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
 from openpyxl import Workbook, load_workbook
 from pydantic import BaseModel, Field
@@ -27,6 +27,7 @@ from app.db.connection_pool import DatabaseConnectionPool
 from app.db.repositories.column_labels import ColumnLabelRepository
 from app.db.repositories.database_repo import DatabaseRepository
 from app.dependencies import get_db, get_db_pool
+from app.i18n import language_of, translate
 
 router = APIRouter(tags=["Column labels"])
 
@@ -118,6 +119,7 @@ async def delete_label(connection_id: int, label_id: int, db: AsyncSession = Dep
 @router.get("/databases/{connection_id}/column-labels/export", dependencies=[ADMIN])
 async def export_labels(
     connection_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     pool: DatabaseConnectionPool = Depends(get_db_pool),
 ):
@@ -128,8 +130,9 @@ async def export_labels(
 
     book = Workbook()
     sheet = book.active
-    sheet.title = "컬럼 한글명"
-    sheet.append(["컬럼명", "한글명", "테이블(비우면 전체)", "DB 설명", "쓰이는 테이블"])
+    lang = language_of(request.headers.get("accept-language"))
+    sheet.title = translate("컬럼 한글명", lang)
+    sheet.append([translate(h, lang) for h in ("컬럼명", "한글명", "테이블(비우면 전체)", "DB 설명", "쓰이는 테이블")])
     for row in sorted(rows, key=lambda r: (r["mapped"], r["name"])):
         sheet.append([row["name"], row["label"] or "", "", row["comment"] or "", ", ".join(row["tables"])])
         for exc in row["exceptions"]:
