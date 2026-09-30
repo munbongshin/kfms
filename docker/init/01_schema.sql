@@ -44,6 +44,30 @@ CREATE TABLE llm_settings (
     updated_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE eval_cases (
+    id           SERIAL PRIMARY KEY,
+    question     TEXT NOT NULL,
+    expected_sql TEXT NOT NULL,
+    database_id  VARCHAR(255) NOT NULL,
+    created_by   VARCHAR(60) NOT NULL DEFAULT '',
+    created_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE eval_runs (
+    id          SERIAL PRIMARY KEY,
+    database_id VARCHAR(255) NOT NULL,
+    status      VARCHAR(20) NOT NULL DEFAULT 'running',  -- running, done, error
+    provider    VARCHAR(60) NOT NULL DEFAULT '',
+    model       VARCHAR(200) NOT NULL DEFAULT '',
+    total       INTEGER NOT NULL DEFAULT 0,
+    passed      INTEGER NOT NULL DEFAULT 0,
+    seconds     DOUBLE PRECISION,
+    error       TEXT,
+    details     JSON,
+    started_by  VARCHAR(60) NOT NULL DEFAULT '',
+    started_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE saved_reports (
     id             SERIAL PRIMARY KEY,
     name           VARCHAR(200) NOT NULL,

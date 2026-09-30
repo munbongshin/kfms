@@ -46,12 +46,14 @@ class QueryService:
         self.glossary_repo = glossary_repo
         self.validator = SQLValidator()
 
-    async def _guidance(self, question: str, database_id: str) -> Dict[str, Any]:
+    async def _guidance(self, question: str, database_id: str, use_examples: bool = True) -> Dict[str, Any]:
         """Bookmarked examples and glossary terms relevant to the question.
         Guidance is a bonus: failing to load it must never block a question."""
         examples: List[Any] = []
         terms: List[Any] = []
         try:
+            if not use_examples:
+                raise LookupError  # skip: evaluating, examples would hand over the answer
             saved = await self.history_repo.get_all(
                 database_id=database_id, status="success", bookmarked=True, limit=50
             )
@@ -85,6 +87,7 @@ class QueryService:
         context: str = "",
         excluded_tables: Optional[List[str]] = None,
         previous: Optional[Dict[str, str]] = None,
+        use_examples: bool = True,
     ) -> Dict[str, Any]:
         """
         Generate SQL from natural language question.
@@ -97,7 +100,7 @@ class QueryService:
         Returns:
             Dict with generated SQL and validation results
         """
-        guidance = await self._guidance(question, database_id)
+        guidance = await self._guidance(question, database_id, use_examples)
         base_context = build_context(context, guidance["examples"], guidance["terms"], previous)
 
         # Generate, then check the SQL plans cleanly; if it does not, hand the

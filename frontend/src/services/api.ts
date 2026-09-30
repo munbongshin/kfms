@@ -531,6 +531,30 @@ export const api = {
   },
 
   // Anomaly detection
+  evaluation: {
+    async cases(databaseId: number): Promise<any[]> {
+      return (await apiClient.get('/eval/cases', { params: { database_id: databaseId } })).data
+    },
+    async addCase(question: string, expectedSql: string, databaseId: number) {
+      return (await apiClient.post('/eval/cases', { question, expected_sql: expectedSql, database_id: databaseId })).data
+    },
+    async importBookmarks(databaseId: number): Promise<{ added: number }> {
+      return (await apiClient.post('/eval/cases/from-bookmarks', null, { params: { database_id: databaseId } })).data
+    },
+    async removeCase(id: number): Promise<void> {
+      await apiClient.delete(`/eval/cases/${id}`)
+    },
+    async start(databaseId: number): Promise<any> {
+      return (await apiClient.post('/eval/run', { database_id: databaseId })).data
+    },
+    async runs(): Promise<any[]> {
+      return (await apiClient.get('/eval/runs')).data
+    },
+    async run(id: number): Promise<any> {
+      return (await apiClient.get(`/eval/runs/${id}`)).data
+    },
+  },
+
   reports: {
     async list(): Promise<Report[]> {
       return (await apiClient.get('/reports')).data

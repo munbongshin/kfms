@@ -114,3 +114,13 @@ def test_broken_guidance_never_blocks_a_question():
     llm = FakeLLM(["SELECT 1 FROM t"])
     out = run(service(llm, history=Broken(), glossary=Broken()).generate_sql("q", "1"))
     assert out["attempts"] == 1
+
+
+def test_examples_can_be_switched_off_for_an_evaluation():
+    # Scoring the model on a bookmarked question while showing it that very
+    # bookmark would measure nothing.
+    saved = [SimpleNamespace(question="가맹점별 승인금액 합계", generated_sql="SELECT merchname FROM v_approval")]
+    llm = FakeLLM(["SELECT 1 FROM t"])
+    out = run(service(llm, history=FakeHistory(saved)).generate_sql("가맹점별 승인금액 합계", "1", use_examples=False))
+    assert "SELECT merchname" not in llm.contexts[0]
+    assert out["examples_used"] == 0

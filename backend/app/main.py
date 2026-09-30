@@ -14,7 +14,7 @@ from app.db.connection_pool import get_connection_pool
 from app.db.repositories.database_repo import DatabaseRepository
 
 # Import routers
-from app.api.v1 import databases, query, excel, history, anomaly, llm_settings, glossary, auth, reports
+from app.api.v1 import databases, query, excel, history, anomaly, llm_settings, glossary, auth, reports, eval as eval_api
 from sqlalchemy import text
 from app.db.repositories.llm_settings import LLMSettingsRepository
 from app.llm.factory import create_provider
@@ -177,6 +177,7 @@ app.include_router(anomaly.router, prefix="/api/v1", dependencies=[AUDITOR])
 app.include_router(llm_settings.router, prefix="/api/v1", dependencies=[ADMIN])
 app.include_router(glossary.router, prefix="/api/v1", dependencies=[ANY_USER])
 app.include_router(reports.router, prefix="/api/v1", dependencies=[ANY_USER])
+app.include_router(eval_api.router, prefix="/api/v1")
 
 
 if __name__ == "__main__":

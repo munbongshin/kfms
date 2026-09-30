@@ -1,16 +1,25 @@
 # KFMS - Knowledge Flow Management System
 
-Natural language to SQL query service with PostgreSQL and Excel support, powered by LLM (Ollama + Groq).
+Natural language to SQL query service with PostgreSQL and Excel support, powered by a pluggable LLM
+(Ollama, LM Studio, vLLM, any OpenAI-compatible server, or Groq).
 
 ## 🚀 Features
 
-- **Natural Language → SQL**: Ask questions in plain language, get SQL-powered answers
-- **Multi-Database Support**: Connect and query multiple PostgreSQL databases
-- **Excel Integration**: Upload Excel files and query them like database tables
-- **Dual LLM Support**: Switch between Ollama (local, free) and Groq (cloud, fast)
-- **Read-Only Mode**: Safe query execution with validation and confirmation
-- **Smart Visualization**: LLM-recommended charts (Bar, Line, Pie)
-- **Query History**: Searchable history with re-run capability
+- **Natural Language → SQL**: Ask in Korean, get SQL-powered answers; follow-up questions continue the last one
+- **Accuracy**: SQL is planned (`EXPLAIN`) before it is shown and fixed from the database's own error; bookmarked
+  questions serve as verified examples; a business glossary fixes what terms like 고액 mean
+- **Any LLM platform**: Ollama, LM Studio, vLLM, other OpenAI-compatible servers, Groq — chosen and tested on a settings screen
+- **Multi-Database Support**: Connect and query multiple PostgreSQL databases; every table/view (any schema) is read
+  once, cached, and can be excluded from analysis per connection
+- **Excel Integration**: Upload sheets into their own schema, named after the file; expired uploads are dropped
+- **Anomaly checks**: rule-based checks on card transactions with editable thresholds and review status
+- **Scheduled reports**: save a question to run daily, weekly or monthly and keep its latest result
+- **Sign-in, roles, audit**: admin / auditor / viewer; card numbers masked for viewers; every change and every
+  card-number read is written to an append-only audit log
+- **Read-Only Mode**: SQL validation plus read-only sessions and a statement timeout; data values never go to the LLM
+- **Accuracy evaluation**: score the current LLM against a set of questions with known-correct SQL
+- **Charts**: the type is picked in the browser from the shape of the result (no data is sent anywhere)
+- **Query History**: Searchable history with re-run capability and bookmarks
 
 ## 🏗️ Architecture
 
@@ -58,6 +67,10 @@ uvicorn app.main:app --reload
 ```
 
 Backend will run at: `http://localhost:8000`
+
+**First run:** open the web app and it asks you to create the administrator account; after that everything
+requires signing in. `GET /api/v1/health` (no sign-in) reports whether the database, the LLM and the background
+loop (scheduled reports, expired-upload cleanup) are answering.
 
 API Documentation: `http://localhost:8000/api/docs`
 

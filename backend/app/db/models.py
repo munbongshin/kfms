@@ -275,3 +275,39 @@ class SavedReport(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class EvalCase(Base):
+    """A question with its known-correct SQL, for scoring the LLM."""
+
+    __tablename__ = "eval_cases"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    expected_sql: Mapped[str] = mapped_column(Text, nullable=False)
+    database_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(60), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class EvalRun(Base):
+    """One scoring of the whole set against the LLM chosen at the time."""
+
+    __tablename__ = "eval_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    database_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="running")
+    provider: Mapped[str] = mapped_column(String(60), nullable=False, default="")
+    model: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    passed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    seconds: Mapped[Optional[float]] = mapped_column(nullable=True)
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    details: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    started_by: Mapped[str] = mapped_column(String(60), nullable=False, default="")
+    started_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )

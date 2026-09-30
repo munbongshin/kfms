@@ -21,6 +21,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { canSee } from '../../utils/access'
 import { ChatLineSquare, Coin, Clock, Warning, Setting, QuestionFilled, User, Document } from '@element-plus/icons-vue'
 
 // Clicking the tab already open is reported, so the shell can fold its panel.
@@ -30,7 +31,7 @@ const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 
-const visible = (list: Tab[]) => list.filter((t) => !t.roles || (auth.role && t.roles.includes(auth.role)))
+const visible = (list: Tab[]) => list.filter((t) => canSee(t.roles, auth.role))
 const groups = computed(() => [visible(tabs), visible(tools)])
 
 function select(name: string) {

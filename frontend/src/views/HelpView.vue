@@ -224,10 +224,11 @@
         <table class="grid-table">
           <thead><tr><th>DB</th><th>테이블</th><th>내용</th></tr></thead>
           <tbody>
-            <tr><td rowspan="10"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
+            <tr><td rowspan="11"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
             <tr><td><code>query_history</code></td><td>질문·SQL·결과·북마크</td></tr>
             <tr><td><code>excel_uploads</code></td><td>올린 엑셀 파일과 만든 임시 테이블 목록</td></tr>
             <tr><td><code>anomaly_review</code></td><td>이상거래 검토 판정(확인함·정상)</td></tr>
+            <tr><td><code>eval_cases</code> · <code>eval_runs</code></td><td>정확도 평가 사례와 채점 기록</td></tr>
             <tr><td><code>saved_reports</code></td><td>보고서 (질문·SQL·주기·최근 결과)</td></tr>
             <tr><td><code>anomaly_settings</code></td><td>바꾼 점검 기준 (없으면 기본값)</td></tr>
             <tr><td><code>app_users</code></td><td>사용자 (비밀번호는 복원할 수 없는 해시로 저장)</td></tr>
@@ -722,6 +723,26 @@ LIMIT 1000</pre>
         </ul>
       </section>
 
+      <!-- 6-1c -->
+      <section id="evaluation">
+        <h2>정확도 평가</h2>
+        <p>
+          관리자는 <em>관리 → 정확도 평가</em>에서 지금 선택한 LLM이 얼마나 정확한지 재어 볼 수 있습니다. LLM이나 모델을 바꿀 때
+          좋아졌는지 나빠졌는지 숫자로 비교하는 데 씁니다.
+        </p>
+        <ol class="steps">
+          <li><em>사례 추가</em>로 질문과 <strong>정답 SQL</strong>을 저장합니다. ★ 북마크한 질문은 <em>북마크에서 가져오기</em>로 한 번에 사례가 됩니다.</li>
+          <li><em>평가 실행</em>을 누르면 사례마다 LLM이 SQL을 만들고, 정답 SQL과 <strong>실행 결과</strong>를 비교해 정답·오답으로 채점합니다.</li>
+          <li>결과 아래 목록에서 오답의 정답 SQL과 생성한 SQL을 나란히 보고, <em>실행 기록</em>에서 LLM별 정확도를 비교합니다.</li>
+        </ol>
+        <ul>
+          <li>결과가 같으면 정답입니다. 컬럼 이름·순서나 행 순서가 달라도 값이 같으면 맞는 것으로 봅니다.</li>
+          <li>채점하는 동안에는 북마크 예시를 쓰지 않습니다. 북마크에서 가져온 사례라면 정답이 그대로 프롬프트에 들어가 채점이 무의미해지기 때문입니다.</li>
+          <li>정답 SQL이 실행되지 않으면 모델 탓이 아니라 "정답 SQL을 실행하지 못했습니다"로 따로 표시됩니다.</li>
+          <li>사례마다 LLM 응답을 기다리므로 수 분이 걸릴 수 있고, 한 번에 하나만 실행됩니다. 진행 상황은 자동으로 갱신됩니다.</li>
+        </ul>
+      </section>
+
       <!-- 6-2 -->
       <section id="accounts">
         <h2>로그인과 권한</h2>
@@ -917,6 +938,7 @@ const sections = [
   { id: 'databases', title: '데이터 (연결 관리)' },
   { id: 'settings', title: 'LLM 설정' },
   { id: 'reports', title: '보고서' },
+  { id: 'evaluation', title: '정확도 평가' },
   { id: 'accounts', title: '로그인과 권한' },
   { id: 'history', title: '이력' },
   { id: 'anomaly', title: '이상거래 점검' },

@@ -133,6 +133,7 @@ import { ElMessage } from 'element-plus'
 import { api } from '../../services/api'
 import { useDatabaseStore } from '../../stores/database'
 import DatabaseSelector from '../database/DatabaseSelector.vue'
+import { describeExpiry } from '../../utils/expiry'
 
 const router = useRouter()
 const databaseStore = useDatabaseStore()
@@ -206,17 +207,7 @@ function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
-function formatExpiry(expiresAt: string): string {
-  const date = new Date(expiresAt)
-  const now = new Date()
-  const diffMs = date.getTime() - now.getTime()
-  const diffHrs = Math.round(diffMs / (1000 * 60 * 60))
-
-  if (diffHrs < 0) return 'Expired — 곧 자동 삭제'
-  if (diffHrs < 1) return 'Less than 1 hour'
-  if (diffHrs === 1) return '1 hour'
-  return `${diffHrs} hours`
-}
+const formatExpiry = (expiresAt: string) => describeExpiry(expiresAt)
 
 async function uploadFile() {
   if (!selectedFile.value || !databaseStore.activeConnectionId) return

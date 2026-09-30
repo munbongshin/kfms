@@ -62,8 +62,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, type Report } from '../services/api'
-
-const DAYS = ['월', '화', '수', '목', '금', '토', '일']
+import { describeSchedule } from '../utils/schedule'
 
 const reports = ref<Report[]>([])
 const loading = ref(false)
@@ -76,12 +75,7 @@ const columns = computed(() => (results.value.length ? Object.keys(results.value
 
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '—')
 
-function schedule(r: Report) {
-  const at = `${String(r.hour).padStart(2, '0')}시`
-  if (r.frequency === 'weekly') return `매주 ${DAYS[r.weekday ?? 0]}요일 ${at}`
-  if (r.frequency === 'monthly') return `매월 ${r.day}일 ${at}`
-  return `매일 ${at}`
-}
+const schedule = (r: Report) => describeSchedule(r.frequency, r.hour, r.weekday, r.day)
 
 async function load() {
   loading.value = true

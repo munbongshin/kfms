@@ -1,6 +1,6 @@
 <template>
   <div class="admin-view">
-    <div class="page-title"><h2>사용자 · 감사 로그</h2></div>
+    <div class="page-title"><h2>관리</h2></div>
 
     <el-tabs v-model="tab" @tab-change="onTab">
       <!-- Users -->
@@ -47,6 +47,11 @@
         </div>
       </el-tab-pane>
 
+      <!-- Accuracy evaluation -->
+      <el-tab-pane label="정확도 평가" name="eval" lazy>
+        <div class="panel"><EvalPanel /></div>
+      </el-tab-pane>
+
       <!-- Audit log -->
       <el-tab-pane label="감사 로그" name="audit">
         <div class="panel">
@@ -89,6 +94,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, type AppUser, type AuditEntry, type Role } from '../services/api'
+import EvalPanel from '../components/admin/EvalPanel.vue'
 
 const ROLES: Array<{ value: Role; label: string }> = [
   { value: 'admin', label: '관리자' },
