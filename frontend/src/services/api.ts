@@ -433,6 +433,9 @@ export const api = {
     async create(data: NewUser): Promise<AppUser> {
       return (await apiClient.post('/users', data)).data
     },
+    async remove(id: number): Promise<void> {
+      await apiClient.delete(`/users/${id}`)
+    },
     async change(id: number, data: Partial<{ display_name: string; role: Role; is_active: boolean; password: string }>): Promise<AppUser> {
       return (await apiClient.patch(`/users/${id}`, data)).data
     },

@@ -43,6 +43,10 @@ class UserRepository:
         await self.session.refresh(user)
         return user
 
+    async def delete(self, user: User) -> None:
+        await self.session.delete(user)
+        await self.session.commit()
+
     async def touch_login(self, user: User) -> None:
         user.last_login_at = datetime.now(timezone.utc)
         await self.session.commit()

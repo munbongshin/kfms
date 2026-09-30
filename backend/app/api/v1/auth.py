@@ -12,6 +12,7 @@ from app.auth.deps import (
     ADMIN, AUDITOR, TOKEN_TTL_SECONDS, CurrentUser, current_user, record, secret,
 )
 from app.auth.security import create_token, hash_password, verify_password
+from app.auth.user_rules import delete_block_reason
 from app.db.repositories.audit import AuditRepository
 from app.db.repositories.users import ROLES, UserRepository
 from app.dependencies import get_db
@@ -146,6 +147,25 @@ async def change_user(
     await repo.save(user)
     await record(db, admin, request, "user_change", user.username, changed=changed)
     return _user_out(user)
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: int, request: Request, admin: CurrentUser = ADMIN, db: AsyncSession = Depends(get_db)
+):
+    """Delete an account for good. Its past audit entries stay, under its name."""
+    repo = UserRepository(db)
+    user = await repo.get(user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="사용자를 찾을 수 없습니다")
+
+    reason = delete_block_reason(user, admin.id, await repo.count_active_admins())
+    if reason:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=reason)
+
+    username, role = user.username, user.role
+    await repo.delete(user)
+    await record(db, admin, request, "user_delete", username, role=role)
 
 
 @router.get("/audit-log", dependencies=[ADMIN])

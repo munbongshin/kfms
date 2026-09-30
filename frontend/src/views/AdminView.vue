@@ -38,9 +38,17 @@
             <el-table-column label="마지막 로그인" min-width="160">
               <template #default="{ row }">{{ row.last_login_at ? fmt(row.last_login_at) : '—' }}</template>
             </el-table-column>
-            <el-table-column label="" width="130" align="center">
+            <el-table-column label="" width="190" align="center">
               <template #default="{ row }">
                 <button class="link" @click="resetPassword(row)">비밀번호 변경</button>
+                <el-popconfirm
+                  :title="`${row.username} 계정을 삭제할까요? 되돌릴 수 없습니다.`"
+                  confirm-button-text="삭제"
+                  cancel-button-text="취소"
+                  @confirm="removeUser(row)"
+                >
+                  <template #reference><button class="link danger">삭제</button></template>
+                </el-popconfirm>
               </template>
             </el-table-column>
           </el-table>
@@ -110,6 +118,7 @@ const ACTIONS = [
   { value: 'request', label: '변경·열람 요청' },
   { value: 'user_create', label: '사용자 추가' },
   { value: 'user_change', label: '사용자 변경' },
+  { value: 'user_delete', label: '사용자 삭제' },
   { value: 'setup', label: '최초 설정' },
 ]
 
@@ -188,6 +197,16 @@ async function change(row: AppUser, changes: Partial<{ role: Role; is_active: bo
   await loadUsers()
 }
 
+async function removeUser(row: AppUser) {
+  try {
+    await api.users.remove(row.id)
+    ElMessage.success(`${row.username} 계정을 삭제했습니다`)
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.detail || '삭제하지 못했습니다')
+  }
+  await loadUsers()
+}
+
 async function resetPassword(row: AppUser) {
   try {
     const { value } = await ElMessageBox.prompt(`${row.username}의 새 비밀번호 (8자 이상)`, '비밀번호 변경', {
@@ -262,6 +281,11 @@ onMounted(loadUsers)
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.link.danger {
+  margin-left: 10px;
+  color: #b42318;
 }
 
 .link {
