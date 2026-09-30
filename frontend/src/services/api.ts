@@ -424,6 +424,9 @@ export const api = {
     async me(): Promise<AppUser> {
       return (await apiClient.get('/auth/me')).data
     },
+    async updateMe(data: { display_name?: string; current_password?: string; new_password?: string }): Promise<AppUser> {
+      return (await apiClient.patch('/auth/me', data)).data
+    },
   },
 
   users: {
@@ -432,6 +435,10 @@ export const api = {
     },
     async create(data: NewUser): Promise<AppUser> {
       return (await apiClient.post('/users', data)).data
+    },
+    /** Whether an id is still free (compared without case). */
+    async available(username: string): Promise<boolean> {
+      return (await apiClient.get('/users/check', { params: { username } })).data.available
     },
     async remove(id: number): Promise<void> {
       await apiClient.delete(`/users/${id}`)

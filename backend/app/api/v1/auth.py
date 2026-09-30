@@ -6,13 +6,14 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import (
     ADMIN, AUDITOR, TOKEN_TTL_SECONDS, CurrentUser, current_user, record, secret,
 )
 from app.auth.security import create_token, hash_password, verify_password
-from app.auth.user_rules import delete_block_reason
+from app.auth.user_rules import delete_block_reason, password_change_problem, username_key
 from app.db.repositories.audit import AuditRepository
 from app.db.repositories.users import ROLES, UserRepository
 from app.dependencies import get_db
@@ -32,6 +33,13 @@ class NewUser(BaseModel):
     display_name: str = Field(default="", max_length=100)
     password: str = Field(..., min_length=MIN_PASSWORD, max_length=200)
     role: str = "viewer"
+
+
+class ProfileChange(BaseModel):
+    """What a signed-in user may change about themselves: never role or status."""
+    display_name: Optional[str] = Field(None, max_length=100)
+    current_password: Optional[str] = Field(None, max_length=200)
+    new_password: Optional[str] = Field(None, min_length=MIN_PASSWORD, max_length=200)
 
 
 class UserChange(BaseModel):
@@ -69,7 +77,11 @@ async def setup_first_admin(body: NewUser, request: Request, db: AsyncSession = 
     repo = UserRepository(db)
     if await repo.count() > 0:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 관리자 계정이 있습니다")
-    user = await repo.create(body.username.strip(), body.display_name.strip(), hash_password(body.password), "admin")
+    try:
+        user = await repo.create(body.username.strip(), body.display_name.strip(), hash_password(body.password), "admin")
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 관리자 계정이 있습니다")
     await record(db, None, request, "setup", user.username, username=user.username)
     return _session(user)
 
@@ -93,6 +105,45 @@ async def me(user: CurrentUser = Depends(current_user)):
     return {"id": user.id, "username": user.username, "display_name": user.display_name, "role": user.role}
 
 
+@router.patch("/auth/me")
+async def update_me(
+    body: ProfileChange, request: Request, user: CurrentUser = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Edit your own name and password. Role and status are the administrator's."""
+    repo = UserRepository(db)
+    row = await repo.get(user.id)
+    changed = []
+
+    if body.display_name is not None:
+        row.display_name = body.display_name.strip()
+        changed.append("display_name")
+
+    if body.new_password:
+        problem = password_change_problem(
+            verify_password(body.current_password or "", row.password_hash),
+            body.current_password or "",
+            body.new_password,
+        )
+        if problem:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=problem)
+        row.password_hash = hash_password(body.new_password)
+        changed.append("password")
+
+    if not changed:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="바꿀 항목이 없습니다")
+
+    await repo.save(row)
+    await record(db, user, request, "profile_change", user.username, changed=changed)
+    return _user_out(row)
+
+
+@router.get("/users/check", dependencies=[ADMIN])
+async def check_username(username: str = Query(..., min_length=1, max_length=60), db: AsyncSession = Depends(get_db)):
+    """Whether an id is free, so the form can say so before it is submitted."""
+    return {"available": await UserRepository(db).get_by_username(username) is None}
+
+
 @router.get("/users", dependencies=[ADMIN])
 async def list_users(db: AsyncSession = Depends(get_db)):
     return [_user_out(u) for u in await UserRepository(db).list_all()]
@@ -107,7 +158,12 @@ async def create_user(
     repo = UserRepository(db)
     if await repo.get_by_username(body.username.strip()):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"'{body.username}' 아이디가 이미 있습니다")
-    user = await repo.create(body.username.strip(), body.display_name.strip(), hash_password(body.password), body.role)
+    try:
+        user = await repo.create(body.username.strip(), body.display_name.strip(), hash_password(body.password), body.role)
+    except IntegrityError:
+        # Two requests for the same id at once: the database's unique index has the last word.
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"'{body.username}' 아이디가 이미 있습니다")
     await record(db, admin, request, "user_create", user.username, role=user.role)
     return _user_out(user)
 

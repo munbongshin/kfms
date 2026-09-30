@@ -121,6 +121,9 @@ CREATE TABLE audit_log (
 
 CREATE INDEX idx_audit_log_at ON audit_log(at);
 
+-- Kim and kim are the same id.
+CREATE UNIQUE INDEX ux_app_users_username_lower ON app_users (lower(username));
+
 CREATE TABLE glossary_terms (
     id          SERIAL PRIMARY KEY,
     term        VARCHAR(100) NOT NULL UNIQUE,

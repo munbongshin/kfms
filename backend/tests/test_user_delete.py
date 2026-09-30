@@ -37,3 +37,31 @@ def test_a_disabled_admin_is_not_the_last_active_one():
 def test_auditors_and_viewers_are_never_the_last_admin():
     for role in ("auditor", "viewer"):
         assert delete_block_reason(user(2, role), actor_id=1, active_admins=1) is None
+
+
+# --- usernames ------------------------------------------------------------
+
+from app.auth.user_rules import username_key, password_change_problem  # noqa: E402
+
+
+def test_usernames_are_compared_without_case_or_edge_spaces():
+    assert username_key("  Kim.Admin ") == "kim.admin"
+    assert username_key("KIM") == username_key("kim")
+
+
+def test_korean_usernames_are_kept_as_they_are():
+    assert username_key("김감사") == "김감사"
+
+
+# --- changing your own password ---------------------------------------------
+
+def test_a_password_change_needs_the_current_password():
+    assert "현재 비밀번호" in password_change_problem(current_ok=False, current="x", new="NewPass-123")
+
+
+def test_the_new_password_must_differ():
+    assert "같" in password_change_problem(current_ok=True, current="OldPass-123", new="OldPass-123")
+
+
+def test_a_good_change_has_no_problem():
+    assert password_change_problem(current_ok=True, current="OldPass-123", new="NewPass-123") is None

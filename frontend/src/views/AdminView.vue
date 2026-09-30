@@ -7,7 +7,11 @@
       <el-tab-pane label="사용자" name="users">
         <div class="panel">
           <div class="form">
-            <el-input v-model="form.username" placeholder="아이디" style="width: 150px" />
+            <div class="id-field">
+              <el-input v-model="form.username" placeholder="아이디" style="width: 150px" :class="{ taken: idState === 'taken' }" @input="scheduleIdCheck" />
+              <span v-if="idState === 'taken'" class="id-msg bad">이미 사용 중인 아이디입니다</span>
+              <span v-else-if="idState === 'free'" class="id-msg good">사용할 수 있습니다</span>
+            </div>
             <el-input v-model="form.display_name" placeholder="이름 (선택)" style="width: 150px" />
             <el-input v-model="form.password" type="password" show-password placeholder="비밀번호 (8자 이상)" style="width: 190px" autocomplete="new-password" />
             <el-select v-model="form.role" style="width: 150px">
@@ -119,6 +123,7 @@ const ACTIONS = [
   { value: 'user_create', label: '사용자 추가' },
   { value: 'user_change', label: '사용자 변경' },
   { value: 'user_delete', label: '사용자 삭제' },
+  { value: 'profile_change', label: '내 정보 변경' },
   { value: 'setup', label: '최초 설정' },
 ]
 
@@ -129,8 +134,29 @@ const loadingAudit = ref(false)
 const form = ref({ username: '', display_name: '', password: '', role: 'viewer' as Role })
 const filter = ref({ username: '', action: '', days: 7 })
 
+const idState = ref<'' | 'checking' | 'free' | 'taken'>('')
+let idTimer: ReturnType<typeof setTimeout> | undefined
+let idSeq = 0
+
+/** Ask whether the id is free as it is typed; only the latest answer counts. */
+function scheduleIdCheck() {
+  clearTimeout(idTimer)
+  const name = form.value.username.trim()
+  idState.value = name.length >= 2 ? 'checking' : ''
+  if (name.length < 2) return
+  idTimer = setTimeout(async () => {
+    const seq = ++idSeq
+    try {
+      const free = await api.users.available(name)
+      if (seq === idSeq) idState.value = free ? 'free' : 'taken'
+    } catch {
+      if (seq === idSeq) idState.value = ''
+    }
+  }, 300)
+}
+
 const canCreate = computed(
-  () => form.value.username.trim().length >= 2 && form.value.password.length >= 8
+  () => form.value.username.trim().length >= 2 && form.value.password.length >= 8 && idState.value !== 'taken'
 )
 
 const fmt = (iso: string) => new Date(iso).toLocaleString()
@@ -144,6 +170,7 @@ function summarize(row: AuditEntry): string {
   if (row.action === 'request') return `응답 ${d.status}`
   if (row.action === 'user_change') return (d.changed || []).join(', ')
   if (row.action === 'user_create') return `역할 ${d.role}`
+  if (row.action === 'profile_change') return (d.changed || []).join(', ')
   return ''
 }
 
@@ -179,6 +206,7 @@ async function createUser() {
   try {
     await api.users.create({ ...form.value, username: form.value.username.trim() })
     form.value = { username: '', display_name: '', password: '', role: 'viewer' }
+    idState.value = ''
     ElMessage.success('사용자를 추가했습니다')
     await loadUsers()
   } catch (e: any) {
@@ -250,8 +278,32 @@ onMounted(loadUsers)
   gap: 8px;
 }
 
+.id-field {
+  position: relative;
+}
+
+.id-msg {
+  position: absolute;
+  left: 2px;
+  top: 33px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.id-msg.bad {
+  color: #b42318;
+}
+
+.id-msg.good {
+  color: #067647;
+}
+
+.taken :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px #f04438 inset;
+}
+
 .hint {
-  margin: 10px 0 0;
+  margin: 14px 0 0;
   font-size: 12.5px;
   color: #6b7686;
 }

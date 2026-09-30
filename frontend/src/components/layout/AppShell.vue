@@ -3,11 +3,12 @@
     <header class="top-bar">
       <span class="brand">KFMS</span>
       <span class="top-right">
-        <span class="who" :title="`역할: ${roleLabel}`">
+        <button class="who" :title="`역할: ${roleLabel} — 눌러서 내 정보 편집`" @click="showProfile = true">
           <el-icon><User /></el-icon>
           {{ auth.user?.display_name || auth.user?.username }}
           <em>{{ roleLabel }}</em>
-        </span>
+        </button>
+        <MyProfileDialog v-model="showProfile" />
         <button class="logout" @click="signOut">로그아웃</button>
         <!-- The connection every screen works on. It lives here, not in the
              tree, because the tree is shown on the query screen only. -->
@@ -69,6 +70,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Coin, User } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
+import MyProfileDialog from './MyProfileDialog.vue'
 import FunctionTabs from './FunctionTabs.vue'
 import SchemaTree from './SchemaTree.vue'
 import { useDatabaseStore } from '../../stores/database'
@@ -80,6 +82,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
+const showProfile = ref(false)
 const ROLE_LABELS: Record<string, string> = { admin: '관리자', auditor: '감사담당', viewer: '조회' }
 const roleLabel = computed(() => ROLE_LABELS[auth.role || ''] || '')
 
@@ -161,8 +164,17 @@ function onReselect(name: string) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
   font-size: 13px;
   color: #fff;
+  cursor: pointer;
+}
+
+.who:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .who em {

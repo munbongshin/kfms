@@ -5,6 +5,7 @@ from typing import List, Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.user_rules import username_key
 from app.db.models import User
 
 ROLES = ("admin", "auditor", "viewer")
@@ -28,7 +29,11 @@ class UserRepository:
         return await self.session.get(User, user_id)
 
     async def get_by_username(self, username: str) -> Optional[User]:
-        result = await self.session.execute(select(User).where(User.username == username))
+        # Kim and kim are the same id: compared without case, as the database's
+        # unique index on lower(username) also enforces.
+        result = await self.session.execute(
+            select(User).where(func.lower(User.username) == username_key(username))
+        )
         return result.scalar_one_or_none()
 
     async def create(self, username: str, display_name: str, password_hash: str, role: str) -> User:

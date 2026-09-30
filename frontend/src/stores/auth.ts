@@ -46,11 +46,16 @@ export const useAuthStore = defineStore('auth', () => {
     start(await api.auth.setup(data))
   }
 
+  /** Save your own name and/or password; the header shows the new name at once. */
+  async function updateProfile(data: { display_name?: string; current_password?: string; new_password?: string }) {
+    user.value = await api.auth.updateMe(data)
+  }
+
   function logout() {
     token.value = null
     user.value = null
     localStorage.removeItem(TOKEN_KEY)
   }
 
-  return { token, user, role, isAdmin, isAuditor, setupRequired, statusLoaded, checkStatus, restore, login, setup, logout }
+  return { token, user, role, isAdmin, isAuditor, setupRequired, statusLoaded, checkStatus, restore, login, setup, updateProfile, logout }
 })
