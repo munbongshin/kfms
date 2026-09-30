@@ -32,12 +32,42 @@
         </el-button>
       </div>
 
+      <!-- Named after the file; the user may rename it, and must when the
+           name is already taken. -->
+      <div v-if="selectedFile" class="table-name">
+        <label class="tn-label">테이블 이름</label>
+        <el-input
+          v-model="tableName"
+          size="default"
+          placeholder="만들 테이블 이름"
+          style="width: 360px"
+          :class="{ taken: nameCheck && !nameCheck.available }"
+          @input="scheduleCheck"
+        >
+          <template #prepend>kfms_upload.</template>
+        </el-input>
+        <div class="tn-status">
+          <span v-if="checking" class="muted">확인 중…</span>
+          <template v-else-if="nameCheck">
+            <span v-if="!nameCheck.available" class="bad">
+              '{{ nameCheck.conflict_with }}' 테이블이 이미 있습니다 — 다른 이름을 입력하세요
+            </span>
+            <span v-else class="good">
+              사용할 수 있습니다
+              <template v-if="nameCheck.name !== tableName.trim()">
+                · 실제 이름: <code>{{ nameCheck.key }}</code>
+              </template>
+            </span>
+          </template>
+        </div>
+      </div>
+
       <div class="upload-actions">
         <el-button
           type="primary"
           @click="uploadFile"
           :loading="uploading"
-          :disabled="!selectedFile || !databaseStore.activeConnectionId"
+          :disabled="!selectedFile || !databaseStore.activeConnectionId || !canUpload"
         >
           <el-icon><Upload /></el-icon>
           Upload & Create Table
@@ -92,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { UploadFilled, Document, Delete, Upload, Search } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
@@ -105,6 +135,47 @@ const router = useRouter()
 const databaseStore = useDatabaseStore()
 
 const selectedFile = ref<File | null>(null)
+const tableName = ref('')
+const nameCheck = ref<Awaited<ReturnType<typeof api.excel.checkTableName>> | null>(null)
+const checking = ref(false)
+let checkTimer: ReturnType<typeof setTimeout> | undefined
+let checkSeq = 0
+
+const canUpload = computed(
+  () => !!tableName.value.trim() && !checking.value && !!nameCheck.value?.available
+)
+
+/** Ask the server what the name becomes and whether it is free. Only the
+ *  latest answer counts, so quick typing cannot show a stale result. */
+async function checkName() {
+  const id = databaseStore.activeConnectionId
+  const name = tableName.value.trim()
+  if (!id || !name) {
+    nameCheck.value = null
+    return
+  }
+  const seq = ++checkSeq
+  checking.value = true
+  try {
+    const result = await api.excel.checkTableName(id, name)
+    if (seq === checkSeq) nameCheck.value = result
+  } catch {
+    if (seq === checkSeq) nameCheck.value = null
+  } finally {
+    if (seq === checkSeq) checking.value = false
+  }
+}
+
+function scheduleCheck() {
+  clearTimeout(checkTimer)
+  checking.value = true
+  checkTimer = setTimeout(checkName, 300)
+}
+
+// Another target database may already hold the name, or not.
+watch(() => databaseStore.activeConnectionId, () => {
+  if (selectedFile.value) checkName()
+})
 const uploading = ref(false)
 const uploads = ref<any[]>([])
 const maxSize = 50 // MB
@@ -112,11 +183,18 @@ const maxSize = 50 // MB
 function handleFileChange(file: UploadFile) {
   if (file.raw) {
     selectedFile.value = file.raw
+    // Start from the file name; the server turns it into a valid table name.
+    tableName.value = file.raw.name.replace(/\.(xlsx|xls)$/i, '')
+    checkName().then(() => {
+      if (nameCheck.value) tableName.value = nameCheck.value.name
+    })
   }
 }
 
 function clearFile() {
   selectedFile.value = null
+  tableName.value = ''
+  nameCheck.value = null
 }
 
 function formatFileSize(bytes: number): string {
@@ -145,7 +223,9 @@ async function uploadFile() {
   try {
     const result = await api.excel.upload(
       selectedFile.value,
-      databaseStore.activeConnectionId
+      databaseStore.activeConnectionId,
+      undefined,
+      tableName.value.trim()
     )
 
     ElMessage.success({
@@ -155,11 +235,25 @@ async function uploadFile() {
 
     clearFile()
     await fetchUploads()
+    // The new table must show in the query tree without a page reload.
+    await refreshTables(databaseStore.activeConnectionId)
   } catch (error: any) {
     const message = error.response?.data?.detail || 'Upload failed'
     ElMessage.error(message)
+    // Taken since the last check: show it next to the name field too.
+    if (error.response?.status === 409) await checkName()
   } finally {
     uploading.value = false
+  }
+}
+
+/** Re-read the table list; a failure here must not undo a finished upload. */
+async function refreshTables(connectionId: number | null) {
+  if (!connectionId) return
+  try {
+    await databaseStore.refreshSchema(connectionId)
+  } catch {
+    // The tree offers its own retry.
   }
 }
 
@@ -178,6 +272,7 @@ async function deleteUpload(uploadId: number) {
     await api.excel.delete(uploadId, databaseStore.activeConnectionId)
     ElMessage.success('Upload deleted')
     await fetchUploads()
+    await refreshTables(databaseStore.activeConnectionId)
   } catch (error: any) {
     ElMessage.error('Failed to delete upload')
   }
@@ -241,6 +336,40 @@ onMounted(() => {
 .file-size {
   color: #909399;
   font-size: 13px;
+}
+
+.table-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.tn-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #344054;
+}
+
+.tn-status {
+  font-size: 12.5px;
+}
+
+.tn-status .good {
+  color: #067647;
+}
+
+.tn-status .bad {
+  color: #b42318;
+}
+
+.tn-status .muted {
+  color: #8a94a3;
+}
+
+.taken :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px #f04438 inset;
 }
 
 .upload-actions {

@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from app.dependencies import get_db, get_db_pool
 from app.db.connection_pool import DatabaseConnectionPool
-from app.services.excel_service import ExcelService
+from app.services.excel_service import ExcelService, TableNameTaken
 from app.config import settings
 
 
@@ -58,6 +58,7 @@ async def upload_excel(
     file: UploadFile = File(..., description="Excel file (.xls or .xlsx)"),
     database_id: int = Form(..., description="Target database connection ID"),
     ttl_hours: Optional[int] = Form(None, description="Time-to-live in hours"),
+    table_name: Optional[str] = Form(None, description="Table name; the file name when omitted"),
     service: ExcelService = Depends(get_excel_service)
 ):
     """
@@ -85,11 +86,14 @@ async def upload_excel(
         result = await service.upload_excel(
             file=file,
             database_id=str(database_id),
-            ttl_hours=ttl_hours
+            ttl_hours=ttl_hours,
+            table_name=table_name,
         )
 
         return result
 
+    except TableNameTaken as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -100,6 +104,16 @@ async def upload_excel(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Upload failed: {str(e)}"
         )
+
+
+@router.get("/table-name")
+async def check_table_name(
+    database_id: int,
+    name: str,
+    service: ExcelService = Depends(get_excel_service)
+):
+    """The table name an upload would get from `name`, and whether it is free."""
+    return await service.check_table_name(str(database_id), name)
 
 
 @router.get("/uploads", response_model=List[ExcelListItem])
