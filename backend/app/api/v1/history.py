@@ -12,8 +12,9 @@ from datetime import datetime
 
 from app.auth.deps import ADMIN, ANY_USER, CurrentUser
 from app.auth.masking import mask_results
-from app.auth.sql_visibility import history_row
-from app.dependencies import get_db
+from app.auth.sql_visibility import can_see_sql, history_row, safe_error
+from app.services.result_labels import ResultLabeler
+from app.dependencies import get_db, get_db_pool
 from app.db.repositories.history import HistoryRepository
 
 
@@ -130,7 +131,9 @@ async def list_history(
 async def get_history(
     history_id: int,
     user: CurrentUser = ANY_USER,
-    repo: HistoryRepository = Depends(get_history_repo)
+    repo: HistoryRepository = Depends(get_history_repo),
+    db: AsyncSession = Depends(get_db),
+    pool=Depends(get_db_pool),
 ):
     """
     Get detailed query history record.
@@ -146,6 +149,12 @@ async def get_history(
                 detail=f"History {history_id} not found"
             )
 
+        results = mask_results(history.results, user.role) if history.results else history.results
+        if results and not can_see_sql(user.role):
+            # Saved rows carry the real column names; others get the Korean ones.
+            labeler = await ResultLabeler.load(pool, db, history.database_id)
+            results = labeler.relabel(results, history.generated_sql)
+
         return HistoryDetail(**history_row(dict(
             id=history.id,
             question=history.question,
@@ -153,7 +162,7 @@ async def get_history(
             database_id=history.database_id,
             status=history.status,
             # Saved results may hold card numbers a viewer must not read.
-            results=mask_results(history.results, user.role) if history.results else history.results,
+            results=results,
             error_message=history.error_message,
             execution_time_ms=history.execution_time_ms,
             row_count=history.row_count,
@@ -169,7 +178,7 @@ async def get_history(
     except Exception as e:
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get history: {str(e)}"
+            detail=safe_error(user.role, f"Failed to get history: {str(e)}")
         )
 
 

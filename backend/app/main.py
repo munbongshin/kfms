@@ -171,7 +171,7 @@ async def root():
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(databases.router, prefix="/api/v1", dependencies=[ANY_USER])
 app.include_router(query.router, prefix="/api/v1", dependencies=[ANY_USER])
-app.include_router(excel.router, prefix="/api/v1", dependencies=[AUDITOR])
+app.include_router(excel.router, prefix="/api/v1", dependencies=[ADMIN])
 app.include_router(history.router, prefix="/api/v1", dependencies=[ANY_USER])
 app.include_router(anomaly.router, prefix="/api/v1", dependencies=[AUDITOR])
 app.include_router(llm_settings.router, prefix="/api/v1", dependencies=[ADMIN])

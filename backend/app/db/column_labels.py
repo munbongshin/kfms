@@ -11,6 +11,7 @@ Overrides live in the KFMS metadata database. The catalog read from the target
 database stays cached and untouched; labels are laid over a copy per request, so
 a change shows at once without re-reading the target.
 """
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
@@ -25,6 +26,14 @@ DEFAULT_EXPRESSION_TERMS: Dict[str, str] = {
     "min": "최소값",
     "?column?": "계산값",  # what PostgreSQL names an unaliased expression
 }
+
+
+_HANGUL = re.compile("[ㄱ-ㆎ가-힣]")
+
+
+def has_korean(text: str) -> bool:
+    """Whether `text` contains Hangul, i.e. reads as a Korean name."""
+    return bool(text) and bool(_HANGUL.search(text))
 
 
 @dataclass(frozen=True)
@@ -71,6 +80,9 @@ def apply_labels(
                 label, source = wide[name], "connection"
             elif comment:
                 label, source = comment, "comment"
+            elif has_korean(name):
+                # Uploaded spreadsheets keep Korean headers as column names.
+                label, source = name, "name"
             else:
                 label, source = None, None
             result[table].append({**column, "label": label, "label_source": source})
@@ -113,6 +125,8 @@ def coverage(
             label, source = wide[name], "connection"
         elif row["comment"]:
             label, source = row["comment"], "comment"
+        elif has_korean(name):
+            label, source = name, "name"
         else:
             label, source = None, None
         out.append({

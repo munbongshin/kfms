@@ -16,7 +16,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/databases',
     name: 'databases',
     component: () => import('../views/DatabaseView.vue'),
-    meta: { title: 'Databases', roles: ['admin', 'auditor'] }
+    meta: { title: 'Databases', roles: ['admin'] }
   },
   {
     path: '/history',

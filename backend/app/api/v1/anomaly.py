@@ -9,7 +9,10 @@ from app.anomaly.holidays_kr import calendar as holiday_calendar, check_day
 from app.anomaly.rules import RULES, SOURCES, TEMPLATES, build_rules
 from app.anomaly.settings import apply_overrides, describe, validate, with_synced_holidays, without_defaults
 from app.anomaly.settings_history import changes as settings_changes
-from app.auth.deps import ADMIN, AUDITOR, CurrentUser, record
+from app.auth.deps import ADMIN, ANY_USER, AUDITOR, CurrentUser, record
+from app.auth.sql_visibility import can_see_sql
+from app.db.column_privacy import anonymize_detail, hide_rule_caveats
+from app.services.result_labels import ResultLabeler
 from app.db.repositories.anomaly_settings import AnomalySettingsRepository
 from app.db.repositories.holidays import HolidayRepository
 from app.db.repositories.anomaly import AnomalyRepository
@@ -249,6 +252,7 @@ async def list_findings(
     source: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    user: CurrentUser = ANY_USER,
     service: AnomalyService = Depends(get_anomaly_service),
 ):
     """Findings for one connection, with review state merged in.
@@ -264,7 +268,7 @@ async def list_findings(
         )
 
     try:
-        return await service.list_findings(
+        found = await service.list_findings(
             database_id,
             template=template,
             status=status,
@@ -272,6 +276,9 @@ async def list_findings(
             date_from=date_from,
             date_to=date_to,
         )
+        if not can_see_sql(user.role):
+            found["applicable_rules"] = hide_rule_caveats(found["applicable_rules"])
+        return found
     except ValueError as exc:
         # A malformed or inverted period is a caller bug, not a server fault.
         raise HTTPException(
@@ -284,7 +291,10 @@ async def finding_transactions(
     database_id: str = Query(...),
     source: str = Query("approval"),
     seq: List[int] = Query(default=[]),
+    user: CurrentUser = ANY_USER,
     service: AnomalyService = Depends(get_anomaly_service),
+    db: AsyncSession = Depends(get_db),
+    pool=Depends(get_db_pool),
 ):
     """Full approvals behind one finding, fetched only when a reviewer expands it.
 
@@ -303,7 +313,12 @@ async def finding_transactions(
             detail=f"Unknown source: {source}",
         )
 
-    return {"transactions": await service.get_transactions(database_id, source, seq)}
+    detail = await service.get_transactions(database_id, source, seq)
+    if not can_see_sql(user.role):
+        # The detail names raw columns; everyone but an administrator gets Korean names.
+        labels = (await ResultLabeler.load(pool, db, database_id)).labels_of(SOURCES[source].view)
+        detail = [anonymize_detail(d, labels) for d in detail]
+    return {"transactions": detail}
 
 
 @router.patch("/findings/review")

@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 
 from app.auth.deps import ADMIN, ANY_USER, CurrentUser, record
 from app.auth.masking import mask_results
-from app.auth.sql_visibility import combined_result, execution_result, safe_error
+from app.auth.sql_visibility import can_see_sql, combined_result, execution_result, safe_error
+from app.services.result_labels import ResultLabeler
 from app.dependencies import get_db, get_db_pool
 from app.db.connection_pool import DatabaseConnectionPool
 from app.db.repositories.history import HistoryRepository
@@ -252,6 +253,11 @@ async def generate_and_execute(
                 success=bool(result.get("success")), rows=result.get("row_count"),
             )
             result["results"] = mask_results(result["results"], user.role)
+            if not can_see_sql(user.role):
+                labeler = await ResultLabeler.load(service.pool, db, str(request.database_id))
+                result["results"] = labeler.relabel(
+                    result["results"], (result.get("generation") or {}).get("sql", "")
+                )
 
         # Anyone but an administrator gets rows only: no SQL, no database errors.
         return combined_result(result, user.role)
@@ -313,4 +319,7 @@ async def rerun_saved(
             detail=safe_error(user.role, result.get("error", "Query execution failed")),
         )
     result["results"] = mask_results(result["results"], user.role)
+    if not can_see_sql(user.role):
+        labeler = await ResultLabeler.load(service.pool, db, str(saved.database_id))
+        result["results"] = labeler.relabel(result["results"], saved.generated_sql)
     return execution_result(result, user.role)

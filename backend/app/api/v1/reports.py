@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import ANY_USER, CurrentUser, record
 from app.auth.masking import mask_results
-from app.auth.sql_visibility import report_meta
+from app.auth.sql_visibility import can_see_sql, report_meta
+from app.services.result_labels import ResultLabeler
 from app.db.models import SavedReport
 from app.db.repositories.history import HistoryRepository
 from app.db.repositories.reports import ReportRepository
@@ -57,6 +58,15 @@ def _meta(r: SavedReport) -> dict:
     }
 
 
+async def _shown(report: SavedReport, user: CurrentUser, db: AsyncSession, pool) -> list:
+    """The last result as this user may see it: card numbers masked, and Korean
+    column names only unless they are an administrator."""
+    rows = mask_results(report.last_results or [], user.role)
+    if rows and not can_see_sql(user.role):
+        rows = (await ResultLabeler.load(pool, db, report.database_id)).relabel(rows, report.sql)
+    return rows
+
+
 async def _get(repo: ReportRepository, report_id: int) -> SavedReport:
     report = await repo.get(report_id)
     if report is None:
@@ -96,10 +106,12 @@ async def create_report(body: NewReport, user: CurrentUser = ANY_USER, db: Async
 
 
 @router.get("/{report_id}")
-async def get_report(report_id: int, user: CurrentUser = ANY_USER, db: AsyncSession = Depends(get_db)):
+async def get_report(
+    report_id: int, user: CurrentUser = ANY_USER, db: AsyncSession = Depends(get_db), pool=Depends(get_db_pool)
+):
     """The report and its last result, with card numbers masked for viewers."""
     report = await _get(ReportRepository(db), report_id)
-    return {**report_meta(_meta(report), user.role), "results": mask_results(report.last_results or [], user.role)}
+    return {**report_meta(_meta(report), user.role), "results": await _shown(report, user, db, pool)}
 
 
 @router.post("/{report_id}/run")
@@ -112,7 +124,7 @@ async def run_now(
     await run_report(report, pool, _now())
     await repo.save(report)
     await record(db, user, http_request, "report_run", report.name, status=report.last_status, rows=report.last_row_count)
-    return {**report_meta(_meta(report), user.role), "results": mask_results(report.last_results or [], user.role)}
+    return {**report_meta(_meta(report), user.role), "results": await _shown(report, user, db, pool)}
 
 
 @router.patch("/{report_id}")

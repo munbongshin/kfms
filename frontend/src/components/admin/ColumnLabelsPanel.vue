@@ -87,6 +87,7 @@
         <template #default="{ row }">
           <el-tag v-if="row.source === 'connection'" size="small" type="success">지정</el-tag>
           <el-tag v-else-if="row.source === 'comment'" size="small" type="info">DB 설명</el-tag>
+          <el-tag v-else-if="row.source === 'name'" size="small" type="info">한글 컬럼명</el-tag>
           <el-tag v-else size="small" type="danger">없음</el-tag>
         </template>
       </el-table-column>

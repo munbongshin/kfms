@@ -16,7 +16,7 @@
         <el-option
           v-for="c in preview.columns"
           :key="c"
-          :label="labels[c] ? `${labels[c]} (${c})` : c"
+          :label="labels[c] ? (auth.isAdmin ? `${labels[c]} (${c})` : labels[c]) : c"
           :value="c"
         />
       </el-select>
@@ -48,9 +48,9 @@
                two columns can share one (companyid and corpbizno are both
                사업자번호) and it is what SQL has to use. -->
           <template #header>
-            <span class="col-head" :title="comments[column] ? `${comments[column]} (${column})` : column">
+            <span class="col-head" :title="headerTitle(column)">
               <span class="col-label">{{ labels[column] || column }}</span>
-              <span v-if="labels[column]" class="col-name">{{ column }}</span>
+              <span v-if="auth.isAdmin && labels[column]" class="col-name">{{ column }}</span>
             </span>
           </template>
         </el-table-column>
@@ -87,6 +87,7 @@
 import { ref, computed, watch } from 'vue'
 import { useQueryStore, type QueryResult } from '../../stores/query'
 import { useDatabaseStore } from '../../stores/database'
+import { useAuthStore } from '../../stores/auth'
 import { labelsFromSql } from '../../utils/columnLabels'
 
 const props = defineProps<{
@@ -95,6 +96,14 @@ const props = defineProps<{
 
 const queryStore = useQueryStore()
 const databaseStore = useDatabaseStore()
+const auth = useAuthStore()
+
+/** Hover text for a header: the full business name, with the real column name only for administrators. */
+function headerTitle(column: string) {
+  const comment = comments.value[column]
+  if (!auth.isAdmin) return comment || labels.value[column] || column
+  return comment ? `${comment} (${column})` : column
+}
 
 // Only a table preview pages on the server; an LLM result is whatever the
 // query returned, so it still pages client-side over the rows in hand.

@@ -213,7 +213,7 @@ export interface ColumnLabelRow {
   comment: string | null
   default_label: string | null
   label: string | null
-  source: 'connection' | 'comment' | null
+  source: 'connection' | 'comment' | 'name' | null
   mapped: boolean
   /** Id of the connection-wide override, if there is one. */
   id: number | null

@@ -50,7 +50,7 @@ interface Tab {
 
 const tabs: Tab[] = [
   { name: 'query', label: '질의', icon: ChatLineSquare },
-  { name: 'databases', label: '데이터', icon: Coin, roles: ['admin', 'auditor'] },
+  { name: 'databases', label: '데이터', icon: Coin, roles: ['admin'] },
   { name: 'history', label: '이력', icon: Clock },
   { name: 'reports', label: '보고서', icon: Document, title: '자동 실행되는 보고서' },
   { name: 'anomaly', label: '점검', icon: Warning, roles: ['admin', 'auditor'] },

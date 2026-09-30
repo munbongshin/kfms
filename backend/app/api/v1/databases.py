@@ -10,8 +10,11 @@ from pydantic import BaseModel, Field
 
 from app.auth.deps import ADMIN, ANY_USER, CurrentUser, record
 from app.auth.masking import mask_results
-from app.auth.sql_visibility import table_page
+from app.auth.sql_visibility import can_see_sql, table_page
+from app.db.column_privacy import to_real, translate_page
+from app.services.result_labels import ResultLabeler
 from app.db.column_labels import apply_labels
+from app.db.column_privacy import visible_schema
 from app.db.repositories.column_labels import ColumnLabelRepository
 from app.dependencies import get_db, get_db_pool
 from app.db.repositories.database_repo import DatabaseRepository
@@ -244,6 +247,7 @@ async def test_connection(
 async def get_schema(
     connection_id: int,
     refresh: bool = False,
+    user: CurrentUser = ANY_USER,
     db: AsyncSession = Depends(get_db),
     pool: DatabaseConnectionPool = Depends(get_db_pool)
 ):
@@ -282,13 +286,24 @@ async def get_schema(
         # The catalog is cached and carries only DB comments; the administrator's
         # column names are laid over a copy, so a change shows without a re-read.
         schema = apply_labels(schema, await ColumnLabelRepository(db).overrides(connection_id))
+        administrator = can_see_sql(user.role)
+        if not administrator:
+            # Everyone else gets Korean column names only; the English ones are
+            # not in the response at all.
+            schema, _ = visible_schema(schema)
         return {
             "connection_id": connection_id,
             "connection_name": db_conn.name,
             "schema": schema,
             # Kind, description and whether each table is analysed.
             "tables": {
-                key: {**info, "excluded": key in excluded, "column_count": len(schema.get(key, []))}
+                key: {
+                    **info,
+                    "excluded": key in excluded,
+                    "column_count": len(schema.get(key, [])),
+                    # Which view reads which source columns is an administrator's concern.
+                    **({} if administrator else {"derived_views": {}}),
+                }
                 for key, info in tables.items()
             },
         }
@@ -359,11 +374,23 @@ async def read_table_rows(
     selected = [c for c in (columns or "").split(",") if c]
 
     try:
+        # A non-administrator names columns by their Korean names; map them back
+        # for the query, and translate the page on the way out.
+        real_by_shown = None
+        if not can_see_sql(user.role):
+            _, real = (await ResultLabeler.load(pool, db, str(connection_id))).visible()
+            real_by_shown = real.get(table)
+            if real_by_shown is not None:
+                selected = to_real(selected, real_by_shown)
+                order_by = to_real([order_by], real_by_shown)[0] if order_by else None
+
         page = await TableBrowser(pool).read_page(
             str(connection_id), table, selected, order_by, descending, limit, offset
         )
         page["rows"] = mask_results(page["rows"], user.role)
         page = table_page(page, user.role)
+        if real_by_shown is not None:
+            page = translate_page(page, real_by_shown)
         await record(db, user, http_request, "table_preview", f"{connection_id}:{table}", offset=offset, limit=limit)
         return page
     except ValueError as exc:

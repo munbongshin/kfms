@@ -69,7 +69,7 @@ def _problem_with(schema, table_key: Optional[str], column_name: str) -> Optiona
     return None
 
 
-@router.get("/databases/{connection_id}/column-labels")
+@router.get("/databases/{connection_id}/column-labels", dependencies=[ADMIN])
 async def list_labels(
     connection_id: int,
     db: AsyncSession = Depends(get_db),

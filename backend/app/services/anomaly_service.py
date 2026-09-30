@@ -103,8 +103,11 @@ def build_source_query(source: Source, date_from: Optional[str], date_to: Option
 
 
 def _public_transaction(row: Dict[str, Any]) -> Dict[str, Any]:
-    """The spec's response example: seq, merchname, apprtot — nothing else."""
-    return {field: row.get(field) for field in TRANSACTION_FIELDS}
+    """What the list carries about a transaction: its number, merchant and amount.
+
+    Named for what they are, not after the columns they come from, so the
+    response does not spell out the database's column names."""
+    return {"seq": row.get("seq"), "merchant": row.get("merchname"), "amount": row.get("apprtot")}
 
 
 def split_detail(row: Dict[str, Any], source: Source) -> tuple:

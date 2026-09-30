@@ -55,6 +55,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { useDatabaseStore, type ColumnInfo } from '../../stores/database'
 import { useQueryStore } from '../../stores/query'
+import { useAuthStore } from '../../stores/auth'
 
 export interface TreeNode {
   key: string
@@ -76,6 +77,7 @@ const route = useRoute()
 const router = useRouter()
 const databaseStore = useDatabaseStore()
 const queryStore = useQueryStore()
+const auth = useAuthStore()
 
 const treeRef = ref()
 const filterText = ref('')
@@ -177,7 +179,8 @@ async function loadNode(node: any, resolve: (nodes: TreeNode[]) => void) {
       columns.map((col) => ({
         key: `col-${data.connectionId}-${data.table}-${col.name}`,
         label: col.label || col.comment || col.name,
-        name: col.label || col.comment ? col.name : undefined,
+        // The real column name only for administrators; everyone else gets Korean names from the server anyway.
+        name: auth.isAdmin && (col.label || col.comment) ? col.name : undefined,
         // The full workbook name when the label is a shortened one.
         title: col.comment || undefined,
         kind: 'column' as const,
