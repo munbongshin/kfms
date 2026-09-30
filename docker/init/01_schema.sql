@@ -44,6 +44,30 @@ CREATE TABLE llm_settings (
     updated_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE app_users (
+    id            SERIAL PRIMARY KEY,
+    username      VARCHAR(60) NOT NULL UNIQUE,
+    display_name  VARCHAR(100) NOT NULL DEFAULT '',
+    password_hash VARCHAR(300) NOT NULL,
+    role          VARCHAR(20) NOT NULL DEFAULT 'viewer',  -- admin, auditor, viewer
+    is_active     BOOLEAN NOT NULL DEFAULT true,
+    created_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE audit_log (
+    id       SERIAL PRIMARY KEY,
+    at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    username VARCHAR(60) NOT NULL DEFAULT '',
+    role     VARCHAR(20) NOT NULL DEFAULT '',
+    action   VARCHAR(60) NOT NULL,
+    target   VARCHAR(500) NOT NULL DEFAULT '',
+    detail   JSON NOT NULL DEFAULT '{}',
+    ip       VARCHAR(64) NOT NULL DEFAULT ''
+);
+
+CREATE INDEX idx_audit_log_at ON audit_log(at);
+
 CREATE TABLE glossary_terms (
     id          SERIAL PRIMARY KEY,
     term        VARCHAR(100) NOT NULL UNIQUE,

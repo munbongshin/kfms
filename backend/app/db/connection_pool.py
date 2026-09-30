@@ -85,10 +85,11 @@ class DatabaseConnectionPool:
 
             connect_args: Dict[str, Any] = {}
 
+            # A runaway question must not hold a connection for minutes.
+            server_settings = {"statement_timeout": str(settings.QUERY_TIMEOUT * 1000)}
             if is_read_only:
-                connect_args["server_settings"] = {
-                    "default_transaction_read_only": "on"
-                }
+                server_settings["default_transaction_read_only"] = "on"
+            connect_args["server_settings"] = server_settings
 
             # Create async engine with pooling
             engine = create_async_engine(
@@ -162,6 +163,8 @@ class DatabaseConnectionPool:
         """
         async with self.get_connection(connection_id) as conn:
             await conn.execute(text("SET TRANSACTION READ WRITE"))
+            # Loading a large sheet legitimately takes longer than a question.
+            await conn.execute(text("SET LOCAL statement_timeout = 0"))
             yield conn
 
     async def test_connection(self, connection_id: str) -> Dict[str, Any]:

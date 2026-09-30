@@ -203,3 +203,35 @@ class GlossaryTerm(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class User(Base):
+    """A person who signs in. Roles: admin, auditor, viewer."""
+
+    __tablename__ = "app_users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(60), nullable=False, unique=True)
+    display_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    password_hash: Mapped[str] = mapped_column(String(300), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="viewer")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+
+class AuditLog(Base):
+    """Who did what, and when. Append-only: nothing in the app edits or deletes it."""
+
+    __tablename__ = "audit_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    username: Mapped[str] = mapped_column(String(60), nullable=False, default="")
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    action: Mapped[str] = mapped_column(String(60), nullable=False)
+    target: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    detail: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    ip: Mapped[str] = mapped_column(String(64), nullable=False, default="")

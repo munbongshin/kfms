@@ -9,12 +9,15 @@ from app.utils.sql_validator import SQLValidator
 from app.db.connection_pool import DatabaseConnectionPool
 from app.db.repositories.history import HistoryRepository
 from app.services.llm_service import LLMService
+from app.services.plan_cost import plan_cost
 from app.services.prompt_context import build_context, pick_examples, pick_terms, retry_context
 from app.config import settings
 
 
 # A failed dry run is fed back to the model this many times before giving up.
 MAX_RETRIES = 2
+# The planner's cost units; roughly a few seconds of work and up.
+COST_WARNING = 1_000_000
 
 
 class QueryService:
@@ -65,15 +68,15 @@ class QueryService:
             pass
         return {"examples": examples, "terms": terms}
 
-    async def _dry_run(self, database_id: str, sql: str) -> Optional[str]:
-        """The database's complaint about `sql`, or None if it plans cleanly.
+    async def _dry_run(self, database_id: str, sql: str):
+        """(the database's complaint about `sql` or None, its estimated cost).
         EXPLAIN without ANALYZE plans the query without running it."""
         try:
-            await self.pool.execute_query(database_id, f"EXPLAIN {sql}")
-            return None
+            rows = await self.pool.execute_query(database_id, f"EXPLAIN (FORMAT JSON) {sql}")
+            return None, plan_cost(rows)
         except Exception as exc:
-            # The driver wraps the server message; the last line is the useful part.
-            return str(exc).strip().splitlines()[0][:400]
+            # The driver wraps the server message; the first line is the useful part.
+            return str(exc).strip().splitlines()[0][:400], None
 
     async def generate_sql(
         self,
@@ -101,6 +104,7 @@ class QueryService:
         attempt_context = base_context
         attempts = 0
         db_error: Optional[str] = None
+        cost = None
         while True:
             attempts += 1
             llm_result = await self.llm_service.generate_sql(
@@ -118,12 +122,18 @@ class QueryService:
                 break
 
             sql_with_limit = self.validator.enforce_limit(sql, settings.QUERY_RESULT_LIMIT)
-            db_error = await self._dry_run(database_id, sql_with_limit)
+            db_error, cost = await self._dry_run(database_id, sql_with_limit)
             if db_error is None or attempts > MAX_RETRIES:
                 break
             attempt_context = "\n\n".join(
                 p for p in (base_context, retry_context(sql, db_error)) if p
             )
+
+        if cost and cost[0] > COST_WARNING:
+            validation = dict(validation)
+            validation["warnings"] = list(validation.get("warnings", [])) + [
+                f"실행 비용이 큰 쿼리입니다(예상 {cost[1]:,}행). 오래 걸리거나 시간 제한(약 {settings.QUERY_TIMEOUT}초)에 걸릴 수 있습니다."
+            ]
 
         if db_error is not None:
             validation = dict(validation)

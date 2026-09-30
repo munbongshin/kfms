@@ -13,7 +13,12 @@ from app.db.connection_pool import get_connection_pool
 from app.db.repositories.database_repo import DatabaseRepository
 
 # Import routers
-from app.api.v1 import databases, query, excel, history, anomaly, llm_settings, glossary
+from app.api.v1 import databases, query, excel, history, anomaly, llm_settings, glossary, auth
+from app.auth.audit_rules import is_audited
+from app.auth.deps import ADMIN, ANY_USER, AUDITOR, secret, token_from
+from app.auth.security import read_token
+from app.db.repositories.audit import AuditRepository
+from app.dependencies import AsyncSessionLocal
 
 
 @asynccontextmanager
@@ -69,6 +74,28 @@ app = FastAPI(
     openapi_url="/api/openapi.json"
 )
 
+@app.middleware("http")
+async def audit_requests(request, call_next):
+    """Log every change and every read of card numbers or saved results.
+
+    Requests that write their own, richer entry (the SQL run, who signed in)
+    are skipped by is_audited(generic=True).
+    """
+    response = await call_next(request)
+    try:
+        if request.url.path.startswith("/api/") and is_audited(request.method, request.url.path, generic=True):
+            claims = read_token(token_from(request) or "", secret()) or {}
+            async with AsyncSessionLocal() as session:
+                await AuditRepository(session).add(
+                    claims.get("name", ""), claims.get("role", ""), "request",
+                    f"{request.method} {request.url.path}", {"status": response.status_code},
+                    request.client.host if request.client else "",
+                )
+    except Exception:
+        pass  # the log must never break the request it describes
+    return response
+
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -114,13 +141,14 @@ async def root():
 
 
 # Register API routers
-app.include_router(databases.router, prefix="/api/v1")
-app.include_router(query.router, prefix="/api/v1")
-app.include_router(excel.router, prefix="/api/v1")
-app.include_router(history.router, prefix="/api/v1")
-app.include_router(anomaly.router, prefix="/api/v1")
-app.include_router(llm_settings.router, prefix="/api/v1")
-app.include_router(glossary.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(databases.router, prefix="/api/v1", dependencies=[ANY_USER])
+app.include_router(query.router, prefix="/api/v1", dependencies=[ANY_USER])
+app.include_router(excel.router, prefix="/api/v1", dependencies=[AUDITOR])
+app.include_router(history.router, prefix="/api/v1", dependencies=[ANY_USER])
+app.include_router(anomaly.router, prefix="/api/v1", dependencies=[AUDITOR])
+app.include_router(llm_settings.router, prefix="/api/v1", dependencies=[ADMIN])
+app.include_router(glossary.router, prefix="/api/v1", dependencies=[ANY_USER])
 
 
 if __name__ == "__main__":

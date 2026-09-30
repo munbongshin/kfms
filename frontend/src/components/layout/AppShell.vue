@@ -3,6 +3,12 @@
     <header class="top-bar">
       <span class="brand">KFMS</span>
       <span class="top-right">
+        <span class="who" :title="`역할: ${roleLabel}`">
+          <el-icon><User /></el-icon>
+          {{ auth.user?.display_name || auth.user?.username }}
+          <em>{{ roleLabel }}</em>
+        </span>
+        <button class="logout" @click="signOut">로그아웃</button>
         <!-- The connection every screen works on. It lives here, not in the
              tree, because the tree is shown on the query screen only. -->
         <label class="conn-picker" title="조회할 데이터베이스 연결">
@@ -60,8 +66,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { Coin } from '@element-plus/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Coin, User } from '@element-plus/icons-vue'
+import { useAuthStore } from '../../stores/auth'
 import FunctionTabs from './FunctionTabs.vue'
 import SchemaTree from './SchemaTree.vue'
 import { useDatabaseStore } from '../../stores/database'
@@ -70,6 +77,16 @@ const STORAGE_KEY = 'kfms.sidebar.collapsed'
 
 const databaseStore = useDatabaseStore()
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+
+const ROLE_LABELS: Record<string, string> = { admin: '관리자', auditor: '감사담당', viewer: '조회' }
+const roleLabel = computed(() => ROLE_LABELS[auth.role || ''] || '')
+
+function signOut() {
+  auth.logout()
+  router.replace({ name: 'login' })
+}
 const collapsed = ref(false)
 
 const showTree = computed(() => route.name === 'query')
@@ -138,6 +155,37 @@ function onReselect(name: string) {
   font-size: 15px;
   letter-spacing: 0.5px;
   color: #fff;
+}
+
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #fff;
+}
+
+.who em {
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.logout {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  background: transparent;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.logout:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .conn-picker {

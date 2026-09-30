@@ -3,10 +3,12 @@ Query API endpoints.
 Natural language to SQL query generation and execution.
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
+from app.auth.deps import ADMIN, ANY_USER, CurrentUser, record
+from app.auth.masking import mask_results
 from app.dependencies import get_db, get_db_pool
 from app.db.connection_pool import DatabaseConnectionPool
 from app.db.repositories.history import HistoryRepository
@@ -143,6 +145,9 @@ async def validate_sql(
 @router.post("/execute")
 async def execute_query(
     request: ExecuteRequest,
+    http_request: Request,
+    user: CurrentUser = ANY_USER,
+    db: AsyncSession = Depends(get_db),
     service: QueryService = Depends(get_query_service)
 ):
     """
@@ -161,12 +166,20 @@ async def execute_query(
             validation_approved=request.validation_approved
         )
 
+        await record(
+            db, user, http_request, "query_execute", str(request.database_id),
+            question=request.question[:300], sql=request.sql[:2000],
+            success=bool(result.get("success")), rows=result.get("row_count"),
+        )
+
         if not result["success"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=result.get("error", "Query execution failed")
             )
 
+        # Viewers may ask questions but not read card numbers.
+        result["results"] = mask_results(result["results"], user.role)
         return result
 
     except HTTPException:
@@ -181,6 +194,8 @@ async def execute_query(
 @router.post("/generate-and-execute")
 async def generate_and_execute(
     request: GenerateAndExecuteRequest,
+    http_request: Request,
+    user: CurrentUser = ANY_USER,
     service: QueryService = Depends(get_query_service),
     llm_config: LLMConfig = Depends(current_llm_config),
     db: AsyncSession = Depends(get_db),
@@ -202,6 +217,14 @@ async def generate_and_execute(
             auto_approve=request.auto_approve,
             excluded_tables=await excluded_tables_for(request.database_id, db),
         )
+
+        if "results" in result:
+            await record(
+                db, user, http_request, "query_execute", str(request.database_id),
+                question=request.question[:300], sql=(result.get("generation") or {}).get("sql", "")[:2000],
+                success=bool(result.get("success")), rows=result.get("row_count"),
+            )
+            result["results"] = mask_results(result["results"], user.role)
 
         return result
 

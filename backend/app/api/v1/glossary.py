@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.deps import ADMIN
 from app.dependencies import get_db
 from app.db.repositories.glossary import GlossaryRepository
 
@@ -34,7 +35,7 @@ async def list_terms(db: AsyncSession = Depends(get_db)):
     return [_out(r) for r in await GlossaryRepository(db).list_all()]
 
 
-@router.post("", response_model=TermOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=TermOut, status_code=status.HTTP_201_CREATED, dependencies=[ADMIN])
 async def create_term(body: TermIn, db: AsyncSession = Depends(get_db)):
     repo = GlossaryRepository(db)
     term = body.term.strip()
@@ -43,7 +44,7 @@ async def create_term(body: TermIn, db: AsyncSession = Depends(get_db)):
     return _out(await repo.create(term, body.definition.strip()))
 
 
-@router.put("/{term_id}", response_model=TermOut)
+@router.put("/{term_id}", response_model=TermOut, dependencies=[ADMIN])
 async def update_term(term_id: int, body: TermIn, db: AsyncSession = Depends(get_db)):
     repo = GlossaryRepository(db)
     term = body.term.strip()
@@ -56,7 +57,7 @@ async def update_term(term_id: int, body: TermIn, db: AsyncSession = Depends(get
     return _out(row)
 
 
-@router.delete("/{term_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{term_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[ADMIN])
 async def delete_term(term_id: int, db: AsyncSession = Depends(get_db)):
     if not await GlossaryRepository(db).delete(term_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="용어를 찾을 수 없습니다")

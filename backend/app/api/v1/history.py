@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from datetime import datetime
 
+from app.auth.deps import ADMIN, ANY_USER, CurrentUser
+from app.auth.masking import mask_results
 from app.dependencies import get_db
 from app.db.repositories.history import HistoryRepository
 
@@ -123,6 +125,7 @@ async def list_history(
 @router.get("/{history_id}", response_model=HistoryDetail)
 async def get_history(
     history_id: int,
+    user: CurrentUser = ANY_USER,
     repo: HistoryRepository = Depends(get_history_repo)
 ):
     """
@@ -145,7 +148,8 @@ async def get_history(
             generated_sql=history.generated_sql,
             database_id=history.database_id,
             status=history.status,
-            results=history.results,
+            # Saved results may hold card numbers a viewer must not read.
+            results=mask_results(history.results, user.role) if history.results else history.results,
             error_message=history.error_message,
             execution_time_ms=history.execution_time_ms,
             row_count=history.row_count,
@@ -204,7 +208,7 @@ async def set_bookmark(
     )
 
 
-@router.delete("")
+@router.delete("", dependencies=[ADMIN])
 async def clear_history(
     keep_bookmarked: bool = True,
     repo: HistoryRepository = Depends(get_history_repo),
@@ -222,7 +226,7 @@ async def clear_history(
     return {"deleted": deleted, "kept": kept, "expected": removable}
 
 
-@router.delete("/{history_id}", status_code=http_status.HTTP_204_NO_CONTENT)
+@router.delete("/{history_id}", status_code=http_status.HTTP_204_NO_CONTENT, dependencies=[ADMIN])
 async def delete_history(
     history_id: int,
     repo: HistoryRepository = Depends(get_history_repo)

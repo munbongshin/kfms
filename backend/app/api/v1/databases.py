@@ -4,10 +4,12 @@ CRUD operations for database connections.
 """
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
+from app.auth.deps import ADMIN, ANY_USER, CurrentUser, record
+from app.auth.masking import mask_results
 from app.dependencies import get_db, get_db_pool
 from app.db.repositories.database_repo import DatabaseRepository
 from app.db.connection_pool import DatabaseConnectionPool
@@ -102,7 +104,7 @@ async def list_connections(
     ]
 
 
-@router.post("", response_model=DatabaseConnectionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=DatabaseConnectionResponse, status_code=status.HTTP_201_CREATED, dependencies=[ADMIN])
 async def create_connection(
     connection_data: DatabaseConnectionCreate,
     db: AsyncSession = Depends(get_db),
@@ -183,7 +185,7 @@ async def create_connection(
     )
 
 
-@router.post("/{connection_id}/test")
+@router.post("/{connection_id}/test", dependencies=[ADMIN])
 async def test_connection(
     connection_id: int,
     db: AsyncSession = Depends(get_db),
@@ -296,7 +298,7 @@ class AnalysisTargets(BaseModel):
     excluded: List[str]
 
 
-@router.put("/{connection_id}/excluded-tables")
+@router.put("/{connection_id}/excluded-tables", dependencies=[ADMIN])
 async def set_excluded_tables(
     connection_id: int,
     targets: AnalysisTargets,
@@ -338,6 +340,9 @@ async def read_table_rows(
     descending: bool = False,
     limit: int = Query(100, ge=1, le=MAX_PAGE_SIZE),
     offset: int = Query(0, ge=0),
+    http_request: Request = None,
+    user: CurrentUser = ANY_USER,
+    db: AsyncSession = Depends(get_db),
     pool: DatabaseConnectionPool = Depends(get_db_pool),
 ):
     """One page of a table, with the caller's choice of columns.
@@ -348,9 +353,12 @@ async def read_table_rows(
     selected = [c for c in (columns or "").split(",") if c]
 
     try:
-        return await TableBrowser(pool).read_page(
+        page = await TableBrowser(pool).read_page(
             str(connection_id), table, selected, order_by, descending, limit, offset
         )
+        page["rows"] = mask_results(page["rows"], user.role)
+        await record(db, user, http_request, "table_preview", f"{connection_id}:{table}", offset=offset, limit=limit)
+        return page
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception:
@@ -363,7 +371,7 @@ async def read_table_rows(
         )
 
 
-@router.patch("/{connection_id}", response_model=DatabaseConnectionResponse)
+@router.patch("/{connection_id}", response_model=DatabaseConnectionResponse, dependencies=[ADMIN])
 async def update_connection(
     connection_id: int,
     changes: DatabaseConnectionUpdate,
@@ -432,7 +440,7 @@ async def update_connection(
     )
 
 
-@router.delete("/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{connection_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[ADMIN])
 async def delete_connection(
     connection_id: int,
     db: AsyncSession = Depends(get_db),

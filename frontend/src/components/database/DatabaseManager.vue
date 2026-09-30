@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>Database Connections</span>
-          <el-button type="primary" @click="openCreate">
+          <el-button v-if="auth.isAdmin" type="primary" @click="openCreate">
             <el-icon><Plus /></el-icon>
             Add Connection
           </el-button>
@@ -31,7 +31,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="Actions" width="340" fixed="right">
+        <el-table-column v-if="auth.isAdmin" label="Actions" width="340" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="openTargets(row)">
               분석 대상
@@ -114,6 +114,7 @@
 import { ref } from 'vue'
 import { Plus, Connection, Delete, Edit } from '@element-plus/icons-vue'
 import { useDatabaseStore } from '../../stores/database'
+import { useAuthStore } from '../../stores/auth'
 import AnalysisTargetsDialog from './AnalysisTargetsDialog.vue'
 import type {
   DatabaseConnection,
@@ -122,6 +123,7 @@ import type {
 } from '../../services/api'
 
 const databaseStore = useDatabaseStore()
+const auth = useAuthStore()
 
 const showCreateDialog = ref(false)
 const showTargets = ref(false)

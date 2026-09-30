@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -15,7 +16,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/databases',
     name: 'databases',
     component: () => import('../views/DatabaseView.vue'),
-    meta: { title: 'Databases' }
+    meta: { title: 'Databases', roles: ['admin', 'auditor'] }
   },
   {
     path: '/history',
@@ -27,13 +28,25 @@ const routes: Array<RouteRecordRaw> = [
     path: '/anomaly',
     name: 'anomaly',
     component: () => import('../views/AnomalyView.vue'),
-    meta: { title: 'Anomaly' }
+    meta: { title: 'Anomaly', roles: ['admin', 'auditor'] }
   }
   ,{
     path: '/settings',
     name: 'settings',
     component: () => import('../views/SettingsView.vue'),
-    meta: { title: 'LLM 설정' }
+    meta: { title: '설정', roles: ['admin'] }
+  }
+  ,{
+    path: '/admin',
+    name: 'admin',
+    component: () => import('../views/AdminView.vue'),
+    meta: { title: '사용자·감사 로그', roles: ['admin'] }
+  }
+  ,{
+    path: '/login',
+    name: 'login',
+    component: () => import('../views/LoginView.vue'),
+    meta: { title: '로그인', public: true }
   }
   ,{
     path: '/help',
@@ -48,9 +61,28 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to) => {
   document.title = `${to.meta.title || 'KFMS'} - Knowledge Flow Management System`
-  next()
+
+  const auth = useAuthStore()
+  try {
+    if (!auth.statusLoaded) await auth.checkStatus()
+  } catch {
+    // The server is down: let the page show its own error rather than loop.
+    return true
+  }
+
+  // No administrator yet, or nobody signed in: only the sign-in screen.
+  if (auth.setupRequired || !auth.token) return to.name === 'login' ? true : { name: 'login' }
+
+  if (!auth.user) await auth.restore()
+  if (!auth.user) return { name: 'login' }
+
+  if (to.name === 'login') return { name: 'query' }
+
+  const roles = to.meta.roles as string[] | undefined
+  if (roles && !roles.includes(auth.user.role)) return { name: 'query' }
+  return true
 })
 
 export default router

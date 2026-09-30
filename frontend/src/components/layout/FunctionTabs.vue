@@ -1,7 +1,7 @@
 <template>
   <nav class="function-tabs">
     <!-- Work tabs at the top; tools used now and then sit apart at the bottom. -->
-    <div v-for="group in [tabs, tools]" :key="group[0].name" class="group">
+    <div v-for="(group, i) in groups" :key="i" class="group">
       <button
         v-for="tab in group"
         :key="tab.name"
@@ -18,14 +18,20 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChatLineSquare, Coin, Clock, Warning, Setting, QuestionFilled } from '@element-plus/icons-vue'
+import { useAuthStore } from '../../stores/auth'
+import { ChatLineSquare, Coin, Clock, Warning, Setting, QuestionFilled, User } from '@element-plus/icons-vue'
 
 // Clicking the tab already open is reported, so the shell can fold its panel.
 const emit = defineEmits<{ reselect: [name: string] }>()
 
+const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+
+const visible = (list: Tab[]) => list.filter((t) => !t.roles || (auth.role && t.roles.includes(auth.role)))
+const groups = computed(() => [visible(tabs), visible(tools)])
 
 function select(name: string) {
   if (route.name === name) emit('reselect', name)
@@ -37,17 +43,20 @@ interface Tab {
   label: string
   icon: any
   title?: string
+  /** Who sees it; everyone when omitted. */
+  roles?: string[]
 }
 
 const tabs: Tab[] = [
   { name: 'query', label: '질의', icon: ChatLineSquare },
-  { name: 'databases', label: '데이터', icon: Coin },
+  { name: 'databases', label: '데이터', icon: Coin, roles: ['admin', 'auditor'] },
   { name: 'history', label: '이력', icon: Clock },
-  { name: 'anomaly', label: '점검', icon: Warning },
+  { name: 'anomaly', label: '점검', icon: Warning, roles: ['admin', 'auditor'] },
+  { name: 'admin', label: '관리', icon: User, title: '사용자와 감사 로그', roles: ['admin'] },
 ]
 
 const tools: Tab[] = [
-  { name: 'settings', label: '설정', icon: Setting, title: '질문을 SQL로 바꿀 LLM 선택' },
+  { name: 'settings', label: '설정', icon: Setting, title: 'LLM 선택과 업무 용어집', roles: ['admin'] },
   { name: 'help', label: '도움말', icon: QuestionFilled, title: '프로그램 구조와 사용법' },
 ]
 </script>

@@ -1,7 +1,7 @@
 <template>
   <div class="help-view">
     <nav class="toc">
-      <div class="toc-title">도움말<small>2026-09-29 기준</small></div>
+      <div class="toc-title">도움말<small>2026-09-30 기준</small></div>
       <a
         v-for="s in sections"
         :key="s.id"
@@ -72,8 +72,8 @@
         </div>
         <table class="kv">
           <tbody>
-            <tr><th>① 상단 바</th><td>조회할 데이터베이스를 고르는 <em>연결 선택</em>이 있습니다. 모든 화면이 여기서 고른 연결을 대상으로 동작하며, 어느 화면에서든 바꿀 수 있습니다.</td></tr>
-            <tr><th>② 기능 탭</th><td>왼쪽 세로 막대 위쪽에서 질의 · 데이터 · 이력 · 점검 네 화면을 오가고, 맨 아래의 <em>설정</em>(LLM 선택)과 <em>도움말</em>을 엽니다. 어느 화면에서나 같은 모양입니다.</td></tr>
+            <tr><th>① 상단 바</th><td>로그인한 사용자와 역할, <em>로그아웃</em>, 조회할 데이터베이스를 고르는 <em>연결 선택</em>이 있습니다. 모든 화면이 여기서 고른 연결을 대상으로 동작합니다.</td></tr>
+            <tr><th>② 기능 탭</th><td>왼쪽 세로 막대 위쪽에서 화면을 오가고, 맨 아래의 <em>설정</em>과 <em>도움말</em>을 엽니다. 어느 화면에서나 같은 모양이며, <strong>내 역할이 쓸 수 있는 메뉴만</strong> 보입니다.</td></tr>
             <tr>
               <th>③ 테이블 패널</th>
               <td>
@@ -220,10 +220,12 @@
         <table class="grid-table">
           <thead><tr><th>DB</th><th>테이블</th><th>내용</th></tr></thead>
           <tbody>
-            <tr><td rowspan="6"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
+            <tr><td rowspan="8"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
             <tr><td><code>query_history</code></td><td>질문·SQL·결과·북마크</td></tr>
             <tr><td><code>excel_uploads</code></td><td>올린 엑셀 파일과 만든 임시 테이블 목록</td></tr>
             <tr><td><code>anomaly_review</code></td><td>이상거래 검토 판정(확인함·정상)</td></tr>
+            <tr><td><code>app_users</code></td><td>사용자 (비밀번호는 복원할 수 없는 해시로 저장)</td></tr>
+            <tr><td><code>audit_log</code></td><td>감사 로그 (누가 언제 무엇을)</td></tr>
             <tr><td><code>glossary_terms</code></td><td>업무 용어집 (용어와 뜻)</td></tr>
             <tr><td><code>llm_settings</code></td><td>설정 화면에서 고른 LLM 플랫폼과 플랫폼별 주소·모델·API 키(암호화)</td></tr>
             <tr><td rowspan="3"><b>retail</b><br /><small>조회 대상</small></td><td><code>card_data</code> + 뷰 5개</td><td>법인카드 데이터 (승인·매입·청구·카드정보·사용부서)</td></tr>
@@ -473,6 +475,9 @@ LIMIT 1000</pre>
           <li><strong>이중 읽기 전용</strong> — SQL 검증기가 SELECT 외 명령을 막고, DB 세션 자체도 읽기 전용(<code>default_transaction_read_only</code>)으로 엽니다. 예외는 서버가 직접 만드는 엑셀 업로드·삭제 작업뿐이며, 그 트랜잭션만 쓰기 가능으로 엽니다.</li>
           <li><strong>결과 제한</strong> — 한 번에 최대 1,000행까지만 돌려줍니다.</li>
           <li><strong>이름 검증</strong> — 테이블 바로 보기의 테이블·컬럼 이름은 실제 스키마에 있는지 확인한 뒤에만 SQL에 넣습니다.</li>
+          <li><strong>역할별 접근·마스킹</strong> — 로그인이 없으면 어떤 API도 쓸 수 없고, 역할에 없는 기능은 서버가 거부합니다. 조회 역할에는 카드번호를 가려서 내보냅니다.</li>
+          <li><strong>감사 로그</strong> — 변경과 카드번호·저장 결과 열람을 모두 남깁니다.</li>
+          <li><strong>질문 시간 제한</strong> — 질문으로 만든 SQL은 약 30초를 넘기면 DB가 중단시킵니다. 엑셀 업로드는 제외됩니다.</li>
           <li><strong>권한 범위</strong> — 메타정보는 연결 계정이 읽을 수 있는(SELECT 권한이 있는) 테이블만 가져옵니다.</li>
           <li><strong>비밀 정보 암호화</strong> — 조회 대상 DB 비밀번호와 LLM API 키는 암호화(Fernet)해 저장하고, 화면으로는 다시 보내지 않습니다.</li>
           <li><strong>DB 분리·차단</strong> — 운영 정보(kfms)와 조회 대상(retail)을 서로 다른 DB로 나누고, 운영 정보 DB는 조회 대상으로 등록할 수 없게 막습니다.</li>
@@ -546,6 +551,9 @@ LIMIT 1000</pre>
           <li>
             <strong>오류 자동 수정</strong> — 만들어진 SQL을 실행하기 전에 DB에서 먼저 검사하고, 오류(없는 컬럼 등)가 나면
             그 오류 메시지를 LLM에 돌려주어 최대 2번까지 고쳐 쓰게 합니다. SQL 확인 창 아래에 "오류를 고치며 2번 만에 생성"처럼 표시됩니다.
+          </li>
+          <li>
+            <strong>실행 비용 경고</strong> — 실행 전 검사에서 DB가 예상한 비용이 크면 "실행 비용이 큰 쿼리입니다(예상 N행)" 경고를 SQL 확인 창에 보여 줍니다.
           </li>
           <li>
             <strong>북마크 예시 학습</strong> — ★로 저장한 질문 중 지금 질문과 비슷한 것(최대 3개)을 정답 예시로 함께 보냅니다.
@@ -669,6 +677,35 @@ LIMIT 1000</pre>
         </div>
       </section>
 
+      <!-- 6-2 -->
+      <section id="accounts">
+        <h2>로그인과 권한</h2>
+        <p>
+          처음 실행하면 <strong>관리자 계정 만들기</strong> 화면이 나옵니다. 아이디와 비밀번호(8자 이상)를 정하면 그 계정이
+          관리자가 되고 바로 로그인됩니다. 이후에는 아이디와 비밀번호로 로그인하며, 12시간 뒤 다시 로그인해야 합니다.
+        </p>
+        <table class="grid-table">
+          <thead><tr><th>역할</th><th>할 수 있는 일</th></tr></thead>
+          <tbody>
+            <tr><td><strong>관리자</strong></td><td>모든 기능 + 사용자 관리, 감사 로그 열람, 연결·LLM·분석 대상·용어집 설정, 이력 삭제</td></tr>
+            <tr><td><strong>감사담당</strong></td><td>질의, 이력, 데이터(엑셀 올리기), 이상거래 점검과 검토 판정, <strong>카드번호 전체 열람</strong></td></tr>
+            <tr><td><strong>조회</strong></td><td>질의와 이력만. 결과의 <strong>카드번호는 앞 4자리와 끝 4자리만 보이고</strong> 주민등록번호는 전부 가려집니다.</td></tr>
+          </tbody>
+        </table>
+        <ul>
+          <li>사용자는 <em>관리</em> 화면의 <em>사용자</em> 탭에서 추가하고, 역할 변경·사용 중지·비밀번호 변경을 합니다. 사용을 중지하면 이미 로그인한 세션도 바로 막힙니다.</li>
+          <li>마지막 관리자는 역할을 낮추거나 중지할 수 없습니다. 모든 관리자가 잠기는 일을 막기 위해서입니다.</li>
+          <li>카드번호 가리기는 값의 모양(13~19자리 숫자)으로 판단하므로 컬럼에 별칭을 붙여도 가려집니다. 다만 문자열 조각을 이어 붙여 복원하려는 시도까지 막지는 못하니, 엄격한 통제가 필요하면 DB 계정의 컬럼 권한도 함께 설정하세요.</li>
+        </ul>
+
+        <h3>감사 로그</h3>
+        <p>관리자는 <em>관리 → 감사 로그</em>에서 누가 언제 무엇을 했는지 볼 수 있습니다. 사용자·동작·기간으로 걸러 봅니다.</p>
+        <ul>
+          <li><strong>기록되는 것</strong> — 로그인과 실패, 질의 실행(질문·SQL·결과 행 수), 테이블 미리보기, 이상거래 상세(카드번호 열람) 조회와 검토 판정, 저장된 이력 결과 열람, 연결·LLM·용어집·분석 대상·엑셀 변경, 사용자 관리.</li>
+          <li><strong>기록되지 않는 것</strong> — 비밀번호, 일반 목록 조회. 기록은 앱에서 수정하거나 지울 수 없습니다.</li>
+        </ul>
+      </section>
+
       <!-- 7 -->
       <section id="history">
         <h2>이력</h2>
@@ -755,6 +792,18 @@ LIMIT 1000</pre>
             기간을 질문에 분명히 적으면 대부분 해결됩니다.
           </dd>
 
+          <dt>로그인이 안 돼요.</dt>
+          <dd>
+            아이디와 비밀번호를 확인하세요. 계정이 사용 중지되었을 수도 있습니다. 비밀번호를 잊었다면 관리자에게 <em>관리 → 사용자 → 비밀번호 변경</em>을
+            요청하세요. 12시간이 지나면 다시 로그인해야 합니다.
+          </dd>
+
+          <dt>메뉴가 안 보이거나 "권한이 없습니다"가 나와요.</dt>
+          <dd>역할에 따라 쓸 수 있는 화면이 다릅니다. 필요하면 관리자에게 역할 변경을 요청하세요.</dd>
+
+          <dt>카드번호가 ****로 보여요.</dt>
+          <dd>조회 역할은 카드번호를 앞 4자리와 끝 4자리만 볼 수 있습니다. 전체 번호가 필요하면 감사담당 역할이 필요합니다.</dd>
+
           <dt>SQL이 만들어지지 않거나 오류가 나요.</dt>
           <dd>
             왼쪽 메뉴 아래의 <strong>설정</strong>에서 <em>연결 테스트</em>를 눌러 LLM 서버가 응답하는지,
@@ -801,6 +850,7 @@ const sections = [
   { id: 'query', title: '질의 사용법' },
   { id: 'databases', title: '데이터 (연결 관리)' },
   { id: 'settings', title: 'LLM 설정' },
+  { id: 'accounts', title: '로그인과 권한' },
   { id: 'history', title: '이력' },
   { id: 'anomaly', title: '이상거래 점검' },
   { id: 'faq', title: '문제 해결' },

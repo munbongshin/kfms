@@ -7,6 +7,8 @@ import axios, { AxiosInstance } from 'axios'
 // API Base URL from environment
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
+export const TOKEN_KEY = 'kfms.token'
+
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -21,7 +23,8 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Add auth token if needed (future)
+    const token = localStorage.getItem(TOKEN_KEY)
+    if (token) config.headers.Authorization = `Bearer ${token}`
     return config
   },
   (error) => {
@@ -33,6 +36,13 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // An expired or revoked session: back to the sign-in screen. A failed
+    // sign-in is a 401 too, but that one belongs to the form.
+    const url: string = error.config?.url || ''
+    if (error.response?.status === 401 && !url.startsWith('/auth/')) {
+      localStorage.removeItem(TOKEN_KEY)
+      if (location.pathname !== '/login') location.assign('/login')
+    }
     // Handle errors globally
     console.error('API Error:', error.response?.data || error.message)
     return Promise.reject(error)
@@ -111,6 +121,41 @@ export interface SchemaInfo {
     }>
   }
   tables: Record<string, TableInfo>
+}
+
+export type Role = 'admin' | 'auditor' | 'viewer'
+
+export interface AppUser {
+  id: number
+  username: string
+  display_name: string
+  role: Role
+  is_active?: boolean
+  created_at?: string | null
+  last_login_at?: string | null
+}
+
+export interface NewUser {
+  username: string
+  display_name?: string
+  password: string
+  role?: Role
+}
+
+export interface AuthSession {
+  token: string
+  user: AppUser
+}
+
+export interface AuditEntry {
+  id: number
+  at: string
+  username: string
+  role: string
+  action: string
+  target: string
+  detail: Record<string, any>
+  ip: string
 }
 
 /** A business term the LLM is given when a question uses it. */
@@ -326,6 +371,39 @@ export const api = {
   },
 
   // History operations
+  auth: {
+    async status(): Promise<{ setup_required: boolean }> {
+      return (await apiClient.get('/auth/status')).data
+    },
+    async setup(data: NewUser): Promise<AuthSession> {
+      return (await apiClient.post('/auth/setup', data)).data
+    },
+    async login(username: string, password: string): Promise<AuthSession> {
+      return (await apiClient.post('/auth/login', { username, password })).data
+    },
+    async me(): Promise<AppUser> {
+      return (await apiClient.get('/auth/me')).data
+    },
+  },
+
+  users: {
+    async list(): Promise<AppUser[]> {
+      return (await apiClient.get('/users')).data
+    },
+    async create(data: NewUser): Promise<AppUser> {
+      return (await apiClient.post('/users', data)).data
+    },
+    async change(id: number, data: Partial<{ display_name: string; role: Role; is_active: boolean; password: string }>): Promise<AppUser> {
+      return (await apiClient.patch(`/users/${id}`, data)).data
+    },
+  },
+
+  audit: {
+    async list(params: { username?: string; action?: string; days?: number; limit?: number; offset?: number }): Promise<AuditEntry[]> {
+      return (await apiClient.get('/audit-log', { params })).data
+    },
+  },
+
   glossary: {
     async list(): Promise<GlossaryTerm[]> {
       const response = await apiClient.get('/glossary')

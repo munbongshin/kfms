@@ -24,7 +24,7 @@
           Apply Filters
         </el-button>
 
-        <el-button type="danger" plain class="clear-all" @click="clearHistory">
+        <el-button v-if="auth.isAdmin" type="danger" plain class="clear-all" @click="clearHistory">
           <el-icon><Delete /></el-icon>
           전체 삭제
         </el-button>
@@ -93,6 +93,7 @@
               Re-run
             </el-button>
             <el-popconfirm
+              v-if="auth.isAdmin"
               title="Delete this history?"
               @confirm="deleteHistory(row.id)"
             >
@@ -158,9 +159,11 @@ import { Refresh, Filter, Delete, Star, StarFilled } from '@element-plus/icons-v
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../../services/api'
 import { useQueryStore } from '../../stores/query'
+import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
 const queryStore = useQueryStore()
+const auth = useAuthStore()
 
 const history = ref<any[]>([])
 const loading = ref(false)
