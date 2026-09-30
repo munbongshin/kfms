@@ -235,3 +235,43 @@ class AuditLog(Base):
     target: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     detail: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     ip: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+
+
+class AnomalySetting(Base):
+    """Edited anomaly thresholds. A single row (id = 1); empty means the defaults
+    written in app/anomaly/rules.py."""
+
+    __tablename__ = "anomaly_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    params: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class SavedReport(Base):
+    """A question kept as a report that runs on a schedule and keeps its last result."""
+
+    __tablename__ = "saved_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    question: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    sql: Mapped[str] = mapped_column(Text, nullable=False)
+    database_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    frequency: Mapped[str] = mapped_column(String(20), nullable=False, default="daily")
+    run_hour: Mapped[int] = mapped_column(Integer, nullable=False, default=9)
+    run_weekday: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    run_day: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    next_run_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    last_run_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    last_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    last_row_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    last_results: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(60), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )

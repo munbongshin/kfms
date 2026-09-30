@@ -25,6 +25,12 @@ const routes: Array<RouteRecordRaw> = [
     meta: { title: 'History' }
   }
   ,{
+    path: '/reports',
+    name: 'reports',
+    component: () => import('../views/ReportsView.vue'),
+    meta: { title: '보고서' }
+  }
+  ,{
     path: '/anomaly',
     name: 'anomaly',
     component: () => import('../views/AnomalyView.vue'),

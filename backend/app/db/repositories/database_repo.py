@@ -5,7 +5,7 @@ Handles CRUD operations for database connection configurations.
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.db.models import DatabaseConnection
 from app.utils.crypto import encrypt_password, decrypt_password
@@ -132,7 +132,7 @@ class DatabaseRepository:
             kwargs["password"] = encrypt_password(kwargs["password"])
 
         # Update timestamp
-        kwargs["updated_at"] = datetime.utcnow()
+        kwargs["updated_at"] = datetime.now(timezone.utc)
 
         stmt = (
             update(DatabaseConnection)

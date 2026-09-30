@@ -98,3 +98,27 @@ def test_a_retry_shows_the_failed_sql_and_the_database_error():
 
 def test_a_long_error_is_cut_short():
     assert len(retry_context("SELECT 1", "x" * 5000)) < 1500
+
+
+# --- follow-up questions -------------------------------------------------
+
+def test_a_follow_up_carries_the_previous_question_and_sql():
+    text = build_context("", [], [], previous={"question": "가맹점별 승인금액 합계", "sql": "SELECT merchname FROM v_approval"})
+    assert "가맹점별 승인금액 합계" in text
+    assert "SELECT merchname FROM v_approval" in text
+    assert "follow-up" in text.lower()
+
+
+def test_a_follow_up_asks_for_a_complete_standalone_sql():
+    text = build_context("", [], [], previous={"question": "q", "sql": "SELECT 1"})
+    assert "complete" in text.lower()
+
+
+def test_no_previous_turn_adds_nothing():
+    assert build_context("", [], [], previous=None) == ""
+    assert build_context("", [], [], previous={"question": "", "sql": ""}) == ""
+
+
+def test_a_very_long_previous_sql_is_cut():
+    text = build_context("", [], [], previous={"question": "q", "sql": "SELECT " + "x, " * 2000})
+    assert len(text) < 3000

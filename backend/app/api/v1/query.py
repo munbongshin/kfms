@@ -30,6 +30,8 @@ class GenerateRequest(BaseModel):
     database_id: int = Field(..., description="Database connection ID")
     llm_provider: Optional[str] = Field(None, description="LLM provider override ('ollama' or 'groq')")
     context: str = Field(default="", description="Optional context for query generation")
+    previous_question: Optional[str] = Field(None, max_length=2000, description="Question this one follows up")
+    previous_sql: Optional[str] = Field(None, max_length=8000, description="SQL of the question this one follows up")
 
 
 class ValidateRequest(BaseModel):
@@ -53,7 +55,16 @@ class GenerateAndExecuteRequest(BaseModel):
     database_id: int = Field(..., description="Database connection ID")
     llm_provider: Optional[str] = Field(None, description="LLM provider override")
     context: str = Field(default="", description="Optional context")
+    previous_question: Optional[str] = Field(None, max_length=2000)
+    previous_sql: Optional[str] = Field(None, max_length=8000)
     auto_approve: bool = Field(default=False, description="Skip user confirmation")
+
+
+def _previous(request) -> Optional[dict]:
+    """The turn this question follows up, if the caller sent one."""
+    if request.previous_sql and request.previous_question:
+        return {"question": request.previous_question, "sql": request.previous_sql}
+    return None
 
 
 async def excluded_tables_for(database_id: int, db: AsyncSession) -> list:
@@ -105,6 +116,7 @@ async def generate_sql(
             database_id=str(request.database_id),
             context=request.context,
             excluded_tables=await excluded_tables_for(request.database_id, db),
+            previous=_previous(request),
         )
 
         return result
@@ -216,6 +228,7 @@ async def generate_and_execute(
             context=request.context,
             auto_approve=request.auto_approve,
             excluded_tables=await excluded_tables_for(request.database_id, db),
+            previous=_previous(request),
         )
 
         if "results" in result:

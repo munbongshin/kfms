@@ -97,8 +97,11 @@
           <el-table-column label="Expires">
             <template #default="{ row }">{{ formatExpiry(row.expires_at) }}</template>
           </el-table-column>
-          <el-table-column label="Actions" width="150">
+          <el-table-column label="Actions" width="230">
             <template #default="{ row }">
+              <el-button size="small" title="만료를 24시간 늘립니다" @click="extendUpload(row.id)">
+                연장
+              </el-button>
               <el-button size="small" @click="queryTable(row.table_name)">
                 <el-icon><Search /></el-icon>
                 Query
@@ -209,7 +212,7 @@ function formatExpiry(expiresAt: string): string {
   const diffMs = date.getTime() - now.getTime()
   const diffHrs = Math.round(diffMs / (1000 * 60 * 60))
 
-  if (diffHrs < 0) return 'Expired'
+  if (diffHrs < 0) return 'Expired — 곧 자동 삭제'
   if (diffHrs < 1) return 'Less than 1 hour'
   if (diffHrs === 1) return '1 hour'
   return `${diffHrs} hours`
@@ -262,6 +265,16 @@ async function fetchUploads() {
     uploads.value = await api.excel.list()
   } catch (error) {
     console.error('Failed to fetch uploads:', error)
+  }
+}
+
+async function extendUpload(uploadId: number) {
+  try {
+    await api.excel.extend(uploadId, 24)
+    ElMessage.success('만료를 24시간 늘렸습니다')
+    await fetchUploads()
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || '연장하지 못했습니다')
   }
 }
 

@@ -41,6 +41,10 @@
             <p>고액·시간 외·주의 업종·분할결제 의심 거래 찾기</p>
           </div>
           <div class="card">
+            <div class="card-h">보고서</div>
+            <p>질문을 정한 시각에 자동 실행하고 최근 결과 보관</p>
+          </div>
+          <div class="card">
             <div class="card-h">설정</div>
             <p>SQL을 만들 LLM 선택 — Ollama · LM Studio · vLLM · Groq 등</p>
           </div>
@@ -199,16 +203,16 @@
         <div class="layers">
           <div class="layer">
             <b>API 라우터</b>
-            <span>databases · query · history · excel · anomaly · llm-settings — 요청 검사, 응답 형식</span>
+            <span>databases · query · history · excel · anomaly · llm-settings · glossary · reports · auth — 요청 검사, 응답 형식</span>
           </div>
           <div class="layer">
             <b>서비스</b>
-            <span>질의 처리(query), SQL 생성(llm), 테이블 보기(table_browser), 이상거래 점검(anomaly), 엑셀 적재(excel), 연결 규칙(connection_rules)</span>
+            <span>질의 처리(query), SQL 생성(llm), 테이블 보기(table_browser), 이상거래 점검(anomaly), 엑셀 적재(excel), 보고서(report), 백그라운드 실행기(scheduler)</span>
           </div>
           <div class="layer side">
             <div><b>LLM 공급자</b><span>공통 규칙·프롬프트, Ollama · OpenAI 호환 구현, 플랫폼 목록·설정 해석</span></div>
             <div><b>점검 규칙</b><span>고액·시간 외·주의 업종·분할결제</span></div>
-            <div><b>유틸</b><span>SQL 검증, 비밀번호·API 키 암호화</span></div>
+            <div><b>유틸</b><span>SQL 검증, 비밀번호·API 키 암호화, 로그인·권한·마스킹</span></div>
           </div>
           <div class="layer">
             <b>데이터 접근</b>
@@ -220,10 +224,12 @@
         <table class="grid-table">
           <thead><tr><th>DB</th><th>테이블</th><th>내용</th></tr></thead>
           <tbody>
-            <tr><td rowspan="8"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
+            <tr><td rowspan="10"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
             <tr><td><code>query_history</code></td><td>질문·SQL·결과·북마크</td></tr>
             <tr><td><code>excel_uploads</code></td><td>올린 엑셀 파일과 만든 임시 테이블 목록</td></tr>
             <tr><td><code>anomaly_review</code></td><td>이상거래 검토 판정(확인함·정상)</td></tr>
+            <tr><td><code>saved_reports</code></td><td>보고서 (질문·SQL·주기·최근 결과)</td></tr>
+            <tr><td><code>anomaly_settings</code></td><td>바꾼 점검 기준 (없으면 기본값)</td></tr>
             <tr><td><code>app_users</code></td><td>사용자 (비밀번호는 복원할 수 없는 해시로 저장)</td></tr>
             <tr><td><code>audit_log</code></td><td>감사 로그 (누가 언제 무엇을)</td></tr>
             <tr><td><code>glossary_terms</code></td><td>업무 용어집 (용어와 뜻)</td></tr>
@@ -470,6 +476,13 @@ LIMIT 1000</pre>
           </tbody>
         </table>
 
+        <h3>백그라운드 실행기</h3>
+        <p>
+          서버 안에서 1분마다 돌며 (1) 실행 시각이 된 보고서를 실행하고 (2) 한 시간마다 삭제 대상인 엑셀 업로드를 정리합니다.
+          한 번의 실패가 다음 실행을 막지 않습니다. 상태는 <code>/api/v1/health</code>에서 확인합니다.
+          이 주소는 로그인 없이 볼 수 있고, DB·LLM·실행기가 응답하는지만 알려 줄 뿐 내용은 담지 않습니다.
+        </p>
+
         <h3>보안·안전 설계</h3>
         <ul>
           <li><strong>이중 읽기 전용</strong> — SQL 검증기가 SELECT 외 명령을 막고, DB 세션 자체도 읽기 전용(<code>default_transaction_read_only</code>)으로 엽니다. 예외는 서버가 직접 만드는 엑셀 업로드·삭제 작업뿐이며, 그 트랜잭션만 쓰기 가능으로 엽니다.</li>
@@ -545,6 +558,23 @@ LIMIT 1000</pre>
           이력에서 ★ 표시한 질문이 질의 화면의 "자주 쓰는 질문"에 버튼으로 나옵니다.
           누르면 AI를 거치지 않고 저장된 SQL을 바로 실행하므로 빠르고 결과가 항상 같습니다.
         </p>
+
+        <h3>이어서 묻기와 보고서</h3>
+        <ul>
+          <li>
+            <strong>후속 질문</strong> — 결과가 화면에 있으면 질문 칸 위에 <em>앞 질문에 이어서 묻기</em>가 나타납니다(기본 켜짐).
+            "그중 상위 5개만", "월별로 바꿔줘", "그 가맹점만"처럼 앞 질문을 가리키는 말을 쓸 수 있고, LLM에는 앞 질문과 SQL이 함께 전달됩니다.
+            처음부터 새로 묻고 싶으면 체크를 끄세요. 테이블 미리보기 뒤에는 나타나지 않습니다.
+          </li>
+          <li>
+            <strong>차트</strong> — 차트 탭은 결과에 맞는 종류(날짜면 선, 범주가 적으면 원, 그 밖에는 막대)로 먼저 열립니다.
+            이 판단은 브라우저 안에서만 이루어져 결과 데이터가 LLM으로 나가지 않습니다. 종류는 직접 바꿀 수 있습니다.
+          </li>
+          <li>
+            <strong>보고서로 저장</strong> — 결과 위의 버튼으로 이 질문을 매일·매주·매월 정한 시각에 자동 실행하도록 저장합니다.
+            결과는 <em>보고서</em> 화면에서 봅니다.
+          </li>
+        </ul>
 
         <h3>SQL이 더 정확해지는 방법</h3>
         <ul>
@@ -638,10 +668,10 @@ LIMIT 1000</pre>
             다른 이름을 입력하면 바로 다시 확인합니다.
           </li>
           <li>
-            임시 테이블은 올린 뒤 <strong>24시간이 지나면 만료</strong>됩니다. 목록의 Expires에서
-            만료 시각을 확인하세요. 만료된 테이블을 지우는 작업은 아직 자동으로 돌지 않으니,
-            다 쓴 파일은 목록에서 직접 삭제하세요.
+            임시 테이블은 올린 뒤 <strong>24시간이 지나면 만료</strong>되고, 만료 후 <strong>24시간이 더 지나면 서버가 자동으로 삭제</strong>합니다
+            (테이블과 기록 모두). 목록의 Expires에서 남은 시간을 확인하세요.
           </li>
+          <li>계속 써야 하는 파일은 목록의 <em>연장</em>을 누르면 24시간 늘어납니다. 필요한 만큼 여러 번 누를 수 있고, 연장으로 만료가 앞당겨지는 일은 없습니다.</li>
         </ul>
       </section>
 
@@ -675,6 +705,21 @@ LIMIT 1000</pre>
           vLLM은 기본 포트 8000이 KFMS 서버와 겹치므로 <code>--port 8001</code>처럼 다른 포트로 실행하세요.
           사내망 밖 주소나 Groq를 고르면 질문과 테이블·컬럼 구조가 외부로 전송된다는 경고가 표시됩니다.
         </div>
+      </section>
+
+      <!-- 6-1b -->
+      <section id="reports">
+        <h2>보고서</h2>
+        <p>저장한 질문이 정한 시각에 자동으로 실행되고, 가장 최근 결과가 남습니다. 왼쪽 메뉴의 <em>보고서</em>에서 봅니다.</p>
+        <ul>
+          <li>
+            목록에는 이름, 주기(예: 매주 월요일 08시), 마지막 실행(성공이면 행 수, 실패면 오류), 다음 실행 시각, 만든 사람이 나옵니다.
+          </li>
+          <li><em>결과</em>는 보관된 결과를, <em>지금 실행</em>은 바로 한 번 실행합니다. <em>중지</em>하면 자동 실행이 멈추고, <em>재개</em>하면 다음 정해진 시각부터 다시 실행됩니다(쉬는 동안 밀린 실행은 몰아서 하지 않습니다).</li>
+          <li>매월은 28일까지만 고를 수 있습니다. 29~31일은 없는 달이 있어 실행이 빠질 수 있기 때문입니다.</li>
+          <li>보관하는 것은 결과의 앞 200행이고 전체 행 수는 따로 표시됩니다. 실행에 실패해도 다음 정해진 시각에 다시 시도하며, 1분마다 반복하지 않습니다.</li>
+          <li>결과는 보는 사람의 역할에 따라 카드번호가 가려집니다(조회 역할). 삭제는 만든 사람이나 관리자만 할 수 있습니다.</li>
+        </ul>
       </section>
 
       <!-- 6-2 -->
@@ -736,11 +781,21 @@ LIMIT 1000</pre>
           </tbody>
         </table>
 
+        <h3>점검 기준 바꾸기</h3>
+        <p>
+          화면 오른쪽 위 <em>점검 기준</em>에서 기준 값을 봅니다. <strong>관리자</strong>는 바꿀 수 있고, 감사담당은 보기만 합니다.
+        </p>
+        <ul>
+          <li>바꿀 수 있는 것 — 고액 기준 금액, 심야 시작·종료 시각, 주의 업종 목록, 분할결제 최소 건수와 제외 사업자번호.</li>
+          <li>저장하면 <strong>다음 조회부터</strong> 적용됩니다. 이미 한 검토 판정은 남고, 기준이 바뀌어 내용이 달라진 건은 "검토 후 변경됨"으로 다시 나옵니다.</li>
+          <li>잘못된 값(0원, 25시, 빈 업종 목록 등)은 저장되지 않습니다. 빈 업종 목록은 규칙을 조용히 꺼 버리기 때문입니다. 값 옆의 <em>되돌리기</em>로 기본값으로 돌아갑니다.</li>
+        </ul>
+
         <h3>점검 규칙</h3>
         <table class="grid-table">
           <thead><tr><th>규칙</th><th>심각도</th><th>찾는 거래</th></tr></thead>
           <tbody>
-            <tr><td>고액 결제</td><td><span class="sev high">높음</span></td><td>한 건 금액이 <strong>50만원 이상</strong></td></tr>
+            <tr><td>고액 결제</td><td><span class="sev high">높음</span></td><td>한 건 금액이 <strong>기준 금액(기본 50만원) 이상</strong></td></tr>
             <tr><td>시간 외 사용</td><td><span class="sev medium">보통</span></td><td><strong>주말</strong>(토·일) 또는 <strong>심야</strong>(23시 ~ 다음날 06시) 결제</td></tr>
             <tr><td>주의 업종</td><td><span class="sev high">높음</span></td><td>상품권 전문판매, 볼링장, 영화관, 화원, 기타회원제형태업소, 자사카드발행백화점</td></tr>
             <tr><td>분할결제 의심</td><td><span class="sev medium">보통</span></td><td>같은 카드로 <strong>같은 가맹점에서 같은 날 2건 이상</strong> 결제 (한도 회피 의심)</td></tr>
@@ -790,6 +845,17 @@ LIMIT 1000</pre>
           <dd>
             SQL 탭에서 어떤 테이블·조건으로 조회했는지 확인하세요. 대상(승인내역 등)과
             기간을 질문에 분명히 적으면 대부분 해결됩니다.
+          </dd>
+
+          <dt>보고서가 실행되지 않아요.</dt>
+          <dd>
+            보고서 목록에서 <em>중지</em> 상태인지, 마지막 실행이 오류인지 확인하세요. 서버가 꺼져 있던 시간의 실행은 몰아서 하지 않고
+            다음 정해진 시각에 실행됩니다. 관리자는 <code>/api/v1/health</code>의 실행기 상태를 볼 수 있습니다.
+          </dd>
+
+          <dt>엑셀로 올린 테이블이 사라졌어요.</dt>
+          <dd>
+            만료 후 24시간이 더 지나면 자동 삭제됩니다. 쓰고 있는 파일은 업로드 목록의 <em>연장</em>으로 미리 늘려 두세요.
           </dd>
 
           <dt>로그인이 안 돼요.</dt>
@@ -850,6 +916,7 @@ const sections = [
   { id: 'query', title: '질의 사용법' },
   { id: 'databases', title: '데이터 (연결 관리)' },
   { id: 'settings', title: 'LLM 설정' },
+  { id: 'reports', title: '보고서' },
   { id: 'accounts', title: '로그인과 권한' },
   { id: 'history', title: '이력' },
   { id: 'anomaly', title: '이상거래 점검' },

@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # Excel Processing
     EXCEL_UPLOAD_MAX_SIZE_MB: int = 50
     EXCEL_TABLE_TTL_HOURS: int = 24
+    # An expired upload is kept this much longer before the scheduler drops it,
+    # so a table someone is still analysing does not vanish the moment it expires.
+    EXCEL_CLEANUP_GRACE_HOURS: int = 24
     EXCEL_CLEANUP_INTERVAL_HOURS: int = 1
 
     # Query Execution

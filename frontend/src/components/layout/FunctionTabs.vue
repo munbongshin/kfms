@@ -21,7 +21,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
-import { ChatLineSquare, Coin, Clock, Warning, Setting, QuestionFilled, User } from '@element-plus/icons-vue'
+import { ChatLineSquare, Coin, Clock, Warning, Setting, QuestionFilled, User, Document } from '@element-plus/icons-vue'
 
 // Clicking the tab already open is reported, so the shell can fold its panel.
 const emit = defineEmits<{ reselect: [name: string] }>()
@@ -51,6 +51,7 @@ const tabs: Tab[] = [
   { name: 'query', label: '질의', icon: ChatLineSquare },
   { name: 'databases', label: '데이터', icon: Coin, roles: ['admin', 'auditor'] },
   { name: 'history', label: '이력', icon: Clock },
+  { name: 'reports', label: '보고서', icon: Document, title: '자동 실행되는 보고서' },
   { name: 'anomaly', label: '점검', icon: Warning, roles: ['admin', 'auditor'] },
   { name: 'admin', label: '관리', icon: User, title: '사용자와 감사 로그', roles: ['admin'] },
 ]

@@ -5,6 +5,7 @@ Text-to-SQL service with LLM integration (Ollama + Groq).
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import asyncio
 from contextlib import asynccontextmanager
 
 from app.config import settings
@@ -13,7 +14,12 @@ from app.db.connection_pool import get_connection_pool
 from app.db.repositories.database_repo import DatabaseRepository
 
 # Import routers
-from app.api.v1 import databases, query, excel, history, anomaly, llm_settings, glossary, auth
+from app.api.v1 import databases, query, excel, history, anomaly, llm_settings, glossary, auth, reports
+from sqlalchemy import text
+from app.db.repositories.llm_settings import LLMSettingsRepository
+from app.llm.factory import create_provider
+from app.llm.settings_resolver import resolve
+from app.services.scheduler import scheduler_loop, state as scheduler_state
 from app.auth.audit_rules import is_audited
 from app.auth.deps import ADMIN, ANY_USER, AUDITOR, secret, token_from
 from app.auth.security import read_token
@@ -54,12 +60,18 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️  Could not restore connection pool: {e}")
 
-    # TODO: Start Excel cleanup scheduler
+    # Scheduled reports, and dropping Excel tables once they expire.
+    scheduler_task = asyncio.create_task(scheduler_loop(pool))
 
     yield
 
     # Shutdown
     print("👋 Shutting down KFMS...")
+    scheduler_task.cancel()
+    try:
+        await scheduler_task
+    except asyncio.CancelledError:
+        pass
     await pool.close_all()
 
 
@@ -110,22 +122,37 @@ app.add_middleware(
 @app.get("/api/v1/health", tags=["Health"])
 async def health_check():
     """
-    Health check endpoint.
-    Returns application status and component availability.
+    Health check endpoint. Deliberately public and free of anything sensitive:
+    it says which parts answer, not what they hold.
     """
+    components = {}
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        components["database"] = "ok"
+    except Exception:
+        components["database"] = "unreachable"
+
+    components["connections"] = len(get_connection_pool()._engines)
+    components["scheduler"] = "running" if scheduler_state["running"] else "stopped"
+
+    try:
+        async with AsyncSessionLocal() as session:
+            saved = await LLMSettingsRepository(session).load()
+        provider = create_provider(config=resolve(saved, settings))
+        components["llm"] = "ok" if await asyncio.wait_for(provider.validate_connection(), timeout=4) else "unreachable"
+    except Exception:
+        components["llm"] = "unreachable"
+
+    healthy = components["database"] == "ok"
     health_status = {
-        "status": "healthy",
+        "status": "healthy" if healthy and components["llm"] == "ok" else ("degraded" if healthy else "unhealthy"),
         "app_name": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "llm_provider": settings.LLM_PROVIDER,
-        "components": {
-            "database": "not_implemented",  # TODO: Check DB connection
-            "ollama": "not_implemented",     # TODO: Check Ollama availability
-            "groq": "not_implemented"        # TODO: Check Groq availability
-        }
+        "components": components,
     }
 
-    return JSONResponse(content=health_status, status_code=200)
+    return JSONResponse(content=health_status, status_code=200 if healthy else 503)
 
 
 # Root endpoint
@@ -149,6 +176,7 @@ app.include_router(history.router, prefix="/api/v1", dependencies=[ANY_USER])
 app.include_router(anomaly.router, prefix="/api/v1", dependencies=[AUDITOR])
 app.include_router(llm_settings.router, prefix="/api/v1", dependencies=[ADMIN])
 app.include_router(glossary.router, prefix="/api/v1", dependencies=[ANY_USER])
+app.include_router(reports.router, prefix="/api/v1", dependencies=[ANY_USER])
 
 
 if __name__ == "__main__":

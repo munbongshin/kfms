@@ -3,7 +3,7 @@
  * Manages query execution state
  */
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { api } from '../services/api'
 import { ElMessage } from 'element-plus'
 
@@ -47,6 +47,23 @@ export const useQueryStore = defineStore('query', () => {
   // live here rather than in the generic result, which an LLM query fills.
   const preview = ref<TablePreview | null>(null)
 
+  // Whether the next question continues the one on screen ("그중 상위 5개만").
+  const followUp = ref(true)
+
+  /** The question and SQL now on screen, when the next question may follow them.
+   *  A table preview is not a question, so there is nothing to follow. */
+  const canFollowUp = computed(
+    () => !preview.value && !!queryResults.value?.sql && !!queryResults.value?.question
+  )
+
+  function previousTurn() {
+    if (!followUp.value || !canFollowUp.value) return {}
+    return {
+      previous_question: queryResults.value!.question,
+      previous_sql: queryResults.value!.sql,
+    }
+  }
+
   // Actions
   async function generateSQL(question: string, databaseId: number, llmProvider?: string) {
     loading.value = true
@@ -57,6 +74,7 @@ export const useQueryStore = defineStore('query', () => {
         question,
         database_id: databaseId,
         llm_provider: llmProvider,
+        ...previousTurn(),
       })
 
       generatedSQL.value = result.sql
@@ -159,6 +177,7 @@ export const useQueryStore = defineStore('query', () => {
         database_id: databaseId,
         llm_provider: llmProvider,
         auto_approve: false,
+        ...previousTurn(),
       })
 
       if (result.requires_approval) {
@@ -326,6 +345,8 @@ export const useQueryStore = defineStore('query', () => {
     loading,
     showSQLPreview,
     generationInfo,
+    followUp,
+    canFollowUp,
     showValidationDialog,
     pendingExecution,
     preview,

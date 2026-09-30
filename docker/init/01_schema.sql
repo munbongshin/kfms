@@ -44,6 +44,35 @@ CREATE TABLE llm_settings (
     updated_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE saved_reports (
+    id             SERIAL PRIMARY KEY,
+    name           VARCHAR(200) NOT NULL,
+    question       TEXT NOT NULL DEFAULT '',
+    sql            TEXT NOT NULL,
+    database_id    VARCHAR(255) NOT NULL,
+    frequency      VARCHAR(20) NOT NULL DEFAULT 'daily',   -- daily, weekly, monthly
+    run_hour       INTEGER NOT NULL DEFAULT 9,
+    run_weekday    INTEGER,                                 -- 0 = Monday, for weekly
+    run_day        INTEGER,                                 -- 1-28, for monthly
+    is_active      BOOLEAN NOT NULL DEFAULT true,
+    next_run_at    TIMESTAMP WITH TIME ZONE NOT NULL,
+    last_run_at    TIMESTAMP WITH TIME ZONE,
+    last_status    VARCHAR(20),
+    last_error     TEXT,
+    last_row_count INTEGER,
+    last_results   JSON,
+    created_by     VARCHAR(60) NOT NULL DEFAULT '',
+    created_at     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_saved_reports_due ON saved_reports(next_run_at);
+
+CREATE TABLE anomaly_settings (
+    id         INTEGER PRIMARY KEY,
+    params     JSON NOT NULL DEFAULT '{}',  -- edited thresholds per rule template
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE app_users (
     id            SERIAL PRIMARY KEY,
     username      VARCHAR(60) NOT NULL UNIQUE,

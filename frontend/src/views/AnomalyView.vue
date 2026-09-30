@@ -2,10 +2,15 @@
   <div class="anomaly-view">
     <div class="page-title">
       <h2>이상거래 점검</h2>
-      <button class="action" :disabled="store.loading || !store.findings.length" @click="exportCsv">
-        파일저장
-      </button>
+      <span class="title-actions">
+        <button class="action" @click="showCriteria = true">점검 기준</button>
+        <button class="action" :disabled="store.loading || !store.findings.length" @click="exportCsv">
+          파일저장
+        </button>
+      </span>
     </div>
+
+    <AnomalySettingsDialog v-model="showCriteria" @saved="refresh" />
 
     <p class="notice">
       선택한 점검 대상과 기간에서 감사 기준 위반이 의심되는 거래를 찾습니다.
@@ -234,8 +239,10 @@ import { Search } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAnomalyStore, type DetailField, type Finding } from '../stores/anomaly'
 import { useDatabaseStore } from '../stores/database'
+import AnomalySettingsDialog from '../components/anomaly/AnomalySettingsDialog.vue'
 
 const store = useAnomalyStore()
+const showCriteria = ref(false)
 const databaseStore = useDatabaseStore()
 
 const connectionId = computed(() => String(databaseStore.activeConnectionId ?? ''))
@@ -709,5 +716,10 @@ onMounted(reload)
 :deep(.el-table) {
   --el-table-border-color: #d3dae3;
   font-size: 12px;
+}
+
+.title-actions {
+  display: inline-flex;
+  gap: 8px;
 }
 </style>

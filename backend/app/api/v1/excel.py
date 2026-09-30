@@ -106,6 +106,21 @@ async def upload_excel(
         )
 
 
+@router.post("/{upload_id}/extend")
+async def extend_upload(
+    upload_id: int,
+    hours: int = 24,
+    service: ExcelService = Depends(get_excel_service)
+):
+    """Keep an upload longer, so a table still being analysed does not expire."""
+    if not 1 <= hours <= 24 * 30:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="연장 시간은 1시간에서 30일 사이여야 합니다")
+    upload = await service.extend_upload(upload_id, hours)
+    if upload is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="업로드를 찾을 수 없습니다")
+    return {"id": upload.id, "expires_at": upload.expires_at.isoformat()}
+
+
 @router.get("/table-name")
 async def check_table_name(
     database_id: int,

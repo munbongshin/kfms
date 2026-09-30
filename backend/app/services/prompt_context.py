@@ -6,7 +6,7 @@ uses, and — when generated SQL fails — the database's own error so the model
 can correct itself. Pure functions, so the rules can be tested on their own.
 """
 import re
-from typing import Any, Dict, List, Mapping, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 MAX_ERROR_CHARS = 600
 # Below this similarity a bookmark is noise, not guidance.
@@ -56,15 +56,35 @@ def pick_terms(question: str, terms: Sequence[Mapping[str, Any]]) -> List[Mappin
     ]
 
 
+MAX_PREVIOUS_SQL_CHARS = 1500
+
+
+def follow_up_context(previous: Optional[Mapping[str, Any]]) -> str:
+    """The turn before this one, so "그중 상위 5개만" has something to refer to."""
+    if not previous or not (previous.get("question") or "").strip() or not (previous.get("sql") or "").strip():
+        return ""
+    return (
+        "FOLLOW-UP: this question continues the previous one and may refer to it "
+        "(e.g. 'only the top 5', 'by month instead', 'that merchant'). "
+        "Write one complete, standalone SQL that answers the new question.\n"
+        f"Previous question: {previous['question'].strip()}\n"
+        f"Previous SQL: {previous['sql'].strip()[:MAX_PREVIOUS_SQL_CHARS]}"
+    )
+
+
 def build_context(
     user_context: str,
     examples: Sequence[Mapping[str, Any]],
     terms: Sequence[Mapping[str, Any]],
+    previous: Optional[Mapping[str, Any]] = None,
 ) -> str:
     """The CONTEXT block of the prompt."""
     parts: List[str] = []
     if user_context.strip():
         parts.append(user_context.strip())
+    follow_up = follow_up_context(previous)
+    if follow_up:
+        parts.append(follow_up)
     if terms:
         lines = "\n".join(f"- {t['term']}: {t['definition']}" for t in terms)
         parts.append(f"BUSINESS TERMS (use these definitions):\n{lines}")

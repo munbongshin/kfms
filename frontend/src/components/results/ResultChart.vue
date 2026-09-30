@@ -70,10 +70,11 @@ const autoRecommendation = computed(() => {
   return detectBestChartType(props.data)
 })
 
-// Set initial chart type from recommendation
-watch(() => props.recommendation, (newRec) => {
-  if (newRec && newRec.chart_type !== 'table') {
-    selectedChartType.value = newRec.chart_type as any
+// Start from the chart that suits the data (categories -> pie/bar, dates -> line),
+// chosen here in the browser; no data leaves for it. The user can still switch.
+watch(autoRecommendation, (rec) => {
+  if (rec && rec.chart_type !== 'table') {
+    selectedChartType.value = rec.chart_type as any
   }
 }, { immediate: true })
 

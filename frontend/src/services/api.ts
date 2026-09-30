@@ -123,6 +123,36 @@ export interface SchemaInfo {
   tables: Record<string, TableInfo>
 }
 
+export interface Report {
+  id: number
+  name: string
+  question: string
+  sql: string
+  database_id: string
+  frequency: 'daily' | 'weekly' | 'monthly'
+  hour: number
+  weekday: number | null
+  day: number | null
+  is_active: boolean
+  next_run_at: string | null
+  last_run_at: string | null
+  last_status: 'ok' | 'error' | null
+  last_error: string | null
+  last_row_count: number | null
+  created_by: string
+}
+
+export interface NewReport {
+  name: string
+  question: string
+  sql: string
+  database_id: number
+  frequency: string
+  hour: number
+  weekday?: number
+  day?: number
+}
+
 export type Role = 'admin' | 'auditor' | 'viewer'
 
 export interface AppUser {
@@ -282,6 +312,8 @@ export const api = {
       database_id: number
       llm_provider?: string
       context?: string
+      previous_question?: string
+      previous_sql?: string
     }) {
       const response = await apiClient.post('/query/generate', data)
       return response.data
@@ -309,6 +341,8 @@ export const api = {
       database_id: number
       llm_provider?: string
       context?: string
+      previous_question?: string
+      previous_sql?: string
       auto_approve?: boolean
     }) {
       const response = await apiClient.post('/query/generate-and-execute', data)
@@ -349,6 +383,12 @@ export const api = {
         available: boolean
         conflict_with: string | null
       }
+    },
+
+    /** Keep an upload longer; extending never shortens it. */
+    async extend(uploadId: number, hours = 24) {
+      const response = await apiClient.post(`/excel/${uploadId}/extend`, null, { params: { hours } })
+      return response.data
     },
 
     async list() {
@@ -491,7 +531,36 @@ export const api = {
   },
 
   // Anomaly detection
+  reports: {
+    async list(): Promise<Report[]> {
+      return (await apiClient.get('/reports')).data
+    },
+    async create(data: NewReport): Promise<Report> {
+      return (await apiClient.post('/reports', data)).data
+    },
+    async get(id: number): Promise<Report & { results: any[] }> {
+      return (await apiClient.get(`/reports/${id}`)).data
+    },
+    async run(id: number): Promise<Report & { results: any[] }> {
+      return (await apiClient.post(`/reports/${id}/run`)).data
+    },
+    async setActive(id: number, active: boolean): Promise<Report> {
+      return (await apiClient.patch(`/reports/${id}`, { is_active: active })).data
+    },
+    async remove(id: number): Promise<void> {
+      await apiClient.delete(`/reports/${id}`)
+    },
+  },
+
   anomaly: {
+    async getSettings() {
+      return (await apiClient.get('/anomaly/settings')).data
+    },
+
+    async saveSettings(overrides: Record<string, Record<string, any>>) {
+      return (await apiClient.put('/anomaly/settings', { overrides })).data
+    },
+
     async listSources(databaseId: string) {
       const response = await apiClient.get('/anomaly/sources', {
         params: { database_id: databaseId },

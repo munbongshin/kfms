@@ -8,6 +8,15 @@
       </template>
 
       <el-form>
+        <div v-if="queryStore.canFollowUp" class="follow-up">
+          <el-checkbox v-model="queryStore.followUp">앞 질문에 이어서 묻기</el-checkbox>
+          <span class="follow-hint">
+            {{ queryStore.followUp
+              ? `"${shorten(queryStore.queryResults?.question)}" 결과를 이어서 좁히거나 바꿔 물을 수 있습니다 (예: 그중 상위 5개만)`
+              : '새 질문으로 처음부터 만듭니다' }}
+          </span>
+        </div>
+
         <el-form-item>
           <el-input
             v-model="queryStore.currentQuestion"
@@ -96,6 +105,8 @@ async function handleExecute() {
   }
 }
 
+const shorten = (text?: string) => (text && text.length > 28 ? text.slice(0, 28) + '…' : text || '')
+
 function handleClear() {
   queryStore.clearResults()
 }
@@ -116,6 +127,22 @@ function handleClear() {
 
 .el-alert {
   margin-top: 10px;
+}
+
+.follow-up {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: #f7f9fc;
+  border: 1px solid #d3dae3;
+}
+
+.follow-hint {
+  font-size: 12px;
+  color: #6b7686;
 }
 
 </style>

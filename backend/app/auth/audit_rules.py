@@ -11,7 +11,7 @@ API_PREFIX = "/api/v1"
 # generic log skips them instead of writing a second, poorer line.
 SELF_LOGGED_POST = ("/query/execute", "/query/generate-and-execute", "/auth/login", "/auth/setup")
 _ROWS = re.compile(r"/databases/[^/]+/tables/[^/]+/rows")
-_HISTORY_ONE = re.compile(r"/history/\d+")
+_HISTORY_ONE = re.compile(r"/(history|reports)/\d+")
 # Changes that are really checks or drafts.
 _NOISE = re.compile(r"/query/(validate|generate)|/llm-settings/(test|models)|/databases/[^/]+/test")
 

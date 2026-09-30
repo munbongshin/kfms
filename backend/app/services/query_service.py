@@ -84,6 +84,7 @@ class QueryService:
         database_id: str,
         context: str = "",
         excluded_tables: Optional[List[str]] = None,
+        previous: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Generate SQL from natural language question.
@@ -97,7 +98,7 @@ class QueryService:
             Dict with generated SQL and validation results
         """
         guidance = await self._guidance(question, database_id)
-        base_context = build_context(context, guidance["examples"], guidance["terms"])
+        base_context = build_context(context, guidance["examples"], guidance["terms"], previous)
 
         # Generate, then check the SQL plans cleanly; if it does not, hand the
         # database's error back to the model, up to MAX_RETRIES times.
@@ -150,6 +151,7 @@ class QueryService:
             "llm_model": llm_result["model"],
             # How the answer was reached: retries, and what guided the model.
             "attempts": attempts,
+            "follow_up": bool(previous and previous.get("sql")),
             "examples_used": len(guidance["examples"]),
             "terms_used": [t["term"] for t in guidance["terms"]],
         }
@@ -283,6 +285,7 @@ class QueryService:
         context: str = "",
         auto_approve: bool = False,
         excluded_tables: Optional[List[str]] = None,
+        previous: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Generate SQL and execute in one step.
@@ -302,6 +305,7 @@ class QueryService:
             database_id=database_id,
             context=context,
             excluded_tables=excluded_tables,
+            previous=previous,
         )
 
         # If not safe and auto_approve is False, return for user confirmation

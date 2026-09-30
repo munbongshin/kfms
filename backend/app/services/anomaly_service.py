@@ -168,9 +168,11 @@ def merge_reviews(
 
 
 class AnomalyService:
-    def __init__(self, pool, repo: AnomalyRepository):
+    def __init__(self, pool, repo: AnomalyRepository, rules=None):
         self.pool = pool
         self.repo = repo
+        # Rules with any edited thresholds applied; the built-in ones by default.
+        self.rules = rules if rules is not None else RULES
 
     async def _load_rows(
         self,
@@ -325,7 +327,7 @@ class AnomalyService:
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
     ) -> Dict[str, Any]:
-        grouped = rules_by_source(RULES)
+        grouped = rules_by_source(self.rules)
         if source:
             grouped = {k: v for k, v in grouped.items() if k == source}
 
@@ -366,7 +368,7 @@ class AnomalyService:
         # table or a kfms outage must degrade to "nothing reviewed yet", not a 500
         # that blanks the screen — the same contract _load_rows already honours for
         # the retail side. The degradation is surfaced, not swallowed.
-        source_of = {r.code: r.source for r in RULES}
+        source_of = {r.code: r.source for r in self.rules}
 
         caveat: Optional[str] = None
         try:

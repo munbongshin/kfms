@@ -11,6 +11,10 @@
         <div class="meta">
           <span class="stat">{{ results.row_count.toLocaleString() }} rows</span>
           <span class="stat">{{ results.execution_time_ms }}ms</span>
+          <el-button v-if="canSaveReport" size="small" @click="showSave = true">
+            <el-icon><Calendar /></el-icon>
+            보고서로 저장
+          </el-button>
           <el-button size="small" @click="tableRef?.exportToCSV()">
             <el-icon><Download /></el-icon>
             CSV
@@ -49,17 +53,26 @@
       <pre class="sql-display">{{ results.sql }}</pre>
     </div>
   </el-card>
+
+    <SaveReportDialog v-model="showSave" :question="results.question" :sql="results.sql" />
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Download, CopyDocument } from '@element-plus/icons-vue'
+import { computed, ref } from 'vue'
+import { Download, CopyDocument, Calendar } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { QueryResult } from '../../stores/query'
 import ResultTable from './ResultTable.vue'
 import ResultChart from './ResultChart.vue'
+import SaveReportDialog from './SaveReportDialog.vue'
+import { useQueryStore } from '../../stores/query'
 
 const props = defineProps<{ results: QueryResult }>()
+
+const queryStore = useQueryStore()
+const showSave = ref(false)
+// A table preview is browsing, not a question worth scheduling.
+const canSaveReport = computed(() => !queryStore.preview && !!props.results.sql)
 
 const activeTab = ref('table')
 const tableRef = ref<InstanceType<typeof ResultTable> | null>(null)

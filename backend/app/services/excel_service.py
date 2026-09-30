@@ -6,7 +6,7 @@ from typing import Dict, List, Any, Optional
 import re
 import unicodedata
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 import time
 from fastapi import UploadFile
@@ -225,7 +225,7 @@ class ExcelService:
 
         # Save metadata
         ttl = ttl_hours or settings.EXCEL_TABLE_TTL_HOURS
-        expires_at = datetime.utcnow() + timedelta(hours=ttl)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=ttl)
 
         upload_record = ExcelUpload(
             filename=file.filename,
@@ -429,6 +429,49 @@ class ExcelService:
 
         return True
 
+    async def extend_upload(self, upload_id: int, hours: int = 24) -> Optional[ExcelUpload]:
+        """Give an upload more time: `hours` from now, or from its expiry if that
+        is still ahead. Extending never shortens it."""
+        upload = await self.get_upload_by_id(upload_id)
+        if upload is None:
+            return None
+        start = max(upload.expires_at, datetime.now(timezone.utc))
+        upload.expires_at = start + timedelta(hours=hours)
+        await self.session.commit()
+        await self.session.refresh(upload)
+        return upload
+
+    async def cleanup_expired_everywhere(self, database_ids: List[str]) -> int:
+        """Drop every expired upload and its record.
+
+        An upload record does not say which connection holds its table, so the
+        DROP is tried on each (IF EXISTS makes the wrong ones harmless).
+        """
+        from sqlalchemy import delete as sql_delete, select
+
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.EXCEL_CLEANUP_GRACE_HOURS)
+        result = await self.session.execute(
+            select(ExcelUpload).where(ExcelUpload.expires_at <= cutoff)
+        )
+        removed = 0
+        for upload in list(result.scalars().all()):
+            dropped = False
+            for database_id in database_ids:
+                try:
+                    async with self.pool.get_write_connection(database_id) as conn:
+                        await conn.execute(text(f"DROP TABLE IF EXISTS {quote_relation(upload.table_name)}"))
+                    self.pool.invalidate_schema(database_id)
+                    dropped = True
+                except Exception as exc:
+                    print(f"Warning: could not drop {upload.table_name} on {database_id}: {exc}")
+            # Keep the record when no connection could be reached, so the
+            # table is tried again instead of being orphaned.
+            if dropped or not database_ids:
+                await self.session.execute(sql_delete(ExcelUpload).where(ExcelUpload.id == upload.id))
+                await self.session.commit()
+                removed += 1
+        return removed
+
     async def cleanup_expired_uploads(self, database_id: str) -> int:
         """
         Clean up expired Excel uploads.
@@ -442,7 +485,7 @@ class ExcelService:
         from sqlalchemy import select
 
         # Find expired uploads
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         result = await self.session.execute(
             select(ExcelUpload).where(
                 ExcelUpload.expires_at <= now

@@ -1,11 +1,14 @@
 """Anomaly detection endpoints."""
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status as http_status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status as http_status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.anomaly.rules import RULES, SOURCES
+from app.anomaly.rules import RULES, SOURCES, TEMPLATES, build_rules
+from app.anomaly.settings import apply_overrides, describe, validate
+from app.auth.deps import ADMIN, CurrentUser, record
+from app.db.repositories.anomaly_settings import AnomalySettingsRepository
 from app.db.repositories.anomaly import AnomalyRepository
 from app.dependencies import get_db, get_db_pool
 from app.services.anomaly_service import AnomalyService
@@ -17,11 +20,49 @@ router = APIRouter(prefix="/anomaly", tags=["Anomaly"])
 MAX_DETAIL_SEQS = 50
 
 
-def get_anomaly_service(
+async def get_anomaly_service(
     db: AsyncSession = Depends(get_db),
     pool=Depends(get_db_pool),
 ) -> AnomalyService:
-    return AnomalyService(pool, AnomalyRepository(db))
+    overrides = await AnomalySettingsRepository(db).load()
+    rules = build_rules(SOURCES, apply_overrides(TEMPLATES, overrides)) if overrides else None
+    return AnomalyService(pool, AnomalyRepository(db), rules)
+
+
+@router.get("/settings")
+async def get_settings(db: AsyncSession = Depends(get_db)):
+    """Every editable threshold with its current value and its default."""
+    overrides = await AnomalySettingsRepository(db).load()
+    return {"rules": describe(TEMPLATES, overrides)}
+
+
+@router.put("/settings")
+async def save_settings(
+    body: dict,
+    http_request: Request,
+    admin: CurrentUser = ADMIN,
+    db: AsyncSession = Depends(get_db),
+):
+    """Save edited thresholds. `body` is {template: {parameter: value}}; a value
+    equal to the default is dropped, so resetting a field really resets it."""
+    clean, errors = validate(body.get("overrides", {}))
+    if errors:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=" · ".join(errors))
+
+    defaults = describe(TEMPLATES, {})
+    kept = {}
+    for rule in defaults:
+        for param in rule["params"]:
+            value = (clean.get(rule["template"]) or {}).get(param["key"])
+            if value is None:
+                continue
+            comparable = int(value) if param["unit"] == "hour" else value
+            if comparable != param["default"]:
+                kept.setdefault(rule["template"], {})[param["key"]] = value
+
+    await AnomalySettingsRepository(db).save(kept)
+    await record(db, admin, http_request, "anomaly_settings", "", changed=sorted(kept))
+    return {"rules": describe(TEMPLATES, kept)}
 
 
 class ReviewRequest(BaseModel):
