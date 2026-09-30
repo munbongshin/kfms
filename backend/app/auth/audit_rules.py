@@ -12,6 +12,7 @@ API_PREFIX = "/api/v1"
 SELF_LOGGED_POST = ("/query/execute", "/query/generate-and-execute", "/auth/login", "/auth/setup")
 _ROWS = re.compile(r"/databases/[^/]+/tables/[^/]+/rows")
 _HISTORY_ONE = re.compile(r"/(history|reports)/\d+")
+_RERUN = re.compile(r"/query/rerun/\d+")  # writes its own entry, like /query/execute
 # Changes that are really checks or drafts.
 _NOISE = re.compile(r"/query/(validate|generate)|/llm-settings/(test|models)|/databases/[^/]+/test")
 
@@ -23,7 +24,7 @@ def _normal(path: str) -> str:
 
 def is_audited(method: str, path: str, generic: bool = False) -> bool:
     p = _normal(path)
-    if generic and (p in SELF_LOGGED_POST or _ROWS.fullmatch(p)):
+    if generic and (p in SELF_LOGGED_POST or _ROWS.fullmatch(p) or _RERUN.fullmatch(p)):
         return False
     if method in ("GET", "HEAD"):
         return p.endswith("/findings/transactions") or bool(_ROWS.fullmatch(p)) or bool(_HISTORY_ONE.fullmatch(p))

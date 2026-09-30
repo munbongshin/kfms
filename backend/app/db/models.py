@@ -4,7 +4,7 @@ Defines database schema for query history, database connections, and Excel uploa
 """
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import Boolean, Integer, String, Text, TIMESTAMP, JSON, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, TIMESTAMP, JSON, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -205,6 +205,42 @@ class GlossaryTerm(Base):
     )
 
 
+class ColumnLabel(Base):
+    """The name a column is shown under, chosen by an administrator.
+
+    `table_key` NULL means the column name on the whole connection (a table and
+    the views reusing the name); a value is an exception for that one table.
+    A unique index over (connection_id, coalesce(table_key, ''), column_name)
+    keeps one label per scope; it is created by the migration.
+    """
+
+    __tablename__ = "column_labels"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    connection_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("database_connections.id", ondelete="CASCADE"), nullable=False
+    )
+    table_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    column_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ExpressionTerm(Base):
+    """A changed name for a computed-column function (sum -> 합계). Only changes
+    are stored; the defaults live in app/db/column_labels.py."""
+
+    __tablename__ = "expression_terms"
+
+    function: Mapped[str] = mapped_column("func", String(20), primary_key=True)
+    label: Mapped[str] = mapped_column(String(50), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class User(Base):
     """A person who signs in. Roles: admin, auditor, viewer."""
 
@@ -248,6 +284,22 @@ class AnomalySetting(Base):
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+
+class AnomalySettingHistory(Base):
+    """One change to the anomaly settings: who, when, the values before and after
+    (for restoring), and the readable list of what moved (for showing)."""
+
+    __tablename__ = "anomaly_setting_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    changed_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+    changed_by: Mapped[str] = mapped_column(String(60), nullable=False, default="")
+    before: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    after: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    changes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
 
 class SavedReport(Base):

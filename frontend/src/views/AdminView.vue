@@ -59,6 +59,11 @@
         </div>
       </el-tab-pane>
 
+      <!-- Column display names -->
+      <el-tab-pane label="컬럼 한글명" name="labels" lazy>
+        <div class="panel"><ColumnLabelsPanel /></div>
+      </el-tab-pane>
+
       <!-- Accuracy evaluation -->
       <el-tab-pane label="정확도 평가" name="eval" lazy>
         <div class="panel"><EvalPanel /></div>
@@ -106,6 +111,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, type AppUser, type AuditEntry, type Role } from '../services/api'
+import ColumnLabelsPanel from '../components/admin/ColumnLabelsPanel.vue'
 import EvalPanel from '../components/admin/EvalPanel.vue'
 
 const ROLES: Array<{ value: Role; label: string }> = [
@@ -118,12 +124,15 @@ const ACTIONS = [
   { value: 'login', label: '로그인' },
   { value: 'login_failed', label: '로그인 실패' },
   { value: 'query_execute', label: '질의 실행' },
+  { value: 'query_rerun', label: '저장된 질문 재실행' },
   { value: 'table_preview', label: '테이블 미리보기' },
   { value: 'request', label: '변경·열람 요청' },
   { value: 'user_create', label: '사용자 추가' },
   { value: 'user_change', label: '사용자 변경' },
   { value: 'user_delete', label: '사용자 삭제' },
   { value: 'profile_change', label: '내 정보 변경' },
+  { value: 'anomaly_settings', label: '점검 기준 변경' },
+  { value: 'anomaly_settings_restore', label: '점검 기준 되돌리기' },
   { value: 'setup', label: '최초 설정' },
 ]
 
@@ -165,12 +174,14 @@ const actionLabel = (a: string) => ACTIONS.find((x) => x.value === a)?.label || 
 /** One readable line per entry, without dumping the raw detail. */
 function summarize(row: AuditEntry): string {
   const d = row.detail || {}
+  if (row.action === 'query_rerun') return `${d.question || ''} — ${d.rows ?? '?'}행`
   if (row.action === 'query_execute') return `${d.question || ''} — ${d.rows ?? '?'}행 · ${d.sql || ''}`
   if (row.action === 'table_preview') return `${d.offset ?? 0}행부터 ${d.limit ?? ''}행`
   if (row.action === 'request') return `응답 ${d.status}`
   if (row.action === 'user_change') return (d.changed || []).join(', ')
   if (row.action === 'user_create') return `역할 ${d.role}`
   if (row.action === 'profile_change') return (d.changed || []).join(', ')
+  if (row.action === 'anomaly_settings' || row.action === 'anomaly_settings_restore') return (d.changed || []).join(' · ')
   return ''
 }
 

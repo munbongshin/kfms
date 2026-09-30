@@ -91,11 +91,16 @@ def test_columns_keep_their_order_and_details():
     assert columns["v_approval"][1]["type"] == "text"
 
 
-def test_views_borrow_comments_and_short_labels_still_apply():
+def test_views_borrow_the_comments_of_the_tables_they_read():
     _, columns = build_catalog(ROWS)
-    cardno = columns["v_approval"][0]
-    assert cardno["comment"] == "카드번호"
-    assert columns["v_approval"][1]["label"] == "승인금액"
+    assert columns["v_approval"][0]["comment"] == "카드번호"
+
+
+def test_the_catalog_carries_comments_only_because_labels_are_managed_data():
+    # Display names are laid over a copy per request (see test_column_labels.py),
+    # so the cached catalog must not bake any in.
+    _, columns = build_catalog(ROWS)
+    assert all("label" not in c for cols in columns.values() for c in cols)
 
 
 def test_an_empty_database_has_no_tables():

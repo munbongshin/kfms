@@ -56,28 +56,71 @@
         <h2>화면 구성</h2>
         <div class="mock">
           <div class="mock-top">
-            <span>KFMS</span>
-            <span class="mock-tag">① 연결 선택</span>
+            <span class="mock-brand">KFMS</span>
+            <span class="mock-topright">
+              <span class="mock-user">○ 홍길동 <em>관리자</em></span>
+              <span class="mock-btn">로그아웃</span>
+              <span class="mock-select">▤ KFMS Demo DB ▾</span>
+              <b class="mock-no light">①</b>
+            </span>
           </div>
           <div class="mock-body">
             <div class="mock-rail">
-              <span>②</span><span>질의</span><span>데이터</span><span>이력</span><span>점검</span>
-              <span class="mock-tools">설정<br />도움말</span>
-            </div>
-            <div class="mock-side">
-              <div class="mock-tabs">테이블 <span class="mock-fold-btn">④ «</span></div>
-              <div class="mock-tree">
-                ③ 테이블 패널 <span>(질의 화면)</span><br />
-                <span>연결 ▸ 테이블 ▸ 컬럼</span>
+              <b class="mock-no">②</b>
+              <div class="mock-tab active"><i></i>질의</div>
+              <div class="mock-tab"><i></i>데이터</div>
+              <div class="mock-tab"><i></i>이력</div>
+              <div class="mock-tab"><i></i>보고서</div>
+              <div class="mock-tab"><i></i>점검</div>
+              <div class="mock-tab"><i></i>관리</div>
+              <div class="mock-tools">
+                <div class="mock-tab"><i></i>설정</div>
+                <div class="mock-tab"><i></i>도움말</div>
               </div>
             </div>
-            <div class="mock-main">⑤ 작업 영역<br /><span>선택한 기능의 화면</span></div>
+            <div class="mock-side">
+              <div class="mock-tabs">
+                <span>테이블</span>
+                <span class="mock-fold-btn">⟳ <b class="mock-no">④</b> «</span>
+              </div>
+              <div class="mock-search">검색</div>
+              <div class="mock-tree">
+                <b class="mock-no">③</b>
+                <div>▾ KFMS Demo DB</div>
+                <div class="l2">▸ card_data</div>
+                <div class="l2">▸ v_approval</div>
+                <div class="l2 off">▸ retail_sales <small>분석 제외</small></div>
+              </div>
+            </div>
+            <div class="mock-main">
+              <b class="mock-no">⑤</b>
+              <div class="mock-card"><strong>질문 입력</strong><span>질문하기 · (관리자) Generate SQL</span></div>
+              <div class="mock-card"><strong>자주 쓰는 질문</strong><span>★ 북마크한 질문 버튼</span></div>
+              <div class="mock-card grow"><strong>결과</strong><span>표 · 차트 (관리자는 SQL 탭도)</span></div>
+            </div>
           </div>
         </div>
         <table class="kv">
           <tbody>
-            <tr><th>① 상단 바</th><td>로그인한 사용자와 역할, <em>로그아웃</em>, 조회할 데이터베이스를 고르는 <em>연결 선택</em>이 있습니다. 모든 화면이 여기서 고른 연결을 대상으로 동작합니다.</td></tr>
-            <tr><th>② 기능 탭</th><td>왼쪽 세로 막대 위쪽에서 화면을 오가고, 맨 아래의 <em>설정</em>과 <em>도움말</em>을 엽니다. 어느 화면에서나 같은 모양이며, <strong>내 역할이 쓸 수 있는 메뉴만</strong> 보입니다.</td></tr>
+            <tr>
+              <th>① 상단 바</th>
+              <td>
+                로그인한 <strong>내 이름과 역할</strong>(누르면 이름·비밀번호를 고치는 <em>내 정보</em> 창), <em>로그아웃</em>,
+                조회할 데이터베이스를 고르는 <em>연결 선택</em>이 있습니다. 모든 화면이 여기서 고른 연결을 대상으로 동작합니다.
+              </td>
+            </tr>
+            <tr>
+              <th>② 기능 탭</th>
+              <td>
+                왼쪽 세로 막대에서 화면을 오갑니다. 어느 화면에서나 같은 모양이고, <strong>내 역할이 쓸 수 있는 메뉴만</strong> 보입니다.
+                <ul class="menu-roles">
+                  <li><em>질의</em> · <em>이력</em> · <em>보고서</em> · <em>도움말</em> — 모든 역할</li>
+                  <li><em>데이터</em>(연결·엑셀 올리기) · <em>점검</em>(이상거래) — 관리자, 감사담당</li>
+                  <li><em>관리</em>(사용자 · 컬럼 한글명 · 정확도 평가 · 감사 로그) · <em>설정</em>(LLM · 업무 용어집) — 관리자</li>
+                </ul>
+                <em>설정</em>과 <em>도움말</em>은 막대 맨 아래에 따로 있습니다.
+              </td>
+            </tr>
             <tr>
               <th>③ 테이블 패널</th>
               <td>
@@ -85,11 +128,24 @@
                 컬럼이 나옵니다. 컬럼은 <strong>한글명</strong>(예: 카드번호) 옆에 실제 컬럼명(cardno)과
                 형식이 작게 표시되고, 위 검색창에 한글명이나 컬럼명 어느 쪽을 넣어도 찾습니다.
                 테이블 옆에는 테이블 설명(예: 승인내역 테이블)이 보이고, 분석에서 뺀 테이블은 흐리게
-                <em>분석 제외</em>로 표시됩니다. 패널 위 ⟳는 데이터베이스에서 테이블 목록을 다시 읽습니다.
+                <em>분석 제외</em>로 표시됩니다. 테이블을 누르면 그 내용을 바로 볼 수 있습니다.
               </td>
             </tr>
-            <tr><th>④ 접기</th><td>테이블 패널 위의 «를 누르거나, 질의 화면에서 <em>질의</em> 탭을 한 번 더 누르면 패널을 접고 펼칩니다. 접은 상태는 다음에도 유지됩니다.</td></tr>
-            <tr><th>⑤ 작업 영역</th><td>선택한 기능 화면이 표시됩니다.</td></tr>
+            <tr>
+              <th>④ 새로고침 · 접기</th>
+              <td>
+                패널 위 <em>⟳</em>는 데이터베이스에서 테이블 목록을 다시 읽습니다. <em>«</em>를 누르거나 질의 화면에서 <em>질의</em> 탭을 한 번 더 누르면
+                패널을 접고 펼치며, 접은 상태는 다음에도 유지됩니다.
+              </td>
+            </tr>
+            <tr>
+              <th>⑤ 작업 영역</th>
+              <td>
+                선택한 기능의 화면이 표시됩니다. 질의 화면은 위에서부터 <strong>질문 입력</strong>(이어서 묻기 포함),
+                <strong>자주 쓰는 질문</strong> 버튼, <strong>결과</strong>(표 · 차트, 관리자는 SQL 탭도) 순서입니다.
+                관리자가 아니면 질문 입력의 버튼은 <em>질문하기</em> 하나입니다.
+              </td>
+            </tr>
           </tbody>
         </table>
       </section>
@@ -102,8 +158,8 @@
           <li><b>질문 입력</b><span>한국어로 원하는 내용을 적습니다.</span></li>
           <li><b>SQL 생성</b><span>설정에서 고른 AI(LLM)가 테이블·컬럼의 한글명을 참고해 SQL을 만듭니다.</span></li>
           <li><b>안전성 검사</b><span>조회(SELECT)만 허용합니다. 데이터를 바꾸는 SQL은 차단됩니다.</span></li>
-          <li><b>확인 후 실행</b><span>만들어진 SQL을 보고 실행 여부를 정합니다.</span></li>
-          <li><b>결과 표시</b><span>표 · 차트 · SQL 탭으로 봅니다.</span></li>
+          <li><b>확인 후 실행</b><span>관리자는 만들어진 SQL을 보고 실행 여부를 정합니다. 그 밖의 사용자는 <em>질문하기</em> 한 번으로 실행되고 SQL은 보지 않습니다.</span></li>
+          <li><b>결과 표시</b><span>표 · 차트로 봅니다(관리자는 SQL 탭도).</span></li>
           <li><b>이력 저장</b><span>질문과 SQL이 이력에 남아 다시 쓸 수 있습니다.</span></li>
         </ol>
         <div class="note">
@@ -190,11 +246,11 @@
         <h3>프론트엔드 구성</h3>
         <table class="kv">
           <tbody>
-            <tr><th>views</th><td>화면 단위 — 질의, 데이터, 이력, 점검, LLM 설정, 도움말</td></tr>
-            <tr><th>components</th><td>화면 조각 — 레이아웃(상단 바·기능 탭·테이블 트리), 질문 입력, SQL 확인 창, 결과 표·차트, 이력 목록, 연결 관리(추가·수정), 엑셀 올리기</td></tr>
+            <tr><th>views</th><td>화면 단위 — 질의, 데이터, 이력, 보고서, 점검, 관리, LLM 설정, 도움말, 로그인</td></tr>
+            <tr><th>components</th><td>화면 조각 — 레이아웃(상단 바·기능 탭·테이블 트리), 질문 입력, SQL 확인 창, 결과 표·차트, 이력 목록, 연결 관리(추가·수정), 엑셀 올리기, 관리 화면 패널(컬럼 한글명·정확도 평가), 내 정보 창</td></tr>
             <tr><th>stores</th><td>화면 간에 공유하는 상태 — 연결·스키마(database), 질문·결과(query), 점검 결과(anomaly)</td></tr>
             <tr><th>services</th><td>API 서버 호출을 한곳에 모은 클라이언트(api.ts)</td></tr>
-            <tr><th>utils</th><td>계산 결과 컬럼의 한글명 만들기 등 공통 기능</td></tr>
+            <tr><th>utils</th><td>계산 결과 컬럼의 한글명 만들기(합계·건수 용어는 서버에서 받음), 보고서 주기 표현 등 공통 기능</td></tr>
           </tbody>
         </table>
 
@@ -203,7 +259,7 @@
         <div class="layers">
           <div class="layer">
             <b>API 라우터</b>
-            <span>databases · query · history · excel · anomaly · llm-settings · glossary · reports · auth — 요청 검사, 응답 형식</span>
+            <span>databases · query · history · excel · anomaly · llm-settings · glossary · column-labels · reports · eval · auth — 요청 검사, 역할 확인, 응답 형식</span>
           </div>
           <div class="layer">
             <b>서비스</b>
@@ -212,7 +268,7 @@
           <div class="layer side">
             <div><b>LLM 공급자</b><span>공통 규칙·프롬프트, Ollama · OpenAI 호환 구현, 플랫폼 목록·설정 해석</span></div>
             <div><b>점검 규칙</b><span>고액·시간 외·주의 업종·분할결제</span></div>
-            <div><b>유틸</b><span>SQL 검증, 비밀번호·API 키 암호화, 로그인·권한·마스킹</span></div>
+            <div><b>유틸</b><span>SQL 검증, 비밀번호·API 키 암호화, 로그인·권한·카드번호 마스킹, SQL 노출 제한(관리자 외 응답에서 SQL 제거)</span></div>
           </div>
           <div class="layer">
             <b>데이터 접근</b>
@@ -224,16 +280,17 @@
         <table class="grid-table">
           <thead><tr><th>DB</th><th>테이블</th><th>내용</th></tr></thead>
           <tbody>
-            <tr><td rowspan="11"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
+            <tr><td rowspan="12"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
             <tr><td><code>query_history</code></td><td>질문·SQL·결과·북마크</td></tr>
             <tr><td><code>excel_uploads</code></td><td>올린 엑셀 파일과 만든 임시 테이블 목록</td></tr>
             <tr><td><code>anomaly_review</code></td><td>이상거래 검토 판정(확인함·정상)</td></tr>
             <tr><td><code>eval_cases</code> · <code>eval_runs</code></td><td>정확도 평가 사례와 채점 기록</td></tr>
             <tr><td><code>saved_reports</code></td><td>보고서 (질문·SQL·주기·최근 결과)</td></tr>
-            <tr><td><code>anomaly_settings</code></td><td>바꾼 점검 기준 (없으면 기본값)</td></tr>
+            <tr><td><code>anomaly_settings</code> · <code>anomaly_setting_history</code></td><td>바꾼 점검 기준 (없으면 기본값)과 그 변경 이력(전·후 값, 되돌리기용)</td></tr>
             <tr><td><code>app_users</code></td><td>사용자 (비밀번호는 복원할 수 없는 해시로 저장)</td></tr>
             <tr><td><code>audit_log</code></td><td>감사 로그 (누가 언제 무엇을)</td></tr>
             <tr><td><code>glossary_terms</code></td><td>업무 용어집 (용어와 뜻)</td></tr>
+            <tr><td><code>column_labels</code> · <code>expression_terms</code></td><td>관리자가 정한 컬럼 한글명(연결별·테이블별)과 계산 컬럼 용어(합계·건수 …)</td></tr>
             <tr><td><code>llm_settings</code></td><td>설정 화면에서 고른 LLM 플랫폼과 플랫폼별 주소·모델·API 키(암호화)</td></tr>
             <tr><td rowspan="3"><b>retail</b><br /><small>조회 대상</small></td><td><code>card_data</code> + 뷰 5개</td><td>법인카드 데이터 (승인·매입·청구·카드정보·사용부서)</td></tr>
             <tr><td><code>retail_sales</code></td><td>소매 판매 예제 데이터</td></tr>
@@ -404,8 +461,8 @@
           <figcaption>
             ① 질문 전송 → ② DBMS에서 테이블·컬럼 구조와 설명·한글명(COMMENT)을 읽음(5분간 재사용) →
             ③ 스키마·규칙·질문으로 프롬프트를 만들어 LLM에 보냄 → ④ LLM이 SQL을 돌려줌
-            (SELECT만 허용, 최대 1,000행으로 제한해 검증) → ⑤ 화면에 SQL 표시 →
-            ⑥ 사용자가 확인하고 실행 → ⑦ DBMS에서 읽기 전용으로 실행 →
+            (SELECT만 허용, 최대 1,000행으로 제한해 검증) → ⑤ 화면에 SQL 표시(관리자만) →
+            ⑥ 확인하고 실행(관리자 외에는 확인 없이 바로 실행, SQL은 표시하지 않음) → ⑦ DBMS에서 읽기 전용으로 실행 →
             ⑧ 이력 저장 → ⑨ 한글 머리글로 결과 표시
           </figcaption>
         </figure>
@@ -490,6 +547,12 @@ LIMIT 1000</pre>
           <li><strong>결과 제한</strong> — 한 번에 최대 1,000행까지만 돌려줍니다.</li>
           <li><strong>이름 검증</strong> — 테이블 바로 보기의 테이블·컬럼 이름은 실제 스키마에 있는지 확인한 뒤에만 SQL에 넣습니다.</li>
           <li><strong>역할별 접근·마스킹</strong> — 로그인이 없으면 어떤 API도 쓸 수 없고, 역할에 없는 기능은 서버가 거부합니다. 조회 역할에는 카드번호를 가려서 내보냅니다.</li>
+          <li>
+            <strong>SQL은 관리자에게만</strong> — SQL을 만들고 실행하고 검증하는 API는 관리자 전용이고, 그 밖의 사용자에게 나가는 응답
+            (질문 결과, 이력, 북마크, 보고서, 테이블 미리보기)에서는 서버가 SQL을 뺍니다. 화면만 가린 것이 아니어서 브라우저 개발자 도구로도 볼 수 없습니다.
+            데이터베이스 오류 메시지에도 SQL 조각이 섞이므로 관리자가 아니면 일반 문구로 바꿔 보여 줍니다.
+            저장된 질문 다시 실행, 이어 묻기, 보고서 저장은 SQL 대신 <strong>기록 번호</strong>로 서버가 처리합니다.
+          </li>
           <li><strong>감사 로그</strong> — 변경과 카드번호·저장 결과 열람을 모두 남깁니다.</li>
           <li><strong>질문 시간 제한</strong> — 질문으로 만든 SQL은 약 30초를 넘기면 DB가 중단시킵니다. 엑셀 업로드는 제외됩니다.</li>
           <li><strong>권한 범위</strong> — 메타정보는 연결 계정이 읽을 수 있는(SELECT 권한이 있는) 테이블만 가져옵니다.</li>
@@ -526,12 +589,20 @@ LIMIT 1000</pre>
           머리글에 마우스를 올리면 정의서의 전체 이름을 볼 수 있습니다.
         </p>
         <p>
-          정의서 이름이 길거나 쓰지 않는 용어가 들어 있는 컬럼은 짧은 이름으로 보여 줍니다.
-          예를 들어 <code>appramt</code>(공급가액[승인금액,현지금액])는 <strong>승인금액</strong>,
-          <code>apprtot</code>는 <strong>승인합계</strong>로 표시됩니다.
+          한글명은 <strong>코드에 박혀 있지 않고 관리자가 정합니다</strong>. 정하지 않은 컬럼은 DB의 COMMENT가 그대로 쓰이고,
+          관리자가 정한 이름이 있으면 그것이 우선합니다. 정의서 이름이 길거나 쓰지 않는 용어가 들어 있는 컬럼(예:
+          <code>appramt</code>의 "공급가액[승인금액,현지금액]")은 <strong>승인금액</strong>처럼 짧게 바꿔 둘 수 있습니다.
+          정하는 곳은 <em>관리 → 컬럼 한글명</em>입니다.
         </p>
+        <ul>
+          <li><strong>컬럼명 기준</strong> — 한 번 정하면 같은 이름을 쓰는 모든 테이블·뷰에 적용됩니다. 특정 테이블만 다르게 부르려면 <em>+ 예외</em>를 추가합니다.</li>
+          <li><strong>미매핑 보기</strong> — DB 설명도 관리자 이름도 없는 컬럼만 모아 보고, 몇 개가 이름을 갖췄는지 진행률로 확인합니다.</li>
+          <li><strong>엑셀 올리기·내려받기</strong> — 영문 컬럼명과 한글명이 정리된 표(컬럼명·한글명, 선택으로 테이블 열)를 한 번에 올립니다. 내려받은 파일에는 이름이 없는 컬럼이 빈 칸으로 들어 있어 채워서 다시 올리면 됩니다.</li>
+          <li>바꾼 이름은 결과 표·스키마 트리와 LLM에 보내는 컬럼 설명에 곧바로 반영됩니다. 타깃 DB의 COMMENT는 건드리지 않습니다.</li>
+        </ul>
         <p>
-          합계·건수 같은 계산 결과는 "승인금액 합계", "건수"처럼 한글로 표시됩니다.
+          합계·건수 같은 계산 결과는 "승인금액 합계", "건수"처럼 한글로 표시되며, 이 용어(합계·건수·평균·최대값·최소값·계산값)도
+          같은 화면 아래쪽에서 바꿀 수 있습니다.
         </p>
       </section>
 
@@ -542,22 +613,28 @@ LIMIT 1000</pre>
           <li>상단 바의 <strong>연결 선택</strong>에서 데이터베이스(예: KFMS Demo DB)를 고릅니다. 연결이 하나뿐이면 자동으로 선택됩니다.</li>
           <li>질문 칸에 한국어로 질문을 적습니다.</li>
           <li>
-            버튼을 누릅니다.
+            버튼을 누릅니다. <strong>SQL은 관리자에게만 보이므로</strong>, 관리자가 아니면 <em>질문하기</em> 버튼 하나만 있고 결과 표가 바로 나옵니다.
             <table class="kv inner">
               <tbody>
-                <tr><th>Generate SQL</th><td>SQL만 만들어 확인 창에 보여 줍니다. 내용을 보고 <em>Execute Query</em>로 실행합니다.</td></tr>
-                <tr><th>Generate &amp; Execute</th><td>SQL을 만들어 바로 실행합니다.</td></tr>
+                <tr><th>질문하기</th><td>(관리자 외) 질문을 SQL로 바꿔 바로 실행하고 결과만 보여 줍니다. SQL·데이터베이스 오류 내용은 볼 수 없습니다.</td></tr>
+                <tr><th>Generate SQL</th><td>(관리자) SQL만 만들어 확인 창에 보여 줍니다. 내용을 보고 <em>Execute Query</em>로 실행합니다.</td></tr>
+                <tr><th>Generate &amp; Execute</th><td>(관리자) SQL을 만들어 바로 실행합니다.</td></tr>
                 <tr><th>Clear</th><td>질문과 결과를 지웁니다.</td></tr>
               </tbody>
             </table>
           </li>
-          <li>결과는 <strong>표</strong>, <strong>차트</strong>, <strong>SQL</strong> 탭에서 봅니다. 오른쪽 <em>CSV</em> 버튼으로 파일로 저장합니다.</li>
+          <li>결과는 <strong>표</strong>, <strong>차트</strong> 탭에서 봅니다(관리자는 <strong>SQL</strong> 탭도). 오른쪽 <em>CSV</em> 버튼으로 파일로 저장합니다.</li>
+          <li>
+            관리자가 아닌 사용자가 만든 SQL이 조회 이외의 내용이면 실행되지 않고
+            "이 질문으로는 조회할 수 없는 내용이 만들어졌습니다" 안내가 나옵니다. 질문을 바꿔 다시 시도하세요.
+          </li>
         </ol>
 
         <h3>자주 쓰는 질문</h3>
         <p>
           이력에서 ★ 표시한 질문이 질의 화면의 "자주 쓰는 질문"에 버튼으로 나옵니다.
           누르면 AI를 거치지 않고 저장된 SQL을 바로 실행하므로 빠르고 결과가 항상 같습니다.
+          SQL을 볼 수 없는 사용자도 쓸 수 있습니다. 서버가 저장된 SQL을 찾아 실행하고 결과만 돌려줍니다. 저장된 SQL이 현재 스키마에서 실패하면 질문을 다시 만들어 실행합니다.
         </p>
 
         <h3>이어서 묻기와 보고서</h3>
@@ -566,6 +643,7 @@ LIMIT 1000</pre>
             <strong>후속 질문</strong> — 결과가 화면에 있으면 질문 칸 위에 <em>앞 질문에 이어서 묻기</em>가 나타납니다(기본 켜짐).
             "그중 상위 5개만", "월별로 바꿔줘", "그 가맹점만"처럼 앞 질문을 가리키는 말을 쓸 수 있고, LLM에는 앞 질문과 SQL이 함께 전달됩니다.
             처음부터 새로 묻고 싶으면 체크를 끄세요. 테이블 미리보기 뒤에는 나타나지 않습니다.
+            SQL을 볼 수 없는 사용자도 쓸 수 있습니다(서버가 앞 질문의 기록을 찾아 LLM에 전달합니다).
           </li>
           <li>
             <strong>차트</strong> — 차트 탭은 결과에 맞는 종류(날짜면 선, 범주가 적으면 원, 그 밖에는 막대)로 먼저 열립니다.
@@ -573,7 +651,7 @@ LIMIT 1000</pre>
           </li>
           <li>
             <strong>보고서로 저장</strong> — 결과 위의 버튼으로 이 질문을 매일·매주·매월 정한 시각에 자동 실행하도록 저장합니다.
-            결과는 <em>보고서</em> 화면에서 봅니다.
+            결과는 <em>보고서</em> 화면에서 봅니다. SQL을 볼 수 없는 사용자도 저장할 수 있습니다.
           </li>
         </ul>
 
@@ -610,7 +688,7 @@ LIMIT 1000</pre>
           <li>대상을 밝히세요: "<em>승인내역에서</em> 가맹점별 승인금액 합계"</li>
           <li>기간을 적으세요: "2023년 6월 승인내역 중 …"</li>
           <li>개수를 정하세요: "… 상위 5건"</li>
-          <li>결과가 이상하면 <strong>SQL 탭</strong>에서 조건을 확인하고 질문을 고쳐 다시 물어보세요.</li>
+          <li>결과가 이상하면 (관리자는 <strong>SQL 탭</strong>에서 조건을 확인하고) 질문을 고쳐 다시 물어보세요.</li>
         </ul>
       </section>
 
@@ -720,6 +798,7 @@ LIMIT 1000</pre>
           <li>매월은 28일까지만 고를 수 있습니다. 29~31일은 없는 달이 있어 실행이 빠질 수 있기 때문입니다.</li>
           <li>보관하는 것은 결과의 앞 200행이고 전체 행 수는 따로 표시됩니다. 실행에 실패해도 다음 정해진 시각에 다시 시도하며, 1분마다 반복하지 않습니다.</li>
           <li>결과는 보는 사람의 역할에 따라 카드번호가 가려집니다(조회 역할). 삭제는 만든 사람이나 관리자만 할 수 있습니다.</li>
+          <li>보고서의 <strong>SQL</strong>은 관리자에게만 보입니다. 다른 사용자에게는 이름·주기·결과와, 실패했을 때 일반 안내 문구만 나옵니다.</li>
         </ul>
       </section>
 
@@ -753,9 +832,9 @@ LIMIT 1000</pre>
         <table class="grid-table">
           <thead><tr><th>역할</th><th>할 수 있는 일</th></tr></thead>
           <tbody>
-            <tr><td><strong>관리자</strong></td><td>모든 기능 + 사용자 관리, 감사 로그 열람, 연결·LLM·분석 대상·용어집 설정, 이력 삭제</td></tr>
-            <tr><td><strong>감사담당</strong></td><td>질의, 이력, 데이터(엑셀 올리기), 이상거래 점검과 검토 판정, <strong>카드번호 전체 열람</strong></td></tr>
-            <tr><td><strong>조회</strong></td><td>질의와 이력만. 결과의 <strong>카드번호는 앞 4자리와 끝 4자리만 보이고</strong> 주민등록번호는 전부 가려집니다.</td></tr>
+            <tr><td><strong>관리자</strong></td><td>모든 기능 + 사용자 관리, 감사 로그 열람, 연결·LLM·분석 대상·용어집·컬럼 한글명 설정, 이력 삭제</td></tr>
+            <tr><td><strong>감사담당</strong></td><td>질의(SQL은 볼 수 없음), 이력, 데이터(엑셀 올리기), 이상거래 점검과 검토 판정, <strong>점검 기준 설정</strong>, <strong>카드번호 전체 열람</strong></td></tr>
+            <tr><td><strong>조회</strong></td><td>질의와 이력만(SQL은 볼 수 없음). 결과의 <strong>카드번호는 앞 4자리와 끝 4자리만 보이고</strong> 주민등록번호는 전부 가려집니다.</td></tr>
           </tbody>
         </table>
         <ul>
@@ -781,7 +860,7 @@ LIMIT 1000</pre>
         <h3>감사 로그</h3>
         <p>관리자는 <em>관리 → 감사 로그</em>에서 누가 언제 무엇을 했는지 볼 수 있습니다. 사용자·동작·기간으로 걸러 봅니다.</p>
         <ul>
-          <li><strong>기록되는 것</strong> — 로그인과 실패, 질의 실행(질문·SQL·결과 행 수), 테이블 미리보기, 이상거래 상세(카드번호 열람) 조회와 검토 판정, 저장된 이력 결과 열람, 연결·LLM·용어집·분석 대상·엑셀 변경, 사용자 관리.</li>
+          <li><strong>기록되는 것</strong> — 로그인과 실패, 질의 실행(질문·SQL·결과 행 수)과 저장된 질문 다시 실행, 테이블 미리보기, 이상거래 상세(카드번호 열람) 조회와 검토 판정, 저장된 이력 결과 열람, 연결·LLM·용어집·분석 대상·컬럼 한글명·엑셀 변경, 점검 기준 변경과 되돌리기, 사용자 관리.</li>
           <li><strong>기록되지 않는 것</strong> — 비밀번호, 일반 목록 조회. 기록은 앱에서 수정하거나 지울 수 없습니다.</li>
         </ul>
       </section>
@@ -791,8 +870,8 @@ LIMIT 1000</pre>
         <h2>이력</h2>
         <ul>
           <li>실행한 질문과 SQL, 결과 행 수, 소요 시간이 최신순으로 쌓입니다. 상태로 걸러 볼 수 있습니다.</li>
-          <li>행을 누르면 질문·SQL·오류 내용 등 상세 정보를 봅니다.</li>
-          <li><em>Re-run</em>으로 저장된 SQL을 다시 실행합니다.</li>
+          <li>행을 누르면 질문·오류 내용 등 상세 정보를 봅니다. <strong>SQL과 데이터베이스 오류 내용은 관리자에게만</strong> 보이고, 다른 사용자에게는 오류가 일반 안내 문구로 나옵니다.</li>
+          <li><em>Re-run</em>으로 저장된 질문을 다시 실행합니다. 서버가 기록에서 SQL을 찾아 실행하므로 SQL을 볼 수 없는 사용자도 쓸 수 있고, 실행할 때마다 새 이력이 한 줄 생깁니다.</li>
           <li><strong>★</strong>를 누르면 북마크되어 질의 화면의 "자주 쓰는 질문"에 추가됩니다.</li>
           <li>
             <strong>전체 삭제</strong>는 북마크(★)한 이력은 남기고 나머지를 모두 지웁니다.
@@ -818,22 +897,48 @@ LIMIT 1000</pre>
 
         <h3>점검 기준 바꾸기</h3>
         <p>
-          화면 오른쪽 위 <em>점검 기준</em>에서 기준 값을 봅니다. <strong>관리자</strong>는 바꿀 수 있고, 감사담당은 보기만 합니다.
+          화면 오른쪽 위 <em>점검 기준</em>에서 기준 값을 봅니다. <strong>관리자와 감사담당</strong>이 바꿀 수 있습니다.
         </p>
         <ul>
-          <li>바꿀 수 있는 것 — 고액 기준 금액, 심야 시작·종료 시각, 주의 업종 목록, 분할결제 최소 건수와 제외 사업자번호.</li>
+          <li>
+            <strong>규칙마다 공통</strong> — <em>사용</em> 스위치로 규칙을 켜고 끄고, <em>심각도</em>(높음·보통·낮음)를 바꿉니다.
+            끈 규칙은 점검하지 않으며 규칙 목록에 "관리자가 이 규칙을 껐습니다"로 흐리게 표시됩니다. 심각도는 결과 목록의 표시와 정렬에 쓰입니다.
+          </li>
+          <li>
+            <strong>고액 결제</strong> — 기준 금액과 <em>업종별 기준 금액</em>. 업종을 추가하면 그 업종만 다른 기준을 씁니다
+            (예: 기본 50만원, 영화관은 10만원, 항공사는 200만원). 나머지 업종은 기본 기준을 따릅니다. 업종명은 결과의 업종 표기와 같게 적으세요.
+          </li>
+          <li>
+            <strong>시간 외 사용</strong> — <em>주말</em>·<em>공휴일</em>·<em>심야</em>를 각각 켜고 끌 수 있고, 심야의 시작·종료 시각과 <em>공휴일 목록</em>(날짜를 한 줄에 하나씩, 예: 2026-05-05)을 정합니다.
+            공휴일은 자동으로 알지 못하므로 관리자가 해마다 등록해야 합니다. 세 가지를 모두 끄면 규칙이 아무것도 찾지 못하므로 저장되지 않습니다(규칙을 쉬려면 <em>사용</em>을 끄세요).
+          </li>
+          <li>
+            <strong>주의 업종</strong> — 업종 목록.
+          </li>
+          <li>
+            <strong>분할결제 의심</strong> — 최소 건수, <em>합계 금액 기준</em>(묶인 결제의 합계가 이 금액 이상일 때만, 0이면 금액은 보지 않음),
+            <em>묶는 시간(분)</em>(앞 결제와 이 시간 안에 이어진 결제만 한 묶음, 0이면 하루 전체), 제외 사업자번호.
+            묶는 시간을 정하면 같은 날의 아침과 오후 결제는 서로 다른 건이 됩니다.
+          </li>
+          <li>모든 설정은 점검 대상(승인·매입·청구) 전체에 똑같이 적용됩니다.</li>
           <li>저장하면 <strong>다음 조회부터</strong> 적용됩니다. 이미 한 검토 판정은 남고, 기준이 바뀌어 내용이 달라진 건은 "검토 후 변경됨"으로 다시 나옵니다.</li>
-          <li>잘못된 값(0원, 25시, 빈 업종 목록 등)은 저장되지 않습니다. 빈 업종 목록은 규칙을 조용히 꺼 버리기 때문입니다. 값 옆의 <em>되돌리기</em>로 기본값으로 돌아갑니다.</li>
+          <li>잘못된 값(0원, 25시, 없는 날짜, 빈 업종 목록 등)은 저장되지 않습니다. 빈 업종 목록은 규칙을 조용히 꺼 버리기 때문입니다. 값 옆의 <em>되돌리기</em>로 기본값으로 돌아갑니다.</li>
+          <li>
+            <strong>변경 이력</strong> — 점검 기준 창 아래의 <em>변경 이력</em>에서 누가 언제 무엇을 어떻게 바꿨는지(예: 고액 결제 · 기준 금액 500,000 → 300,000) 최근 순으로 봅니다.
+            관리자는 <em>이 변경 이전으로</em>를 눌러 그 변경을 하기 전의 값으로 되돌릴 수 있고, 되돌리는 것도 새 변경으로 남아 다시 취소할 수 있습니다.
+            아무것도 바뀌지 않은 저장은 이력에 남지 않습니다. 관리자와 감사담당이 같은 권한으로 바꾸고 되돌립니다.
+          </li>
         </ul>
 
         <h3>점검 규칙</h3>
         <table class="grid-table">
           <thead><tr><th>규칙</th><th>심각도</th><th>찾는 거래</th></tr></thead>
           <tbody>
-            <tr><td>고액 결제</td><td><span class="sev high">높음</span></td><td>한 건 금액이 <strong>기준 금액(기본 50만원) 이상</strong></td></tr>
-            <tr><td>시간 외 사용</td><td><span class="sev medium">보통</span></td><td><strong>주말</strong>(토·일) 또는 <strong>심야</strong>(23시 ~ 다음날 06시) 결제</td></tr>
+            <tr><td>고액 결제</td><td><span class="sev high">높음</span></td><td>한 건 금액이 <strong>기준 금액(기본 50만원) 이상</strong>, 업종별 기준을 둔 업종은 그 금액 이상</td></tr>
+            <tr><td>시간 외 사용</td><td><span class="sev medium">보통</span></td><td><strong>주말</strong>(토·일), 등록한 <strong>공휴일</strong>, 또는 <strong>심야</strong>(23시 ~ 다음날 06시) 결제</td></tr>
             <tr><td>주의 업종</td><td><span class="sev high">높음</span></td><td>상품권 전문판매, 볼링장, 영화관, 화원, 기타회원제형태업소, 자사카드발행백화점</td></tr>
-            <tr><td>분할결제 의심</td><td><span class="sev medium">보통</span></td><td>같은 카드로 <strong>같은 가맹점에서 같은 날 2건 이상</strong> 결제 (한도 회피 의심)</td></tr>
+            <tr><td>분할결제 의심</td><td><span class="sev medium">보통</span></td><td>같은 카드로 <strong>같은 가맹점에서 같은 날 2건 이상</strong> 결제 (한도 회피 의심). 합계 금액과 묶는 시간을 정해 좁힐 수 있음</td></tr>
+            <tr><td colspan="3"><small>표의 심각도와 기본값은 처음 값이며, 관리자가 규칙별로 바꿀 수 있습니다.</small></td></tr>
           </tbody>
         </table>
         <div class="note">
@@ -876,10 +981,22 @@ LIMIT 1000</pre>
             실행 중인지 확인한 뒤 그 문구를 눌러 다시 불러오세요.
           </dd>
 
+          <dt>SQL 탭이나 Generate SQL 버튼이 안 보여요.</dt>
+          <dd>
+            SQL을 보고 확인하는 기능은 <strong>관리자만</strong> 쓸 수 있습니다. 다른 역할은 <em>질문하기</em> 하나로 질문하고 결과를 표·차트로 봅니다.
+            SQL이 꼭 필요하면 관리자에게 요청하세요.
+          </dd>
+
+          <dt>컬럼이 영문 그대로 보여요.</dt>
+          <dd>
+            DB에 COMMENT(설명)도 없고 관리자가 정한 한글명도 없는 컬럼입니다. 관리자는 <em>관리 → 컬럼 한글명</em>에서
+            <em>미매핑만</em>으로 골라 이름을 입력하거나 엑셀로 한꺼번에 올릴 수 있습니다.
+          </dd>
+
           <dt>결과가 질문과 달라요.</dt>
           <dd>
-            SQL 탭에서 어떤 테이블·조건으로 조회했는지 확인하세요. 대상(승인내역 등)과
-            기간을 질문에 분명히 적으면 대부분 해결됩니다.
+            대상(승인내역 등)과 기간을 질문에 분명히 적으면 대부분 해결됩니다. 어떤 SQL이 만들어졌는지는
+            관리자가 SQL 탭에서 확인해 줄 수 있습니다.
           </dd>
 
           <dt>보고서가 실행되지 않아요.</dt>
@@ -1144,9 +1261,9 @@ em {
   color: #475467;
 }
 
-/* Screen-layout sketch */
+/* Screen-layout sketch: drawn to match the real shell (top bar, icon rail, table panel). */
 .mock {
-  max-width: 620px;
+  max-width: 720px;
   margin: 6px 0 14px;
   border: 1px solid #b8c3d3;
   font-size: 12px;
@@ -1154,47 +1271,123 @@ em {
 
 .mock-top {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   padding: 7px 10px;
   background: #1b3c74;
   color: #fff;
+}
+
+.mock-brand {
   font-weight: 700;
 }
 
-.mock-tag {
-  font-weight: 400;
-  opacity: 0.9;
+.mock-topright {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mock-user em {
+  margin-left: 3px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-style: normal;
+  font-size: 11px;
+}
+
+.mock-btn {
+  padding: 1px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 3px;
+}
+
+.mock-select {
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: #fff;
+  color: #344054;
+}
+
+/* The numbered marker used in the sketch and the table below. */
+.mock-no {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #1a5fa8;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.mock-no.light {
+  background: #fff;
+  color: #1b3c74;
 }
 
 .mock-body {
   display: flex;
-  height: 170px;
+  min-height: 250px;
 }
 
 .mock-rail {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  width: 13%;
-  padding: 8px 0;
-  background: #eef1f5;
+  align-items: stretch;
+  gap: 2px;
+  width: 64px;
+  flex-shrink: 0;
+  padding: 6px 0;
+  background: #f7f9fc;
   border-right: 1px solid #d3dae3;
-  color: #1a5fa8;
+  color: #606266;
   font-size: 11px;
+}
+
+.mock-rail > .mock-no {
+  align-self: center;
+  margin-bottom: 4px;
+}
+
+.mock-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 0;
+  border-left: 3px solid transparent;
+}
+
+.mock-tab i {
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+  opacity: 0.7;
+}
+
+.mock-tab.active {
+  border-left-color: #409eff;
+  background: #eaf2fd;
+  color: #409eff;
   font-weight: 600;
 }
 
 .mock-tools {
   margin-top: auto;
-  padding-top: 6px;
   border-top: 1px solid #d3dae3;
-  text-align: center;
-  color: #6b7686;
+  padding-top: 2px;
 }
 
 .mock-fold-btn {
-  float: right;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 400;
   color: #8a94a3;
 }
@@ -1202,45 +1395,85 @@ em {
 .mock-side {
   display: flex;
   flex-direction: column;
-  width: 34%;
+  width: 30%;
   background: #f7f8fa;
   border-right: 1px solid #d3dae3;
 }
 
 .mock-tabs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 7px 8px;
   border-bottom: 1px solid #d3dae3;
   color: #1a5fa8;
   font-weight: 600;
 }
 
+.mock-search {
+  margin: 8px 8px 0;
+  padding: 3px 8px;
+  border: 1px solid #d3dae3;
+  border-radius: 3px;
+  background: #fff;
+  color: #a0a8b5;
+}
+
 .mock-tree {
   flex: 1;
   padding: 8px;
   color: #344054;
+  line-height: 1.9;
 }
 
-.mock-tree span,
-.mock-main span {
-  color: #8a94a3;
+.mock-tree .l2 {
+  padding-left: 14px;
+  color: #475467;
 }
 
-.mock-fold {
-  padding: 4px 8px;
-  border-top: 1px solid #d3dae3;
-  background: #eef1f5;
-  color: #8a94a3;
+.mock-tree .off {
+  color: #a0a8b5;
+}
+
+.mock-tree small {
+  font-size: 10px;
 }
 
 .mock-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  gap: 8px;
+  padding: 8px;
   background: #f4f6f9;
   color: #344054;
-  text-align: center;
+}
+
+.mock-main > .mock-no {
+  align-self: flex-start;
+}
+
+.mock-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  border: 1px solid #d3dae3;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.mock-card.grow {
+  flex: 1;
+}
+
+.mock-card span {
+  color: #8a94a3;
+}
+
+.menu-roles {
+  margin: 6px 0;
+  padding-left: 18px;
 }
 
 .kv {

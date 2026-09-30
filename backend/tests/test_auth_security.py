@@ -169,3 +169,9 @@ def test_an_already_parsed_plan_works_too():
 def test_no_plan_means_unknown():
     assert plan_cost([]) is None
     assert plan_cost([{"QUERY PLAN": "not json"}]) is None
+
+
+def test_a_rerun_is_not_logged_twice():
+    # It writes its own entry, naming the question; the generic line would only repeat it.
+    assert is_audited("POST", "/api/v1/query/rerun/12", generic=True) is False
+    assert is_audited("POST", "/api/v1/query/rerun/12") is True

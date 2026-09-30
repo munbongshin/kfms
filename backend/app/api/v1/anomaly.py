@@ -6,8 +6,9 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.anomaly.rules import RULES, SOURCES, TEMPLATES, build_rules
-from app.anomaly.settings import apply_overrides, describe, validate
-from app.auth.deps import ADMIN, CurrentUser, record
+from app.anomaly.settings import apply_overrides, describe, validate, without_defaults
+from app.anomaly.settings_history import changes as settings_changes
+from app.auth.deps import AUDITOR, CurrentUser, record
 from app.db.repositories.anomaly_settings import AnomalySettingsRepository
 from app.db.repositories.anomaly import AnomalyRepository
 from app.dependencies import get_db, get_db_pool
@@ -40,29 +41,78 @@ async def get_settings(db: AsyncSession = Depends(get_db)):
 async def save_settings(
     body: dict,
     http_request: Request,
-    admin: CurrentUser = ADMIN,
+    admin: CurrentUser = AUDITOR,
     db: AsyncSession = Depends(get_db),
 ):
-    """Save edited thresholds. `body` is {template: {parameter: value}}; a value
+    """Save edited thresholds (administrators and auditors). `body` is {template: {parameter: value}}; a value
     equal to the default is dropped, so resetting a field really resets it."""
     clean, errors = validate(body.get("overrides", {}))
     if errors:
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=" · ".join(errors))
 
-    defaults = describe(TEMPLATES, {})
-    kept = {}
-    for rule in defaults:
-        for param in rule["params"]:
-            value = (clean.get(rule["template"]) or {}).get(param["key"])
-            if value is None:
-                continue
-            comparable = int(value) if param["unit"] == "hour" else value
-            if comparable != param["default"]:
-                kept.setdefault(rule["template"], {})[param["key"]] = value
-
-    await AnomalySettingsRepository(db).save(kept)
-    await record(db, admin, http_request, "anomaly_settings", "", changed=sorted(kept))
+    kept = without_defaults(TEMPLATES, clean)
+    await _store(db, admin, http_request, kept, "anomaly_settings")
     return {"rules": describe(TEMPLATES, kept)}
+
+
+async def _store(db: AsyncSession, admin: CurrentUser, request: Request, kept: dict, action: str) -> list:
+    """Save the settings and, if anything actually changed, keep a history entry
+    (the values before and after, so an earlier state can be restored)."""
+    repo = AnomalySettingsRepository(db)
+    before = await repo.load()
+    changed = settings_changes(TEMPLATES, before, kept)
+    if not changed:
+        return []
+    await repo.save(kept)
+    await repo.add_history(admin.username, before, kept, changed)
+    await record(db, admin, request, action, "", changed=[f"{c['rule']} {c['label']}" for c in changed])
+    return changed
+
+
+def _history_out(entry) -> dict:
+    return {
+        "id": entry.id,
+        "changed_at": entry.changed_at.isoformat(),
+        "changed_by": entry.changed_by,
+        "changes": entry.changes,
+    }
+
+
+@router.get("/settings/history")
+async def settings_history(limit: int = Query(30, ge=1, le=200), db: AsyncSession = Depends(get_db)):
+    """Recent changes to the thresholds, newest first."""
+    return [_history_out(e) for e in await AnomalySettingsRepository(db).history(limit)]
+
+
+@router.post("/settings/history/{entry_id}/restore")
+async def restore_settings(
+    entry_id: int,
+    http_request: Request,
+    admin: CurrentUser = AUDITOR,
+    db: AsyncSession = Depends(get_db),
+):
+    """Put the settings back as they were before that change.
+
+    It is a new change like any other, so it shows in the history and can itself
+    be undone.
+    """
+    repo = AnomalySettingsRepository(db)
+    entry = await repo.get_history(entry_id)
+    if entry is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="변경 이력을 찾을 수 없습니다")
+
+    clean, errors = validate(entry.before or {})
+    if errors:
+        # The rules moved on since then; a value that no longer validates must not be restored.
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail="그 시점의 값을 지금은 쓸 수 없습니다: " + " · ".join(errors),
+        )
+    kept = without_defaults(TEMPLATES, clean)
+    changed = await _store(db, admin, http_request, kept, "anomaly_settings_restore")
+    if not changed:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="이미 그 시점과 같은 값입니다")
+    return {"rules": describe(TEMPLATES, kept), "changes": changed}
 
 
 class ReviewRequest(BaseModel):

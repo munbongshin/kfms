@@ -9,10 +9,12 @@ from pydantic import BaseModel, Field
 
 from app.auth.deps import ADMIN, ANY_USER, CurrentUser, record
 from app.auth.masking import mask_results
+from app.auth.sql_visibility import combined_result, execution_result, safe_error
 from app.dependencies import get_db, get_db_pool
 from app.db.connection_pool import DatabaseConnectionPool
 from app.db.repositories.history import HistoryRepository
 from app.db.repositories.database_repo import DatabaseRepository
+from app.db.repositories.column_labels import ColumnLabelRepository
 from app.db.repositories.glossary import GlossaryRepository
 from app.services.llm_service import get_llm_service
 from app.api.v1.llm_settings import current_llm_config
@@ -32,6 +34,7 @@ class GenerateRequest(BaseModel):
     context: str = Field(default="", description="Optional context for query generation")
     previous_question: Optional[str] = Field(None, max_length=2000, description="Question this one follows up")
     previous_sql: Optional[str] = Field(None, max_length=8000, description="SQL of the question this one follows up")
+    previous_history_id: Optional[int] = Field(None, description="History record this question follows up (no SQL needed)")
 
 
 class ValidateRequest(BaseModel):
@@ -57,11 +60,21 @@ class GenerateAndExecuteRequest(BaseModel):
     context: str = Field(default="", description="Optional context")
     previous_question: Optional[str] = Field(None, max_length=2000)
     previous_sql: Optional[str] = Field(None, max_length=8000)
+    previous_history_id: Optional[int] = Field(None, description="History record this question follows up (no SQL needed)")
     auto_approve: bool = Field(default=False, description="Skip user confirmation")
 
 
-def _previous(request) -> Optional[dict]:
-    """The turn this question follows up, if the caller sent one."""
+async def _previous(request, db: AsyncSession) -> Optional[dict]:
+    """The turn this question follows up, if the caller sent one.
+
+    A caller who cannot see SQL names the history record instead, and the
+    server looks the SQL up itself.
+    """
+    if request.previous_history_id:
+        record_ = await HistoryRepository(db).get_by_id(request.previous_history_id)
+        if record_ and record_.generated_sql:
+            return {"question": record_.question, "sql": record_.generated_sql}
+        return None
     if request.previous_sql and request.previous_question:
         return {"question": request.previous_question, "sql": request.previous_sql}
     return None
@@ -90,10 +103,11 @@ def get_query_service(
         history_repo=history_repo,
         llm_service=llm_service,
         glossary_repo=GlossaryRepository(db),
+        label_repo=ColumnLabelRepository(db),
     )
 
 
-@router.post("/generate")
+@router.post("/generate", dependencies=[ADMIN])
 async def generate_sql(
     request: GenerateRequest,
     service: QueryService = Depends(get_query_service),
@@ -116,7 +130,7 @@ async def generate_sql(
             database_id=str(request.database_id),
             context=request.context,
             excluded_tables=await excluded_tables_for(request.database_id, db),
-            previous=_previous(request),
+            previous=await _previous(request, db),
         )
 
         return result
@@ -133,7 +147,7 @@ async def generate_sql(
         )
 
 
-@router.post("/validate")
+@router.post("/validate", dependencies=[ADMIN])
 async def validate_sql(
     request: ValidateRequest,
     service: QueryService = Depends(get_query_service)
@@ -154,7 +168,7 @@ async def validate_sql(
         )
 
 
-@router.post("/execute")
+@router.post("/execute", dependencies=[ADMIN])
 async def execute_query(
     request: ExecuteRequest,
     http_request: Request,
@@ -228,7 +242,7 @@ async def generate_and_execute(
             context=request.context,
             auto_approve=request.auto_approve,
             excluded_tables=await excluded_tables_for(request.database_id, db),
-            previous=_previous(request),
+            previous=await _previous(request, db),
         )
 
         if "results" in result:
@@ -239,7 +253,8 @@ async def generate_and_execute(
             )
             result["results"] = mask_results(result["results"], user.role)
 
-        return result
+        # Anyone but an administrator gets rows only: no SQL, no database errors.
+        return combined_result(result, user.role)
 
     except ValueError as e:
         raise HTTPException(
@@ -249,5 +264,53 @@ async def generate_and_execute(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Operation failed: {str(e)}"
+            detail=safe_error(user.role, f"Operation failed: {str(e)}")
         )
+
+
+@router.post("/rerun/{history_id}")
+async def rerun_saved(
+    history_id: int,
+    http_request: Request,
+    user: CurrentUser = ANY_USER,
+    db: AsyncSession = Depends(get_db),
+    service: QueryService = Depends(get_query_service),
+):
+    """Run a saved query again by its history id.
+
+    This is how a bookmark or an old question is re-run by someone who cannot
+    read SQL: the server holds the SQL, the caller only names the record.
+    """
+    saved = await HistoryRepository(db).get_by_id(history_id)
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="저장된 질문을 찾을 수 없습니다")
+    if saved.status != "success":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="성공한 질문만 다시 실행할 수 있습니다")
+
+    try:
+        result = await service.execute_query(
+            question=saved.question,
+            sql=saved.generated_sql,
+            database_id=saved.database_id,
+            llm_provider=saved.llm_provider,
+            llm_model=saved.llm_model,
+            validation_approved=True,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error(user.role, f"Execution failed: {str(e)}"),
+        )
+
+    await record(
+        db, user, http_request, "query_rerun", saved.database_id,
+        question=saved.question[:300], history_id=history_id,
+        success=bool(result.get("success")), rows=result.get("row_count"),
+    )
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=safe_error(user.role, result.get("error", "Query execution failed")),
+        )
+    result["results"] = mask_results(result["results"], user.role)
+    return execution_result(result, user.role)

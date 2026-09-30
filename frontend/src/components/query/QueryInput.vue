@@ -29,7 +29,9 @@
 
         <el-form-item>
           <div class="button-group">
+            <!-- Only administrators see and check SQL; everyone else just asks. -->
             <el-button
+              v-if="auth.isAdmin"
               type="primary"
               @click="handleGenerate"
               :loading="queryStore.loading"
@@ -46,7 +48,7 @@
               :disabled="!queryStore.currentQuestion.trim() || !databaseStore.activeConnectionId"
             >
               <el-icon><CaretRight /></el-icon>
-              Generate & Execute
+              {{ auth.isAdmin ? 'Generate & Execute' : '질문하기' }}
             </el-button>
 
             <el-button
@@ -75,9 +77,11 @@
 import { MagicStick, CaretRight, RefreshLeft } from '@element-plus/icons-vue'
 import { useQueryStore } from '../../stores/query'
 import { useDatabaseStore } from '../../stores/database'
+import { useAuthStore } from '../../stores/auth'
 
 const queryStore = useQueryStore()
 const databaseStore = useDatabaseStore()
+const auth = useAuthStore()
 
 async function handleGenerate() {
   if (!databaseStore.activeConnectionId) return

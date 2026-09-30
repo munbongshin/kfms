@@ -95,7 +95,7 @@ def test_overridden_templates_still_bind_to_sources():
 def test_the_screen_gets_every_editable_parameter_with_its_default():
     info = describe(TEMPLATES, {"HIGH_AMOUNT": {"threshold": 300000}})
     high = next(t for t in info if t["template"] == "HIGH_AMOUNT")
-    param = high["params"][0]
+    param = next(p for p in high["params"] if p["key"] == "threshold")
     assert param["key"] == "threshold"
     assert param["value"] == 300000
     assert param["default"] == 500000

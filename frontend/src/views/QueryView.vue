@@ -18,7 +18,8 @@
       </ul>
       <el-alert type="info" :closable="false" show-icon>
         <template #title>
-          질문을 SQL로 변환한 뒤, 실행 전에 확인을 거칩니다.
+          <template v-if="auth.isAdmin">질문을 SQL로 변환한 뒤, 실행 전에 확인을 거칩니다.</template>
+          <template v-else>질문을 적고 <b>질문하기</b>를 누르면 결과가 바로 표로 나옵니다.</template>
         </template>
       </el-alert>
     </el-card>
@@ -27,10 +28,13 @@
 
 <script setup lang="ts">
 import { useQueryStore } from '../stores/query'
+import { useAuthStore } from '../stores/auth'
 import QueryInput from '../components/query/QueryInput.vue'
 import BookmarkBar from '../components/query/BookmarkBar.vue'
 import SQLPreview from '../components/query/SQLPreview.vue'
 import ResultPanel from '../components/results/ResultPanel.vue'
+
+const auth = useAuthStore()
 
 const queryStore = useQueryStore()
 </script>

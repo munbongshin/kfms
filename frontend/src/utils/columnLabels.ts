@@ -5,15 +5,25 @@
  * (bookmarks, history) still returns names like `total_appr_amt` or `sum`.
  * `SUM(appramt) AS total_appr_amt` says exactly what the column is, so its
  * header can be built from the column's business name: 승인금액 합계.
+ *
+ * What SUM, COUNT ... are called (합계, 건수 ...) is not decided here: the server
+ * sends the administrator's terms, keyed by function name.
  */
 
-const AGGREGATE_LABELS: Record<string, string> = {
-  sum: '합계',
-  count: '건수',
-  avg: '평균',
-  max: '최대값',
-  min: '최소값',
+/**
+ * Table keys reordered so the ones `sql` reads come first, otherwise unchanged.
+ * A column name can carry a different label in different tables; a result only
+ * has the bare name, so the tables the SQL mentions get to name it first.
+ */
+export function tablesReadBy(sql: string, tableKeys: string[]): string[] {
+  const words = new Set(sql.toLowerCase().match(/[\p{L}\p{N}_]+/gu) || [])
+  const bareName = (key: string) => (key.split('.').pop() || key).toLowerCase()
+  const read = tableKeys.filter((key) => words.has(bareName(key)))
+  return [...read, ...tableKeys.filter((key) => !read.includes(key))]
 }
+
+/** Function name (sum, count ...) -> what a column computed with it is called. */
+export type ExpressionTerms = Record<string, string>
 
 // FN( [DISTINCT] [qualifier.]column | * ) [AS alias]
 // Only a bare column or * inside: an expression such as price * quantity has
@@ -35,13 +45,15 @@ function bare(identifier: string): string {
 /** Result column name -> Korean label, for the computed columns in `sql`. */
 export function labelsFromSql(
   sql: string,
-  columnLabels: Record<string, string>
+  columnLabels: Record<string, string>,
+  terms: ExpressionTerms
 ): Record<string, string> {
   const labels: Record<string, string> = {}
 
   for (const match of sql.matchAll(AGGREGATE)) {
     const [, fn, arg, alias] = match
-    const aggregate = AGGREGATE_LABELS[fn.toLowerCase()]
+    const aggregate = terms[fn.toLowerCase()]
+    if (!aggregate) continue
 
     // Without AS, PostgreSQL names the column after the function.
     const name = alias
@@ -56,10 +68,4 @@ export function labelsFromSql(
   }
 
   return labels
-}
-
-/** The names PostgreSQL gives unaliased expressions, for SQL too complex to read. */
-export const DEFAULT_EXPRESSION_LABELS: Record<string, string> = {
-  ...AGGREGATE_LABELS,
-  '?column?': '계산값',
 }

@@ -53,15 +53,18 @@ export const useQueryStore = defineStore('query', () => {
   /** The question and SQL now on screen, when the next question may follow them.
    *  A table preview is not a question, so there is nothing to follow. */
   const canFollowUp = computed(
-    () => !preview.value && !!queryResults.value?.sql && !!queryResults.value?.question
+    () =>
+      !preview.value &&
+      !!queryResults.value?.question &&
+      // People who cannot see SQL have only the history record to point at.
+      (!!queryResults.value?.history_id || !!queryResults.value?.sql)
   )
 
   function previousTurn() {
     if (!followUp.value || !canFollowUp.value) return {}
-    return {
-      previous_question: queryResults.value!.question,
-      previous_sql: queryResults.value!.sql,
-    }
+    const shown = queryResults.value!
+    if (shown.history_id) return { previous_history_id: shown.history_id }
+    return { previous_question: shown.question, previous_sql: shown.sql }
   }
 
   // Actions
@@ -200,7 +203,8 @@ export const useQueryStore = defineStore('query', () => {
       if (result.success) {
         queryResults.value = {
           question,
-          sql: result.generation.sql,
+          // Absent for anyone but an administrator: the server does not send it.
+          sql: result.generation?.sql ?? '',
           results: result.results || [],
           row_count: result.row_count || 0,
           execution_time_ms: result.execution_time_ms || 0,
@@ -211,6 +215,8 @@ export const useQueryStore = defineStore('query', () => {
         ElMessage.success(`Query executed in ${result.execution_time_ms}ms`)
         return result
       }
+
+      if (result.error) ElMessage.error(result.error)
     } catch (error: any) {
       const message = error.response?.data?.detail || 'Query failed'
       ElMessage.error(message)
@@ -288,18 +294,22 @@ export const useQueryStore = defineStore('query', () => {
     }
   }
 
-  async function runSavedSQL(question: string, sql: string, databaseId: number) {
+  /** Run a saved question again. With a history id the server looks the SQL up
+   *  (the only way for someone who cannot see it); `sql` is then just for display. */
+  async function runSavedSQL(question: string, sql: string, databaseId: number, historyId?: number) {
     loading.value = true
     currentQuestion.value = question
     generatedSQL.value = sql
 
     try {
-      const result = await api.query.execute({
-        question,
-        sql,
-        database_id: databaseId,
-        validation_approved: true,
-      })
+      const result = historyId
+        ? await api.query.rerun(historyId)
+        : await api.query.execute({
+            question,
+            sql,
+            database_id: databaseId,
+            validation_approved: true,
+          })
 
       if (!result.success) {
         throw new Error(result.error || 'Execution failed')
@@ -315,12 +325,12 @@ export const useQueryStore = defineStore('query', () => {
         warnings: result.warnings,
       }
 
-      ElMessage.success(`저장된 SQL 실행 완료 (${result.execution_time_ms}ms)`)
+      ElMessage.success(`저장된 질문 실행 완료 (${result.execution_time_ms}ms)`)
       return result
     } catch (error: any) {
       // Saved SQL goes stale when the schema changes, so fall back to
       // regenerating rather than leaving the user at a dead end.
-      ElMessage.warning('저장된 SQL이 현재 스키마에서 실패해 다시 생성합니다')
+      ElMessage.warning('저장된 질문이 현재 스키마에서 실패해 다시 만듭니다')
       return await directExecute(question, databaseId)
     } finally {
       loading.value = false

@@ -87,7 +87,7 @@
 import { ref, computed, watch } from 'vue'
 import { useQueryStore, type QueryResult } from '../../stores/query'
 import { useDatabaseStore } from '../../stores/database'
-import { DEFAULT_EXPRESSION_LABELS, labelsFromSql } from '../../utils/columnLabels'
+import { labelsFromSql } from '../../utils/columnLabels'
 
 const props = defineProps<{
   results: QueryResult | null
@@ -156,11 +156,13 @@ function clearColumns() {
 const comments = computed(() => databaseStore.columnComments(databaseStore.activeConnectionId))
 
 const labels = computed(() => {
-  const schemaLabels = databaseStore.columnLabels(databaseStore.activeConnectionId)
+  const sql = props.results?.sql || ''
+  const schemaLabels = databaseStore.columnLabels(databaseStore.activeConnectionId, sql)
+  const terms = databaseStore.expressionTerms
   return {
-    ...DEFAULT_EXPRESSION_LABELS,
+    ...terms,
     ...schemaLabels,
-    ...labelsFromSql(props.results?.sql || '', schemaLabels),
+    ...labelsFromSql(sql, schemaLabels, terms),
   }
 })
 
@@ -172,6 +174,8 @@ watch(
   },
   { immediate: true }
 )
+
+if (!Object.keys(databaseStore.expressionTerms).length) databaseStore.loadExpressionTerms()
 
 // A different table arrives with its own columns; drop the previous choice.
 watch(

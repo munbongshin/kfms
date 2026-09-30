@@ -141,18 +141,29 @@ def to_decimal(value: Any) -> Decimal:
 
 def detect_high_amount(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
     threshold: Decimal = params["threshold"]
+    # A category may have its own line (식비 30만원, 항공사 200만원). A source
+    # with no category column simply has none, and uses the default for all.
+    by_category: Dict[str, Any] = params.get("category_thresholds") or {}
+    category_column = params["columns"].get(CATEGORY)
     findings = []
     for r in approvals(rows, params):
         occurred = val(r, params, DATE)
         amount = val(r, params, AMOUNT)
-        if not occurred or amount is None or amount < threshold:
+        if not occurred or amount is None:
+            continue
+        limit, note = threshold, ""
+        category = r.get(category_column) if category_column else None
+        if category is not None and category in by_category:
+            limit = to_decimal(by_category[category])
+            note = f" ({category} 기준 {won(limit)} 이상)"
+        if to_decimal(amount) < limit:
             continue
         findings.append(
             Finding(
                 rule_code=params["code"],
                 subject=row_key(r, params),
                 severity=params["severity"],
-                summary=f"단건 {won(to_decimal(amount))}",
+                summary=f"단건 {won(to_decimal(amount))}{note}",
                 transactions=[r],
                 amount=to_decimal(amount),
                 occurred_on=date.fromisoformat(occurred),
@@ -167,6 +178,11 @@ WEEKDAY_NAMES = ("월", "화", "수", "목", "금", "토", "일")
 def detect_off_hours(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
     night_start: str = params["night_start"]
     night_end: str = params["night_end"]
+    # Each kind can be switched off on its own; all default to on.
+    check_weekend = params.get("check_weekend", True)
+    check_night = params.get("check_night", True)
+    check_holiday = params.get("check_holiday", True)
+    holidays = set(params.get("holidays") or [])
     findings = []
     for r in approvals(rows, params):
         day = val(r, params, DATE)
@@ -175,11 +191,12 @@ def detect_off_hours(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
             continue
         occurred = date.fromisoformat(day)
         hour = clock[:2]
-        is_weekend = occurred.weekday() >= 5
-        is_night = hour >= night_start or hour < night_end
-        if not (is_weekend or is_night):
+        is_holiday = check_holiday and day in holidays
+        is_weekend = check_weekend and occurred.weekday() >= 5
+        is_night = check_night and (hour >= night_start or hour < night_end)
+        if not (is_holiday or is_weekend or is_night):
             continue
-        label = "주말" if is_weekend else "심야"
+        label = "공휴일" if is_holiday else "주말" if is_weekend else "심야"
         findings.append(
             Finding(
                 rule_code=params["code"],
@@ -216,9 +233,41 @@ def detect_watch_mcc(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
     return findings
 
 
+def minutes_of(clock: Any) -> Any:
+    """Minutes since midnight from 'HH:MM[:SS]', or None when it cannot be read."""
+    try:
+        return int(str(clock)[0:2]) * 60 + int(str(clock)[3:5])
+    except (ValueError, TypeError):
+        return None
+
+
+def bursts(members: List[Row], params: Dict[str, Any], window: int) -> List[List[Row]]:
+    """Split one day's payments into runs where each is within `window` minutes
+    of the one before. Payments with no readable time cannot be placed and are left out."""
+    timed = []
+    for m in members:
+        minute = minutes_of(val(m, params, TIME))
+        if minute is not None:
+            timed.append((minute, m))
+    timed.sort(key=lambda pair: pair[0])
+
+    runs: List[List[Row]] = []
+    last = None
+    for minute, m in timed:
+        if last is None or minute - last > window:
+            runs.append([])
+        runs[-1].append(m)
+        last = minute
+    return runs
+
+
 def detect_split_payment(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
     min_count: int = params["min_count"]
     excluded = {b.strip() for b in params["exclude_merchbizno"]}
+    min_total = to_decimal(params.get("min_total") or 0)
+    # 0 means the whole day is one group, as before. A source without a time of
+    # day cannot be windowed either.
+    window = int(params.get("window_minutes") or 0) if TIME in params["columns"] else 0
 
     groups: Dict[Tuple[str, str, str], List[Row]] = defaultdict(list)
     for r in approvals(rows, params):
@@ -234,20 +283,30 @@ def detect_split_payment(rows: List[Row], params: Dict[str, Any]) -> List[Findin
 
     findings = []
     for (card, merchant, day), members in groups.items():
-        if len(members) < min_count:
-            continue
-        total = sum((to_decimal(val(m, params, AMOUNT)) for m in members), Decimal("0"))
-        findings.append(
-            Finding(
-                rule_code=params["code"],
-                subject=f"{card}|{merchant}|{day}",
-                severity=params["severity"],
-                summary=f"동일 가맹점 당일 {len(members)}건 {won(total)}",
-                transactions=members,
-                amount=total,
-                occurred_on=date.fromisoformat(day),
+        for run in (bursts(members, params, window) if window else [members]):
+            if len(run) < min_count:
+                continue
+            total = sum((to_decimal(val(m, params, AMOUNT)) for m in run), Decimal("0"))
+            if total < min_total:
+                continue
+            # A windowed group is named by its first payment, so two bursts on
+            # one day are two findings a reviewer can judge separately.
+            subject = f"{card}|{merchant}|{day}"
+            span = f"당일 {len(run)}건"
+            if window:
+                subject += f"|{str(val(run[0], params, TIME))[:5]}"
+                span = f"{window}분 이내 {len(run)}건"
+            findings.append(
+                Finding(
+                    rule_code=params["code"],
+                    subject=subject,
+                    severity=params["severity"],
+                    summary=f"동일 가맹점 {span} {won(total)}",
+                    transactions=run,
+                    amount=total,
+                    occurred_on=date.fromisoformat(day),
+                )
             )
-        )
     return findings
 
 
@@ -270,7 +329,7 @@ TEMPLATES: List[RuleTemplate] = [
         severity="high",
         detect=detect_high_amount,
         requires=(KEY, CLASS, DATE, AMOUNT),
-        params={"threshold": Decimal("500000")},
+        params={"threshold": Decimal("500000"), "category_thresholds": {}, "enabled": True},
     ),
     RuleTemplate(
         template="OFF_HOURS",
@@ -278,7 +337,11 @@ TEMPLATES: List[RuleTemplate] = [
         severity="medium",
         detect=detect_off_hours,
         requires=(KEY, CLASS, DATE, TIME),
-        params={"night_start": "23", "night_end": "06"},
+        params={
+            "night_start": "23", "night_end": "06",
+            "check_weekend": True, "check_holiday": True, "check_night": True,
+            "holidays": [], "enabled": True,
+        },
     ),
     RuleTemplate(
         template="WATCH_MCC",
@@ -294,7 +357,8 @@ TEMPLATES: List[RuleTemplate] = [
                 "화   원",
                 "기타회원제형태업소4",
                 "자사카드발행백화점",
-            ]
+            ],
+            "enabled": True,
         },
     ),
     RuleTemplate(
@@ -303,7 +367,10 @@ TEMPLATES: List[RuleTemplate] = [
         severity="medium",
         detect=detect_split_payment,
         requires=(KEY, CLASS, DATE, AMOUNT, CARD, MERCHANT, MERCHANT_BIZNO),
-        params={"min_count": 2, "exclude_merchbizno": ["1018302925"]},
+        params={
+            "min_count": 2, "exclude_merchbizno": ["1018302925"],
+            "min_total": 0, "window_minutes": 0, "enabled": True,
+        },
     ),
 ]
 

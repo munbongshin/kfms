@@ -9,9 +9,12 @@ class FakeLLM:
     def __init__(self, answers):
         self.answers = list(answers)
         self.contexts = []
+        self.label_overrides = []
 
-    async def generate_sql(self, question, connection_pool, database_id, context="", excluded_tables=None):
+    async def generate_sql(self, question, connection_pool, database_id, context="", excluded_tables=None,
+                           label_overrides=None):
         self.contexts.append(context)
+        self.label_overrides.append(label_overrides)
         sql = self.answers.pop(0) if len(self.answers) > 1 else self.answers[0]
         return {"sql": sql, "provider": "fake", "model": "m"}
 
@@ -42,8 +45,8 @@ class FakeGlossary:
         return [SimpleNamespace(term="고액", definition="한 건 50만원 이상")]
 
 
-def service(llm, pool=None, history=None, glossary=None):
-    return QueryService(pool or FakePool(), history or FakeHistory(), llm, glossary_repo=glossary)
+def service(llm, pool=None, history=None, glossary=None, labels=None):
+    return QueryService(pool or FakePool(), history or FakeHistory(), llm, glossary_repo=glossary, label_repo=labels)
 
 
 def run(coro):
@@ -55,6 +58,29 @@ def test_a_clean_sql_is_used_as_is():
     out = run(service(llm).generate_sql("q", "1"))
     assert out["attempts"] == 1
     assert len(llm.contexts) == 1
+
+
+class FakeLabels:
+    def __init__(self, rows=None, fail=False):
+        self.rows, self.fail = rows or [], fail
+
+    async def overrides(self, connection_id):
+        if self.fail:
+            raise RuntimeError("metadata database is down")
+        return self.rows
+
+
+def test_the_administrators_column_names_reach_the_llm():
+    rows = [object()]
+    llm = FakeLLM(["SELECT 1 FROM t"])
+    run(service(llm, labels=FakeLabels(rows)).generate_sql("q", "1"))
+    assert llm.label_overrides == [rows]
+
+
+def test_a_label_lookup_failure_never_blocks_a_question():
+    llm = FakeLLM(["SELECT 1 FROM t"])
+    out = run(service(llm, labels=FakeLabels(fail=True)).generate_sql("q", "1"))
+    assert out["sql"] and llm.label_overrides == [[]]
 
 
 def test_a_failing_sql_is_retried_with_the_database_error():

@@ -5,7 +5,7 @@
         <el-tabs v-model="activeTab" class="tabs">
           <el-tab-pane label="표" name="table" />
           <el-tab-pane label="차트" name="chart" />
-          <el-tab-pane label="SQL" name="sql" />
+          <el-tab-pane v-if="auth.isAdmin" label="SQL" name="sql" />
         </el-tabs>
 
         <div class="meta">
@@ -43,7 +43,7 @@
       <el-empty v-else description="차트로 그릴 데이터가 없습니다" />
     </template>
 
-    <div v-show="activeTab === 'sql'" class="sql-tab">
+    <div v-if="auth.isAdmin" v-show="activeTab === 'sql'" class="sql-tab">
       <div class="sql-actions">
         <el-button size="small" @click="copySQL">
           <el-icon><CopyDocument /></el-icon>
@@ -54,7 +54,7 @@
     </div>
   </el-card>
 
-    <SaveReportDialog v-model="showSave" :question="results.question" :sql="results.sql" />
+    <SaveReportDialog v-model="showSave" :question="results.question" :sql="results.sql" :history-id="results.history_id" />
 </template>
 
 <script setup lang="ts">
@@ -66,13 +66,15 @@ import ResultTable from './ResultTable.vue'
 import ResultChart from './ResultChart.vue'
 import SaveReportDialog from './SaveReportDialog.vue'
 import { useQueryStore } from '../../stores/query'
+import { useAuthStore } from '../../stores/auth'
 
 const props = defineProps<{ results: QueryResult }>()
 
 const queryStore = useQueryStore()
+const auth = useAuthStore()
 const showSave = ref(false)
 // A table preview is browsing, not a question worth scheduling.
-const canSaveReport = computed(() => !queryStore.preview && !!props.results.sql)
+const canSaveReport = computed(() => !queryStore.preview && (!!props.results.sql || !!props.results.history_id))
 
 const activeTab = ref('table')
 const tableRef = ref<InstanceType<typeof ResultTable> | null>(null)

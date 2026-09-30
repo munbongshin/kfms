@@ -3,7 +3,7 @@
     <template #header>
       <div class="header">
         <span>⭐ 자주 쓰는 질문</span>
-        <span class="hint">저장된 SQL을 바로 실행합니다</span>
+        <span class="hint">저장된 질문을 바로 실행합니다</span>
       </div>
     </template>
     <div class="items">
@@ -47,7 +47,8 @@ async function run(bookmark: any) {
     await queryStore.runSavedSQL(
       bookmark.question,
       bookmark.generated_sql,
-      Number(bookmark.database_id)
+      Number(bookmark.database_id),
+      bookmark.id
     )
   } finally {
     runningId.value = null

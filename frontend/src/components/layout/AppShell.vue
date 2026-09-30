@@ -106,6 +106,7 @@ onMounted(() => {
   if (databaseStore.connections.length === 0) {
     databaseStore.fetchConnections(true)
   }
+  databaseStore.loadExpressionTerms()
 })
 
 watch(collapsed, (v) => localStorage.setItem(STORAGE_KEY, String(v)))

@@ -145,7 +145,9 @@ export interface Report {
 export interface NewReport {
   name: string
   question: string
-  sql: string
+  /** Empty for people who cannot see SQL: they name `history_id` instead. */
+  sql?: string
+  history_id?: number
   database_id: number
   frequency: string
   hour: number
@@ -189,6 +191,54 @@ export interface AuditEntry {
 }
 
 /** A business term the LLM is given when a question uses it. */
+export interface AnomalySettingHistory {
+  id: number
+  changed_at: string
+  changed_by: string
+  changes: { template: string; rule: string; key: string; label: string; text: string }[]
+}
+
+export interface ColumnLabelException {
+  id: number
+  table_key: string
+  label: string
+}
+
+/** One distinct column name on a connection, with the name it shows. */
+export interface ColumnLabelRow {
+  name: string
+  type: string | null
+  tables: string[]
+  /** The DB's own comment; what shows when nobody has set a name. */
+  comment: string | null
+  default_label: string | null
+  label: string | null
+  source: 'connection' | 'comment' | null
+  mapped: boolean
+  /** Id of the connection-wide override, if there is one. */
+  id: number | null
+  exceptions: ColumnLabelException[]
+}
+
+export interface ColumnLabelList {
+  columns: ColumnLabelRow[]
+  tables: string[]
+  summary: { total: number; mapped: number; unmapped: number }
+}
+
+export interface ColumnLabelImportResult {
+  applied: number
+  unchanged: number
+  problems: { row: number | null; column?: string; reason: string }[]
+}
+
+export interface ExpressionTermRow {
+  func: string
+  label: string
+  default: string
+  customized: boolean
+}
+
 export interface GlossaryTerm {
   id: number
   term: string
@@ -314,6 +364,7 @@ export const api = {
       context?: string
       previous_question?: string
       previous_sql?: string
+      previous_history_id?: number
     }) {
       const response = await apiClient.post('/query/generate', data)
       return response.data
@@ -343,9 +394,17 @@ export const api = {
       context?: string
       previous_question?: string
       previous_sql?: string
+      previous_history_id?: number
       auto_approve?: boolean
     }) {
       const response = await apiClient.post('/query/generate-and-execute', data)
+      return response.data
+    },
+
+    /** Run a saved question again by its history id; the server holds the SQL,
+     *  so this works for people who cannot see it. */
+    async rerun(historyId: number) {
+      const response = await apiClient.post(`/query/rerun/${historyId}`)
       return response.data
     },
   },
@@ -451,6 +510,48 @@ export const api = {
   audit: {
     async list(params: { username?: string; action?: string; days?: number; limit?: number; offset?: number }): Promise<AuditEntry[]> {
       return (await apiClient.get('/audit-log', { params })).data
+    },
+  },
+
+  columnLabels: {
+    async list(connectionId: number): Promise<ColumnLabelList> {
+      return (await apiClient.get(`/databases/${connectionId}/column-labels`)).data
+    },
+
+    /** A blank label clears the override, so the DB comment shows again. */
+    async set(connectionId: number, data: { column_name: string; table_key?: string | null; label: string }) {
+      return (await apiClient.put(`/databases/${connectionId}/column-labels`, data)).data
+    },
+
+    async remove(connectionId: number, id: number): Promise<void> {
+      await apiClient.delete(`/databases/${connectionId}/column-labels/${id}`)
+    },
+
+    async export(connectionId: number): Promise<Blob> {
+      const response = await apiClient.get(`/databases/${connectionId}/column-labels/export`, { responseType: 'blob' })
+      return response.data
+    },
+
+    async import(connectionId: number, file: File): Promise<ColumnLabelImportResult> {
+      const form = new FormData()
+      form.append('file', file)
+      return (await apiClient.post(`/databases/${connectionId}/column-labels/import`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })).data
+    },
+  },
+
+  expressionTerms: {
+    async list(): Promise<ExpressionTermRow[]> {
+      return (await apiClient.get('/expression-terms')).data
+    },
+
+    async set(func: string, label: string): Promise<ExpressionTermRow[]> {
+      return (await apiClient.put(`/expression-terms/${encodeURIComponent(func)}`, { label })).data
+    },
+
+    async reset(func: string): Promise<ExpressionTermRow[]> {
+      return (await apiClient.delete(`/expression-terms/${encodeURIComponent(func)}`)).data
     },
   },
 
@@ -593,6 +694,16 @@ export const api = {
 
     async saveSettings(overrides: Record<string, Record<string, any>>) {
       return (await apiClient.put('/anomaly/settings', { overrides })).data
+    },
+
+    /** Recent changes to the thresholds, newest first. */
+    async settingsHistory(): Promise<AnomalySettingHistory[]> {
+      return (await apiClient.get('/anomaly/settings/history')).data
+    },
+
+    /** Put the thresholds back as they were before that change. */
+    async restoreSettings(entryId: number) {
+      return (await apiClient.post(`/anomaly/settings/history/${entryId}/restore`)).data
     },
 
     async listSources(databaseId: string) {

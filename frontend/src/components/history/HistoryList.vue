@@ -128,7 +128,8 @@
           <strong>Question:</strong>
           <p>{{ selectedHistory.question }}</p>
         </div>
-        <div class="detail-section">
+        <!-- SQL is for administrators; the server sends it to no one else. -->
+        <div v-if="auth.isAdmin" class="detail-section">
           <strong>SQL:</strong>
           <pre class="sql-display">{{ selectedHistory.generated_sql }}</pre>
         </div>
@@ -225,7 +226,7 @@ async function viewDetail(row: any) {
 
 async function rerunQuery(row: any) {
   router.push('/query')
-  await queryStore.runSavedSQL(row.question, row.generated_sql, Number(row.database_id))
+  await queryStore.runSavedSQL(row.question, row.generated_sql, Number(row.database_id), row.id)
 }
 
 async function toggleBookmark(row: any) {

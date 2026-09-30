@@ -10,6 +10,9 @@ from pydantic import BaseModel, Field
 
 from app.auth.deps import ADMIN, ANY_USER, CurrentUser, record
 from app.auth.masking import mask_results
+from app.auth.sql_visibility import table_page
+from app.db.column_labels import apply_labels
+from app.db.repositories.column_labels import ColumnLabelRepository
 from app.dependencies import get_db, get_db_pool
 from app.db.repositories.database_repo import DatabaseRepository
 from app.db.connection_pool import DatabaseConnectionPool
@@ -276,6 +279,9 @@ async def get_schema(
     try:
         tables, schema = await pool.get_catalog(str(connection_id), refresh=refresh)
         excluded = set(db_conn.excluded_tables or [])
+        # The catalog is cached and carries only DB comments; the administrator's
+        # column names are laid over a copy, so a change shows without a re-read.
+        schema = apply_labels(schema, await ColumnLabelRepository(db).overrides(connection_id))
         return {
             "connection_id": connection_id,
             "connection_name": db_conn.name,
@@ -357,6 +363,7 @@ async def read_table_rows(
             str(connection_id), table, selected, order_by, descending, limit, offset
         )
         page["rows"] = mask_results(page["rows"], user.role)
+        page = table_page(page, user.role)
         await record(db, user, http_request, "table_preview", f"{connection_id}:{table}", offset=offset, limit=limit)
         return page
     except ValueError as exc:

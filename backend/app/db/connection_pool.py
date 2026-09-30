@@ -18,7 +18,6 @@ from app.db.catalog import (  # noqa: F401 — re-exported for callers and tests
     DEPENDENCY_SQL,
     Catalog,
     SchemaCache,
-    add_display_labels,
     borrow_missing_comments,
     build_catalog,
 )

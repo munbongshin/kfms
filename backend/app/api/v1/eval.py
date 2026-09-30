@@ -15,6 +15,7 @@ from app.config import settings
 from app.db.models import EvalCase, EvalRun
 from app.db.repositories.database_repo import DatabaseRepository
 from app.db.repositories.eval import EvalRepository
+from app.db.repositories.column_labels import ColumnLabelRepository
 from app.db.repositories.glossary import GlossaryRepository
 from app.db.repositories.history import HistoryRepository
 from app.db.repositories.llm_settings import LLMSettingsRepository
@@ -78,7 +79,7 @@ async def _score(run_id: int, database_id: str, cases: list) -> None:
         async with AsyncSessionLocal() as session:
             saved = await LLMSettingsRepository(session).load()
             llm = get_llm_service(config=resolve(saved, settings))
-            service = QueryService(pool, HistoryRepository(session), llm, GlossaryRepository(session))
+            service = QueryService(pool, HistoryRepository(session), llm, GlossaryRepository(session), ColumnLabelRepository(session))
             conn = await DatabaseRepository(session).get_by_id(int(database_id))
             excluded = list(conn.excluded_tables or []) if conn else []
 

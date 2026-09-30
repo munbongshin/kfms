@@ -31,6 +31,7 @@ class QueryService:
         history_repo: HistoryRepository,
         llm_service: LLMService,
         glossary_repo: Optional[Any] = None,
+        label_repo: Optional[Any] = None,
     ):
         """
         Initialize query service.
@@ -44,6 +45,7 @@ class QueryService:
         self.history_repo = history_repo
         self.llm_service = llm_service
         self.glossary_repo = glossary_repo
+        self.label_repo = label_repo
         self.validator = SQLValidator()
 
     async def _guidance(self, question: str, database_id: str, use_examples: bool = True) -> Dict[str, Any]:
@@ -69,6 +71,16 @@ class QueryService:
         except Exception:
             pass
         return {"examples": examples, "terms": terms}
+
+    async def _label_overrides(self, database_id: str) -> List[Any]:
+        """The administrator's column names for this connection. Without them
+        the prompt falls back to DB comments, so a failure here must not block a question."""
+        if self.label_repo is None:
+            return []
+        try:
+            return await self.label_repo.overrides(int(database_id))
+        except Exception:
+            return []
 
     async def _dry_run(self, database_id: str, sql: str):
         """(the database's complaint about `sql` or None, its estimated cost).
@@ -102,6 +114,7 @@ class QueryService:
         """
         guidance = await self._guidance(question, database_id, use_examples)
         base_context = build_context(context, guidance["examples"], guidance["terms"], previous)
+        label_overrides = await self._label_overrides(database_id)
 
         # Generate, then check the SQL plans cleanly; if it does not, hand the
         # database's error back to the model, up to MAX_RETRIES times.
@@ -117,6 +130,7 @@ class QueryService:
                 database_id=database_id,
                 context=attempt_context,
                 excluded_tables=excluded_tables,
+                label_overrides=label_overrides,
             )
             sql = llm_result["sql"]
             validation = self.validator.validate(sql)

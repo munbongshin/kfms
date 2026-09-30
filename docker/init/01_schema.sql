@@ -161,3 +161,33 @@ CREATE TABLE excel_uploads (
 
 CREATE INDEX idx_excel_uploads_expires_at ON excel_uploads(expires_at);
 CREATE INDEX idx_excel_uploads_table_name ON excel_uploads(table_name);
+
+-- Names columns are shown under, managed on the admin screen. table_key NULL is
+-- the column name on the whole connection; a value is one table's exception.
+CREATE TABLE column_labels (
+    id SERIAL PRIMARY KEY,
+    connection_id INTEGER NOT NULL REFERENCES database_connections(id) ON DELETE CASCADE,
+    table_key VARCHAR(255),
+    column_name VARCHAR(128) NOT NULL,
+    label VARCHAR(100) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX ux_column_labels_scope ON column_labels (connection_id, (COALESCE(table_key, '')), column_name);
+
+-- Changed names for computed columns (sum -> 합계); defaults are in the app.
+CREATE TABLE expression_terms (
+    func VARCHAR(20) PRIMARY KEY,
+    label VARCHAR(50) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Every change to the anomaly thresholds: who, when, before/after (to restore) and what moved.
+CREATE TABLE anomaly_setting_history (
+    id SERIAL PRIMARY KEY,
+    changed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    changed_by VARCHAR(60) NOT NULL DEFAULT '',
+    before JSON NOT NULL DEFAULT '{}',
+    after JSON NOT NULL DEFAULT '{}',
+    changes JSON NOT NULL DEFAULT '[]'
+);

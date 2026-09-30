@@ -12,7 +12,6 @@ is also how the LLM and the table browser refer to them.
 import time
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple
 
-from app.db.column_display_names import DISPLAY_NAMES
 
 CATALOG_SQL = r"""
 SELECT
@@ -125,15 +124,6 @@ def borrow_missing_comments(columns: Dict[str, List[Dict[str, Any]]]) -> None:
                 column["comment"] = known.get(column["name"])
 
 
-def add_display_labels(columns: Dict[str, List[Dict[str, Any]]]) -> None:
-    """Set each column's on-screen `label`: a short display name if one is
-    defined, else the comment. The comment itself is left whole for the prompt.
-    """
-    for cols in columns.values():
-        for column in cols:
-            column["label"] = DISPLAY_NAMES.get(column["name"]) or column.get("comment")
-
-
 def _text(value: Any) -> str:
     return value.decode() if isinstance(value, (bytes, bytearray)) else str(value)
 
@@ -183,7 +173,6 @@ def build_catalog(
             read.append(d["column_name"])
 
     borrow_missing_comments(columns)
-    add_display_labels(columns)
     return tables, columns
 
 

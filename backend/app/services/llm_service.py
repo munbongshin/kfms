@@ -7,6 +7,7 @@ from typing import Dict, List, Any, Optional
 from app.llm.factory import create_provider
 from app.llm.base import BaseLLMProvider
 from app.llm.settings_resolver import LLMConfig
+from app.db.column_labels import Override, apply_labels
 from app.db.connection_pool import DatabaseConnectionPool
 
 
@@ -50,6 +51,7 @@ class LLMService:
         database_id: str,
         context: str = "",
         excluded_tables: Optional[List[str]] = None,
+        label_overrides: Optional[List[Override]] = None,
     ) -> Dict[str, Any]:
         """
         Generate SQL from natural language question.
@@ -60,6 +62,8 @@ class LLMService:
             database_id: Database connection ID
             context: Optional context (previous queries, hints)
             excluded_tables: Tables excluded from analysis for this connection
+            label_overrides: The administrator's column names; the prompt names
+                columns by these, falling back to the DB comment
 
         Returns:
             Dict with generated SQL and metadata:
@@ -83,7 +87,7 @@ class LLMService:
         if not schema:
             raise ValueError(f"No schema found for database {database_id}")
 
-        schema = analysis_schema(schema, excluded_tables)
+        schema = apply_labels(analysis_schema(schema, excluded_tables), label_overrides or [])
         tables = await connection_pool.get_tables(database_id)
         table_comments = {
             name: info["comment"] for name, info in tables.items()

@@ -10,8 +10,10 @@ import {
   type DatabaseConnection,
   type DatabaseConnectionCreate,
   type DatabaseConnectionUpdate,
+  type ExpressionTermRow,
 } from '../services/api'
 import { ElMessage } from 'element-plus'
+import { tablesReadBy } from '../utils/columnLabels'
 
 export interface ColumnInfo {
   name: string
@@ -20,8 +22,10 @@ export interface ColumnInfo {
   default: string | null
   /** Business name from COMMENT ON COLUMN, e.g. 카드번호 for cardno. */
   comment: string | null
-  /** What the screen shows: a short display name if set, else the comment. */
+  /** What the screen shows: the administrator's name if one is set, else the comment. */
   label: string | null
+  /** Where the label came from: 'table' | 'connection' | 'comment' | null. */
+  label_source?: string | null
 }
 
 export const useDatabaseStore = defineStore('database', () => {
@@ -36,6 +40,8 @@ export const useDatabaseStore = defineStore('database', () => {
   // Bumped when the catalog is re-read, so the lazy tree reloads its nodes.
   const schemaVersion = ref(0)
   const schemaError = ref<Record<number, string | null>>({})
+  // What SUM, COUNT ... are called on computed columns (function -> name); admin-managed.
+  const expressionTerms = ref<Record<string, string>>({})
 
   // Computed
   const activeConnection = computed(() => {
@@ -193,10 +199,21 @@ export const useDatabaseStore = defineStore('database', () => {
     }
   }
 
-  /** Column name -> business name for one connection. A query result carries
-   *  only bare column names, so its headers are labelled by name alone. */
-  function columnLabels(connectionId: number | null): Record<string, string> {
-    return columnField(connectionId, (col) => col.label || col.comment)
+  /** Column name -> the name to show, for one connection. A query result carries
+   *  only bare column names, so headers are labelled by name alone. When a table
+   *  has its own name for a column, the tables the SQL mentions win. */
+  function columnLabels(connectionId: number | null, sql = ''): Record<string, string> {
+    return columnField(connectionId, (col) => col.label || col.comment, sql)
+  }
+
+  /** Load the computed-column terms; without them those headers stay as returned. */
+  async function loadExpressionTerms() {
+    try {
+      const rows: ExpressionTermRow[] = await api.expressionTerms.list()
+      expressionTerms.value = Object.fromEntries(rows.map((r) => [r.func, r.label]))
+    } catch {
+      // Headers just keep their raw names.
+    }
   }
 
   /** Column name -> the full workbook name, for tooltips under a short label. */
@@ -206,17 +223,27 @@ export const useDatabaseStore = defineStore('database', () => {
 
   function columnField(
     connectionId: number | null,
-    pick: (col: ColumnInfo) => string | null
+    pick: (col: ColumnInfo) => string | null,
+    sql = ''
   ): Record<string, string> {
     const schema = connectionId ? schemas.value[connectionId] : undefined
     const out: Record<string, string> = {}
-    for (const columns of Object.values(schema || {})) {
-      for (const col of columns) {
+    // The first table to give a name wins, so the ones the SQL reads go first.
+    for (const table of tablesReadBy(sql, Object.keys(schema || {}))) {
+      for (const col of schema![table]) {
         const value = pick(col)
         if (value && !out[col.name]) out[col.name] = value
       }
     }
     return out
+  }
+
+  /** Pick up changed column names without re-reading the target database. */
+  async function reloadLabels(connectionId: number) {
+    const info = await api.databases.getSchema(connectionId, false)
+    schemas.value = { ...schemas.value, [connectionId]: info.schema as Record<string, ColumnInfo[]> }
+    tableInfos.value = { ...tableInfos.value, [connectionId]: info.tables || {} }
+    schemaVersion.value++
   }
 
   /** Re-read tables from the database (new tables, changed comments). */
@@ -259,6 +286,7 @@ export const useDatabaseStore = defineStore('database', () => {
     schemaVersion,
     schemaLoading,
     schemaError,
+    expressionTerms,
 
     // Computed
     activeConnection,
@@ -273,9 +301,11 @@ export const useDatabaseStore = defineStore('database', () => {
     setActiveConnection,
     fetchSchema,
     refreshSchema,
+    reloadLabels,
     setExcludedTables,
     columnLabels,
     columnComments,
+    loadExpressionTerms,
     invalidateSchema,
   }
 })

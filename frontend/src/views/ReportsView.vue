@@ -44,7 +44,7 @@
 
     <el-dialog v-model="showResult" :title="current?.name" width="900px">
       <div v-if="current" class="detail">
-        <div class="sqlbox">{{ current.sql }}</div>
+        <div v-if="auth.isAdmin" class="sqlbox">{{ current.sql }}</div>
         <el-alert v-if="current.last_status === 'error'" type="error" :closable="false" show-icon :title="current.last_error || '오류'" />
         <p v-else-if="current.last_run_at" class="note">
           {{ fmt(current.last_run_at) }} 실행 · 전체 {{ (current.last_row_count ?? 0).toLocaleString() }}행 중 앞 {{ results.length }}행을 보관합니다.
@@ -63,6 +63,9 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, type Report } from '../services/api'
 import { describeSchedule } from '../utils/schedule'
+import { useAuthStore } from '../stores/auth'
+
+const auth = useAuthStore()
 
 const reports = ref<Report[]>([])
 const loading = ref(false)

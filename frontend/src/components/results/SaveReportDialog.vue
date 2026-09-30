@@ -47,7 +47,7 @@ import { ElMessage } from 'element-plus'
 import { api } from '../../services/api'
 import { useDatabaseStore } from '../../stores/database'
 
-const props = defineProps<{ modelValue: boolean; question: string; sql: string }>()
+const props = defineProps<{ modelValue: boolean; question: string; sql?: string; historyId?: number }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; saved: [] }>()
 
 const databaseStore = useDatabaseStore()
@@ -72,7 +72,9 @@ async function save() {
     await api.reports.create({
       name: name.value.trim(),
       question: props.question,
-      sql: props.sql,
+      // The record is what the server reads the SQL from; only administrators have the text.
+      history_id: props.historyId || undefined,
+      sql: props.sql || undefined,
       database_id: database,
       frequency: frequency.value,
       hour: hour.value,

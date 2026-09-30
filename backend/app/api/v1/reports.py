@@ -10,7 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import ANY_USER, CurrentUser, record
 from app.auth.masking import mask_results
+from app.auth.sql_visibility import report_meta
 from app.db.models import SavedReport
+from app.db.repositories.history import HistoryRepository
 from app.db.repositories.reports import ReportRepository
 from app.dependencies import get_db, get_db_pool
 from app.services.report_schedule import is_valid, next_run
@@ -23,7 +25,10 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 class NewReport(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     question: str = Field(default="", max_length=2000)
-    sql: str = Field(..., min_length=1, max_length=20000)
+    # Either the SQL, or the history record it came from: someone who cannot
+    # read SQL saves a report by naming the record and the server looks it up.
+    sql: Optional[str] = Field(None, min_length=1, max_length=20000)
+    history_id: Optional[int] = None
     database_id: int
     frequency: str = "daily"
     hour: int = 9
@@ -60,30 +65,41 @@ async def _get(repo: ReportRepository, report_id: int) -> SavedReport:
 
 
 @router.get("")
-async def list_reports(db: AsyncSession = Depends(get_db)):
-    return [_meta(r) for r in await ReportRepository(db).list_all()]
+async def list_reports(user: CurrentUser = ANY_USER, db: AsyncSession = Depends(get_db)):
+    return [report_meta(_meta(r), user.role) for r in await ReportRepository(db).list_all()]
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_report(body: NewReport, user: CurrentUser = ANY_USER, db: AsyncSession = Depends(get_db)):
     if not is_valid(body.frequency, body.hour, body.weekday, body.day):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="실행 일정이 올바르지 않습니다")
-    if not SQLValidator().validate(body.sql)["is_safe"]:
+    sql = body.sql
+    if body.history_id is not None:
+        saved = await HistoryRepository(db).get_by_id(body.history_id)
+        if saved is None or saved.status != "success":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="저장할 질문 결과를 찾을 수 없습니다")
+        sql = saved.generated_sql
+    elif user.role != "admin":
+        # Someone who cannot read SQL has no business supplying it either.
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="저장할 질문 결과를 골라 주세요")
+    if not sql:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="저장할 SQL이 없습니다")
+    if not SQLValidator().validate(sql)["is_safe"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="조회(SELECT)만 보고서로 저장할 수 있습니다")
     report = SavedReport(
-        name=body.name.strip(), question=body.question, sql=body.sql, database_id=str(body.database_id),
+        name=body.name.strip(), question=body.question, sql=sql, database_id=str(body.database_id),
         frequency=body.frequency, run_hour=body.hour, run_weekday=body.weekday, run_day=body.day,
         next_run_at=next_run(body.frequency, body.hour, _now(), body.weekday, body.day),
         created_by=user.username,
     )
-    return _meta(await ReportRepository(db).add(report))
+    return report_meta(_meta(await ReportRepository(db).add(report)), user.role)
 
 
 @router.get("/{report_id}")
 async def get_report(report_id: int, user: CurrentUser = ANY_USER, db: AsyncSession = Depends(get_db)):
     """The report and its last result, with card numbers masked for viewers."""
     report = await _get(ReportRepository(db), report_id)
-    return {**_meta(report), "results": mask_results(report.last_results or [], user.role)}
+    return {**report_meta(_meta(report), user.role), "results": mask_results(report.last_results or [], user.role)}
 
 
 @router.post("/{report_id}/run")
@@ -96,11 +112,13 @@ async def run_now(
     await run_report(report, pool, _now())
     await repo.save(report)
     await record(db, user, http_request, "report_run", report.name, status=report.last_status, rows=report.last_row_count)
-    return {**_meta(report), "results": mask_results(report.last_results or [], user.role)}
+    return {**report_meta(_meta(report), user.role), "results": mask_results(report.last_results or [], user.role)}
 
 
 @router.patch("/{report_id}")
-async def change_report(report_id: int, body: ReportChange, db: AsyncSession = Depends(get_db)):
+async def change_report(
+    report_id: int, body: ReportChange, user: CurrentUser = ANY_USER, db: AsyncSession = Depends(get_db)
+):
     repo = ReportRepository(db)
     report = await _get(repo, report_id)
     if body.is_active is not None:
@@ -108,7 +126,7 @@ async def change_report(report_id: int, body: ReportChange, db: AsyncSession = D
         if body.is_active:
             # Resuming must not fire for every slot missed while paused.
             report.next_run_at = next_run(report.frequency, report.run_hour, _now(), report.run_weekday, report.run_day)
-    return _meta(await repo.save(report))
+    return report_meta(_meta(await repo.save(report)), user.role)
 
 
 @router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)

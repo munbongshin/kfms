@@ -267,6 +267,18 @@ class AnomalyService:
             # rules here collapsed the dropdown to the one rule already selected and
             # made the WATCH_MCC 미분류 caveat vanish. rule_code only decides which
             # findings are kept, below.
+            if not rule.params.get("enabled", True):
+                applicable_rules.append(
+                    {
+                        "rule_code": rule.code,
+                        "template": rule.template,
+                        "label": rule.label,
+                        "applicable": False,
+                        "caveat": "관리자가 이 규칙을 껐습니다",
+                    }
+                )
+                continue
+
             missing = [c for c in rule.required_columns if c not in available]
             if rows and missing:
                 applicable_rules.append(

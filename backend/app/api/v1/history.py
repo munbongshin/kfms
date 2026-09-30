@@ -12,6 +12,7 @@ from datetime import datetime
 
 from app.auth.deps import ADMIN, ANY_USER, CurrentUser
 from app.auth.masking import mask_results
+from app.auth.sql_visibility import history_row
 from app.dependencies import get_db
 from app.db.repositories.history import HistoryRepository
 
@@ -59,6 +60,23 @@ class HistoryDetail(BaseModel):
         from_attributes = True
 
 
+def _list_item(h, role: str) -> HistoryListItem:
+    """A history row as the role may see it: no SQL for anyone but an administrator."""
+    return HistoryListItem(**history_row(dict(
+        id=h.id,
+        question=h.question,
+        generated_sql=h.generated_sql,
+        database_id=h.database_id,
+        status=h.status,
+        row_count=h.row_count,
+        execution_time_ms=h.execution_time_ms,
+        llm_provider=h.llm_provider,
+        llm_model=h.llm_model,
+        is_bookmarked=h.is_bookmarked,
+        created_at=h.created_at.isoformat()
+    ), role))
+
+
 def get_history_repo(db: AsyncSession = Depends(get_db)) -> HistoryRepository:
     """Dependency for getting HistoryRepository."""
     return HistoryRepository(db)
@@ -71,6 +89,7 @@ async def list_history(
     bookmarked: Optional[bool] = None,
     limit: int = 100,
     offset: int = 0,
+    user: CurrentUser = ANY_USER,
     repo: HistoryRepository = Depends(get_history_repo)
 ):
     """
@@ -98,22 +117,7 @@ async def list_history(
             offset=offset
         )
 
-        return [
-            HistoryListItem(
-                id=h.id,
-                question=h.question,
-                generated_sql=h.generated_sql,
-                database_id=h.database_id,
-                status=h.status,
-                row_count=h.row_count,
-                execution_time_ms=h.execution_time_ms,
-                llm_provider=h.llm_provider,
-                llm_model=h.llm_model,
-                is_bookmarked=h.is_bookmarked,
-                created_at=h.created_at.isoformat()
-            )
-            for h in history
-        ]
+        return [_list_item(h, user.role) for h in history]
 
     except Exception as e:
         raise HTTPException(
@@ -142,7 +146,7 @@ async def get_history(
                 detail=f"History {history_id} not found"
             )
 
-        return HistoryDetail(
+        return HistoryDetail(**history_row(dict(
             id=history.id,
             question=history.question,
             generated_sql=history.generated_sql,
@@ -158,7 +162,7 @@ async def get_history(
             validation_approved=history.validation_approved,
             is_bookmarked=history.is_bookmarked,
             created_at=history.created_at.isoformat()
-        )
+        ), user.role))
 
     except HTTPException:
         raise
@@ -178,6 +182,7 @@ class BookmarkRequest(BaseModel):
 async def set_bookmark(
     history_id: int,
     request: BookmarkRequest,
+    user: CurrentUser = ANY_USER,
     repo: HistoryRepository = Depends(get_history_repo)
 ):
     """
@@ -193,19 +198,7 @@ async def set_bookmark(
             detail=f"History {history_id} not found"
         )
 
-    return HistoryListItem(
-        id=record.id,
-        question=record.question,
-        generated_sql=record.generated_sql,
-        database_id=record.database_id,
-        status=record.status,
-        row_count=record.row_count,
-        execution_time_ms=record.execution_time_ms,
-        llm_provider=record.llm_provider,
-        llm_model=record.llm_model,
-        is_bookmarked=record.is_bookmarked,
-        created_at=record.created_at.isoformat()
-    )
+    return _list_item(record, user.role)
 
 
 @router.delete("", dependencies=[ADMIN])
