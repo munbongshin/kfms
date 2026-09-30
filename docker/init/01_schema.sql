@@ -44,6 +44,13 @@ CREATE TABLE llm_settings (
     updated_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE glossary_terms (
+    id          SERIAL PRIMARY KEY,
+    term        VARCHAR(100) NOT NULL UNIQUE,
+    definition  TEXT NOT NULL,
+    created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE database_connections (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,

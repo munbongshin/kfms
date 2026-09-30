@@ -186,3 +186,20 @@ class LLMSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+
+class GlossaryTerm(Base):
+    """A business term and what it means, e.g. 고액 = 한 건 50만원 이상.
+
+    A question that uses the term gets the definition in its prompt, so the
+    LLM writes the same condition every time instead of guessing.
+    """
+
+    __tablename__ = "glossary_terms"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    term: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    definition: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )

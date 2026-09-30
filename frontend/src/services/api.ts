@@ -113,6 +113,13 @@ export interface SchemaInfo {
   tables: Record<string, TableInfo>
 }
 
+/** A business term the LLM is given when a question uses it. */
+export interface GlossaryTerm {
+  id: number
+  term: string
+  definition: string
+}
+
 export type LLMProviderName = 'ollama' | 'lmstudio' | 'vllm' | 'openai_compatible' | 'groq'
 
 /** One serving platform as the server describes it — never with its API key. */
@@ -319,6 +326,27 @@ export const api = {
   },
 
   // History operations
+  glossary: {
+    async list(): Promise<GlossaryTerm[]> {
+      const response = await apiClient.get('/glossary')
+      return response.data
+    },
+
+    async create(term: string, definition: string): Promise<GlossaryTerm> {
+      const response = await apiClient.post('/glossary', { term, definition })
+      return response.data
+    },
+
+    async update(id: number, term: string, definition: string): Promise<GlossaryTerm> {
+      const response = await apiClient.put(`/glossary/${id}`, { term, definition })
+      return response.data
+    },
+
+    async remove(id: number): Promise<void> {
+      await apiClient.delete(`/glossary/${id}`)
+    },
+  },
+
   llmSettings: {
     async get(): Promise<LLMSettings> {
       const response = await apiClient.get('/llm-settings')

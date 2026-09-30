@@ -131,6 +131,35 @@
         <button v-if="dirty" class="link" @click="reset">변경 취소</button>
       </div>
     </div>
+
+    <!-- Business glossary -->
+    <div class="panel glossary">
+      <div class="section-title">업무 용어집</div>
+      <p class="hint">
+        질문에 용어가 들어 있으면 뜻을 LLM에 함께 알려 줍니다. 예: <b>고액</b> = 한 건 결제금액이 50만원 이상.
+        같은 용어는 항상 같은 조건으로 해석됩니다.
+      </p>
+      <div class="term-form">
+        <el-input v-model="newTerm" placeholder="용어 (예: 고액)" style="width: 180px" />
+        <el-input v-model="newDefinition" placeholder="뜻 (예: 한 건 결제금액이 50만원 이상)" style="flex: 1" @keyup.enter="addTerm" />
+        <button class="btn primary" :disabled="!newTerm.trim() || !newDefinition.trim()" @click="addTerm">
+          {{ editingId ? '수정 저장' : '추가' }}
+        </button>
+        <button v-if="editingId" class="link" @click="cancelEdit">취소</button>
+      </div>
+      <el-table :data="terms" size="small" border empty-text="등록된 용어가 없습니다" style="margin-top: 10px">
+        <el-table-column prop="term" label="용어" width="180" />
+        <el-table-column prop="definition" label="뜻" show-overflow-tooltip />
+        <el-table-column label="" width="130" align="center">
+          <template #default="{ row }">
+            <button class="link" @click="editTerm(row)">수정</button>
+            <el-popconfirm title="이 용어를 삭제할까요?" @confirm="removeTerm(row.id)">
+              <template #reference><button class="link danger">삭제</button></template>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
   </div>
 </template>
 
@@ -140,6 +169,7 @@ import { ElMessage } from 'element-plus'
 import { CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
 import {
   api,
+  type GlossaryTerm,
   type LLMPlatform,
   type LLMProviderName,
   type LLMSettings,
@@ -152,6 +182,55 @@ interface Draft {
   model: string
   api_key: string
   clear_api_key: boolean
+}
+
+// --- business glossary ---
+const terms = ref<GlossaryTerm[]>([])
+const newTerm = ref('')
+const newDefinition = ref('')
+const editingId = ref<number | null>(null)
+
+async function loadTerms() {
+  try {
+    terms.value = await api.glossary.list()
+  } catch {
+    ElMessage.error('용어집을 불러오지 못했습니다')
+  }
+}
+
+async function addTerm() {
+  const term = newTerm.value.trim()
+  const definition = newDefinition.value.trim()
+  if (!term || !definition) return
+  try {
+    if (editingId.value) await api.glossary.update(editingId.value, term, definition)
+    else await api.glossary.create(term, definition)
+    cancelEdit()
+    await loadTerms()
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || '저장하지 못했습니다')
+  }
+}
+
+function editTerm(row: GlossaryTerm) {
+  editingId.value = row.id
+  newTerm.value = row.term
+  newDefinition.value = row.definition
+}
+
+function cancelEdit() {
+  editingId.value = null
+  newTerm.value = ''
+  newDefinition.value = ''
+}
+
+async function removeTerm(id: number) {
+  try {
+    await api.glossary.remove(id)
+    await loadTerms()
+  } catch {
+    ElMessage.error('삭제하지 못했습니다')
+  }
 }
 
 const saved = ref<LLMSettings | null>(null)
@@ -276,6 +355,7 @@ watch(provider, () => {
 })
 
 onMounted(async () => {
+  loadTerms()
   loading.value = true
   try {
     fill(await api.llmSettings.get())
@@ -518,6 +598,21 @@ onMounted(async () => {
   font-size: 12.5px;
   text-decoration: underline;
   cursor: pointer;
+}
+
+.glossary {
+  margin-top: 16px;
+}
+
+.term-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.link.danger {
+  margin-left: 10px;
+  color: #b42318;
 }
 
 .link:disabled {

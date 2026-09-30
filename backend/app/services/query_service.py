@@ -9,7 +9,12 @@ from app.utils.sql_validator import SQLValidator
 from app.db.connection_pool import DatabaseConnectionPool
 from app.db.repositories.history import HistoryRepository
 from app.services.llm_service import LLMService
+from app.services.prompt_context import build_context, pick_examples, pick_terms, retry_context
 from app.config import settings
+
+
+# A failed dry run is fed back to the model this many times before giving up.
+MAX_RETRIES = 2
 
 
 class QueryService:
@@ -21,7 +26,8 @@ class QueryService:
         self,
         connection_pool: DatabaseConnectionPool,
         history_repo: HistoryRepository,
-        llm_service: LLMService
+        llm_service: LLMService,
+        glossary_repo: Optional[Any] = None,
     ):
         """
         Initialize query service.
@@ -34,7 +40,40 @@ class QueryService:
         self.pool = connection_pool
         self.history_repo = history_repo
         self.llm_service = llm_service
+        self.glossary_repo = glossary_repo
         self.validator = SQLValidator()
+
+    async def _guidance(self, question: str, database_id: str) -> Dict[str, Any]:
+        """Bookmarked examples and glossary terms relevant to the question.
+        Guidance is a bonus: failing to load it must never block a question."""
+        examples: List[Any] = []
+        terms: List[Any] = []
+        try:
+            saved = await self.history_repo.get_all(
+                database_id=database_id, status="success", bookmarked=True, limit=50
+            )
+            examples = pick_examples(
+                question, [{"question": h.question, "sql": h.generated_sql} for h in saved], k=3
+            )
+        except Exception:
+            pass
+        try:
+            if self.glossary_repo is not None:
+                rows = await self.glossary_repo.list_all()
+                terms = pick_terms(question, [{"term": r.term, "definition": r.definition} for r in rows])
+        except Exception:
+            pass
+        return {"examples": examples, "terms": terms}
+
+    async def _dry_run(self, database_id: str, sql: str) -> Optional[str]:
+        """The database's complaint about `sql`, or None if it plans cleanly.
+        EXPLAIN without ANALYZE plans the query without running it."""
+        try:
+            await self.pool.execute_query(database_id, f"EXPLAIN {sql}")
+            return None
+        except Exception as exc:
+            # The driver wraps the server message; the last line is the useful part.
+            return str(exc).strip().splitlines()[0][:400]
 
     async def generate_sql(
         self,
@@ -54,25 +93,43 @@ class QueryService:
         Returns:
             Dict with generated SQL and validation results
         """
-        # Generate SQL using LLM
-        llm_result = await self.llm_service.generate_sql(
-            question=question,
-            connection_pool=self.pool,
-            database_id=database_id,
-            context=context,
-            excluded_tables=excluded_tables,
-        )
+        guidance = await self._guidance(question, database_id)
+        base_context = build_context(context, guidance["examples"], guidance["terms"])
 
-        sql = llm_result["sql"]
+        # Generate, then check the SQL plans cleanly; if it does not, hand the
+        # database's error back to the model, up to MAX_RETRIES times.
+        attempt_context = base_context
+        attempts = 0
+        db_error: Optional[str] = None
+        while True:
+            attempts += 1
+            llm_result = await self.llm_service.generate_sql(
+                question=question,
+                connection_pool=self.pool,
+                database_id=database_id,
+                context=attempt_context,
+                excluded_tables=excluded_tables,
+            )
+            sql = llm_result["sql"]
+            validation = self.validator.validate(sql)
 
-        # Validate SQL
-        validation = self.validator.validate(sql)
+            if not validation["is_safe"]:
+                sql_with_limit = sql
+                break
 
-        # Enforce LIMIT
-        if validation["is_safe"]:
             sql_with_limit = self.validator.enforce_limit(sql, settings.QUERY_RESULT_LIMIT)
-        else:
-            sql_with_limit = sql
+            db_error = await self._dry_run(database_id, sql_with_limit)
+            if db_error is None or attempts > MAX_RETRIES:
+                break
+            attempt_context = "\n\n".join(
+                p for p in (base_context, retry_context(sql, db_error)) if p
+            )
+
+        if db_error is not None:
+            validation = dict(validation)
+            validation["warnings"] = list(validation.get("warnings", [])) + [
+                f"이 SQL은 실행 전 검사에서 오류가 났습니다: {db_error}"
+            ]
 
         return {
             "question": question,
@@ -80,7 +137,11 @@ class QueryService:
             "original_sql": sql,
             "validation": validation,
             "llm_provider": llm_result["provider"],
-            "llm_model": llm_result["model"]
+            "llm_model": llm_result["model"],
+            # How the answer was reached: retries, and what guided the model.
+            "attempts": attempts,
+            "examples_used": len(guidance["examples"]),
+            "terms_used": [t["term"] for t in guidance["terms"]],
         }
 
     async def validate_sql(self, sql: str) -> Dict[str, Any]:

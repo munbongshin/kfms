@@ -11,6 +11,7 @@ from app.dependencies import get_db, get_db_pool
 from app.db.connection_pool import DatabaseConnectionPool
 from app.db.repositories.history import HistoryRepository
 from app.db.repositories.database_repo import DatabaseRepository
+from app.db.repositories.glossary import GlossaryRepository
 from app.services.llm_service import get_llm_service
 from app.api.v1.llm_settings import current_llm_config
 from app.llm.settings_resolver import LLMConfig
@@ -74,7 +75,8 @@ def get_query_service(
     return QueryService(
         connection_pool=pool,
         history_repo=history_repo,
-        llm_service=llm_service
+        llm_service=llm_service,
+        glossary_repo=GlossaryRepository(db),
     )
 
 

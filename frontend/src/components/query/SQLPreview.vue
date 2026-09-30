@@ -39,6 +39,7 @@
           </el-button>
         </div>
         <pre class="sql-code">{{ queryStore.generatedSQL }}</pre>
+        <div v-if="guidance.length" class="guidance">{{ guidance.join(' · ') }}</div>
       </div>
 
       <!-- Question Display -->
@@ -64,11 +65,23 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { CopyDocument, CaretRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useQueryStore } from '../../stores/query'
 
 const queryStore = useQueryStore()
+
+/** What shaped this SQL, so a surprising answer can be explained. */
+const guidance = computed(() => {
+  const g = queryStore.generationInfo
+  if (!g) return []
+  const parts: string[] = []
+  if (g.attempts > 1) parts.push(`오류를 고치며 ${g.attempts}번 만에 생성`)
+  if (g.examples_used) parts.push(`북마크 예시 ${g.examples_used}개 참고`)
+  if (g.terms_used.length) parts.push(`용어 적용: ${g.terms_used.join(', ')}`)
+  return parts
+})
 
 async function handleExecute() {
   try {
@@ -91,6 +104,14 @@ function copySQLToClipboard() {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.guidance {
+  padding: 6px 12px;
+  border-top: 1px solid #ebeef5;
+  background: #f7f9fc;
+  font-size: 12px;
+  color: #6b7686;
 }
 
 .sql-container {

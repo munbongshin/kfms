@@ -220,10 +220,11 @@
         <table class="grid-table">
           <thead><tr><th>DB</th><th>테이블</th><th>내용</th></tr></thead>
           <tbody>
-            <tr><td rowspan="5"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
+            <tr><td rowspan="6"><b>kfms</b><br /><small>운영 정보</small></td><td><code>database_connections</code></td><td>조회 대상 DB 접속 정보 (비밀번호는 암호화 저장)</td></tr>
             <tr><td><code>query_history</code></td><td>질문·SQL·결과·북마크</td></tr>
             <tr><td><code>excel_uploads</code></td><td>올린 엑셀 파일과 만든 임시 테이블 목록</td></tr>
             <tr><td><code>anomaly_review</code></td><td>이상거래 검토 판정(확인함·정상)</td></tr>
+            <tr><td><code>glossary_terms</code></td><td>업무 용어집 (용어와 뜻)</td></tr>
             <tr><td><code>llm_settings</code></td><td>설정 화면에서 고른 LLM 플랫폼과 플랫폼별 주소·모델·API 키(암호화)</td></tr>
             <tr><td rowspan="3"><b>retail</b><br /><small>조회 대상</small></td><td><code>card_data</code> + 뷰 5개</td><td>법인카드 데이터 (승인·매입·청구·카드정보·사용부서)</td></tr>
             <tr><td><code>retail_sales</code></td><td>소매 판매 예제 데이터</td></tr>
@@ -540,6 +541,22 @@ LIMIT 1000</pre>
           누르면 AI를 거치지 않고 저장된 SQL을 바로 실행하므로 빠르고 결과가 항상 같습니다.
         </p>
 
+        <h3>SQL이 더 정확해지는 방법</h3>
+        <ul>
+          <li>
+            <strong>오류 자동 수정</strong> — 만들어진 SQL을 실행하기 전에 DB에서 먼저 검사하고, 오류(없는 컬럼 등)가 나면
+            그 오류 메시지를 LLM에 돌려주어 최대 2번까지 고쳐 쓰게 합니다. SQL 확인 창 아래에 "오류를 고치며 2번 만에 생성"처럼 표시됩니다.
+          </li>
+          <li>
+            <strong>북마크 예시 학습</strong> — ★로 저장한 질문 중 지금 질문과 비슷한 것(최대 3개)을 정답 예시로 함께 보냅니다.
+            잘 나온 질문은 ★를 눌러 두면 다음부터 비슷한 질문이 더 정확해집니다.
+          </li>
+          <li>
+            <strong>업무 용어집</strong> — 설정 화면에서 "고액 = 한 건 50만원 이상"처럼 용어를 등록하면, 질문에 그 용어가 있을 때
+            뜻을 함께 보내 항상 같은 조건으로 해석합니다.
+          </li>
+        </ul>
+
         <h3>테이블 바로 보기</h3>
         <ul>
           <li>트리에서 테이블 이름을 <strong>더블클릭</strong>하면 테이블 내용이 표로 열립니다.</li>
@@ -639,6 +656,11 @@ LIMIT 1000</pre>
           <li><em>연결 테스트</em>로 서버가 응답하는지, 고른 모델이 서버에 있는지 확인합니다. 저장하지 않은 입력값으로 시험합니다.</li>
           <li><em>저장</em>하면 다음 질문부터 바로 적용됩니다. 서버를 다시 시작할 필요가 없습니다.</li>
         </ol>
+        <h3>업무 용어집</h3>
+        <p>
+          같은 화면 아래쪽에서 업무 용어와 뜻을 등록합니다. 예: <b>고액</b> = 한 건 결제금액이 50만원 이상.
+          질문에 등록된 용어가 있으면 그 뜻이 LLM에 함께 전달되어 SQL 조건이 일정해집니다. 수정·삭제도 같은 곳에서 합니다.
+        </p>
         <div class="note">
           플랫폼마다 설정이 따로 저장되어 바꿔 가며 쓸 수 있습니다. API 키는 암호화되어 저장되고
           화면에는 끝 4자리만 표시되며, 키 칸을 비워 두고 저장하면 기존 키가 유지됩니다.

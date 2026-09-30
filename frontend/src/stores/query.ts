@@ -36,6 +36,8 @@ export const useQueryStore = defineStore('query', () => {
   const queryResults = ref<QueryResult | null>(null)
   const loading = ref(false)
   const showSQLPreview = ref(false)
+  // How the SQL was reached: retries after a database error, and what guided it.
+  const generationInfo = ref<{ attempts: number; examples_used: number; terms_used: string[] } | null>(null)
   const showValidationDialog = ref(false)
 
   // Temporary storage for execution
@@ -59,6 +61,11 @@ export const useQueryStore = defineStore('query', () => {
 
       generatedSQL.value = result.sql
       validationResult.value = result.validation
+      generationInfo.value = {
+        attempts: result.attempts ?? 1,
+        examples_used: result.examples_used ?? 0,
+        terms_used: result.terms_used ?? [],
+      }
 
       // Store for later execution
       pendingExecution.value = {
@@ -318,6 +325,7 @@ export const useQueryStore = defineStore('query', () => {
     queryResults,
     loading,
     showSQLPreview,
+    generationInfo,
     showValidationDialog,
     pendingExecution,
     preview,
