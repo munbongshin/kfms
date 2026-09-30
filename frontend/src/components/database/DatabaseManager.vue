@@ -31,8 +31,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="Actions" width="250" fixed="right">
+        <el-table-column label="Actions" width="340" fixed="right">
           <template #default="{ row }">
+            <el-button size="small" @click="openTargets(row)">
+              분석 대상
+            </el-button>
             <el-button size="small" @click="openEdit(row)">
               <el-icon><Edit /></el-icon>
               수정
@@ -55,6 +58,8 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <AnalysisTargetsDialog v-model="showTargets" :connection="targetsFor" />
 
     <!-- Create / Edit Connection Dialog -->
     <el-dialog
@@ -109,6 +114,7 @@
 import { ref } from 'vue'
 import { Plus, Connection, Delete, Edit } from '@element-plus/icons-vue'
 import { useDatabaseStore } from '../../stores/database'
+import AnalysisTargetsDialog from './AnalysisTargetsDialog.vue'
 import type {
   DatabaseConnection,
   DatabaseConnectionCreate,
@@ -118,6 +124,13 @@ import type {
 const databaseStore = useDatabaseStore()
 
 const showCreateDialog = ref(false)
+const showTargets = ref(false)
+const targetsFor = ref<DatabaseConnection | null>(null)
+
+function openTargets(row: DatabaseConnection) {
+  targetsFor.value = row
+  showTargets.value = true
+}
 // The connection being edited; null while adding a new one.
 const editingId = ref<number | null>(null)
 let original: DatabaseConnection | null = null

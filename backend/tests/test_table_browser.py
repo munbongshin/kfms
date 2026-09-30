@@ -135,3 +135,10 @@ def test_selecting_everything_uses_a_star_so_the_query_stays_readable():
 def test_naming_a_subset_still_lists_the_columns():
     sql, _ = build_rows_query(SCHEMA, "v_approval", ["seq", "cardno"], None, False, 100, 0)
     assert 'SELECT "seq", "cardno" FROM' in sql
+
+
+def test_a_table_in_another_schema_is_qualified():
+    schema = {"cats.approval": ["seq", "amount"]}
+    sql, _ = build_rows_query(schema, "cats.approval", [], None, False, 10, 0)
+    assert 'FROM "cats"."approval"' in sql
+    assert build_count_query(schema, "cats.approval") == 'SELECT COUNT(*) AS total FROM "cats"."approval"'

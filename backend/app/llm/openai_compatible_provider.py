@@ -72,9 +72,10 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         self,
         question: str,
         schema: Dict[str, List[Dict[str, Any]]],
-        context: str = ""
+        context: str = "",
+        table_comments: Optional[Dict[str, str]] = None,
     ) -> str:
-        schema_context = self.format_schema_context(schema)
+        schema_context = self.format_schema_context(schema, table_comments)
 
         system_prompt = f"""You are a PostgreSQL expert. Generate SQL queries based on natural language questions.
 

@@ -36,7 +36,15 @@
       <aside v-if="showTree && !collapsed" class="tree-panel">
         <div class="panel-head">
           <span>테이블</span>
-          <button class="panel-close" title="테이블 목록 접기" @click="toggle">«</button>
+          <span class="panel-actions">
+            <button
+              class="panel-close"
+              title="데이터베이스에서 테이블 목록을 다시 읽습니다"
+              :disabled="refreshing || !databaseStore.activeConnectionId"
+              @click="refreshTables"
+            >⟳</button>
+            <button class="panel-close" title="테이블 목록 접기" @click="toggle">«</button>
+          </span>
         </div>
         <div class="tree-area">
           <SchemaTree />
@@ -84,6 +92,22 @@ watch(collapsed, (v) => localStorage.setItem(STORAGE_KEY, String(v)))
 
 function toggle() {
   collapsed.value = !collapsed.value
+}
+
+const refreshing = ref(false)
+
+/** New tables or changed descriptions show up without waiting for the cache. */
+async function refreshTables() {
+  const id = databaseStore.activeConnectionId
+  if (!id) return
+  refreshing.value = true
+  try {
+    await databaseStore.refreshSchema(id)
+  } catch {
+    // The tree shows its own retry message.
+  } finally {
+    refreshing.value = false
+  }
 }
 
 /** Clicking the query tab while on it folds or unfolds its table panel. */
@@ -176,6 +200,16 @@ function onReselect(name: string) {
   color: #8a94a3;
   font-size: 14px;
   cursor: pointer;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.panel-close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .panel-close:hover {

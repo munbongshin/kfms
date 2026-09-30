@@ -238,6 +238,7 @@ async def test_connection(
 @router.get("/{connection_id}/schema")
 async def get_schema(
     connection_id: int,
+    refresh: bool = False,
     db: AsyncSession = Depends(get_db),
     pool: DatabaseConnectionPool = Depends(get_db_pool)
 ):
@@ -271,17 +272,61 @@ async def get_schema(
         )
 
     try:
-        schema = await pool.get_schema(str(connection_id))
+        tables, schema = await pool.get_catalog(str(connection_id), refresh=refresh)
+        excluded = set(db_conn.excluded_tables or [])
         return {
             "connection_id": connection_id,
             "connection_name": db_conn.name,
-            "schema": schema
+            "schema": schema,
+            # Kind, description and whether each table is analysed.
+            "tables": {
+                key: {**info, "excluded": key in excluded, "column_count": len(schema.get(key, []))}
+                for key, info in tables.items()
+            },
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch schema: {str(e)}"
         )
+
+
+class AnalysisTargets(BaseModel):
+    """Tables to leave out of analysis; every other table is analysed."""
+    excluded: List[str]
+
+
+@router.put("/{connection_id}/excluded-tables")
+async def set_excluded_tables(
+    connection_id: int,
+    targets: AnalysisTargets,
+    db: AsyncSession = Depends(get_db),
+    pool: DatabaseConnectionPool = Depends(get_db_pool)
+):
+    """Choose which tables text-to-SQL may use. Stored per connection."""
+    repo = DatabaseRepository(db)
+    db_conn = await repo.get_by_id(connection_id)
+    if not db_conn:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Connection {connection_id} not found")
+
+    tables = await pool.get_tables(str(connection_id))
+    unknown = [t for t in targets.excluded if t not in tables]
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"없는 테이블입니다: {', '.join(unknown)}",
+        )
+    if tables and len(set(targets.excluded)) >= len(tables):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="분석 대상 테이블을 하나 이상 남겨 두세요",
+        )
+
+    # Keep the catalog's order so the stored list reads like the table list.
+    wanted = set(targets.excluded)
+    excluded = [t for t in tables if t in wanted]
+    await repo.update_connection(connection_id, excluded_tables=excluded)
+    return {"excluded": excluded, "analysed": len(tables) - len(excluded), "total": len(tables)}
 
 
 @router.get("/{connection_id}/tables/{table}/rows")

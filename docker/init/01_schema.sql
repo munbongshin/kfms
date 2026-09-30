@@ -54,6 +54,7 @@ CREATE TABLE database_connections (
     password VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT true,
     is_read_only BOOLEAN DEFAULT true,
+    excluded_tables JSON NOT NULL DEFAULT '[]',  -- tables left out of analysis
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

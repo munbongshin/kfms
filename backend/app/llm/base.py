@@ -45,7 +45,8 @@ class BaseLLMProvider(ABC):
         self,
         question: str,
         schema: Dict[str, List[Dict[str, Any]]],
-        context: str = ""
+        context: str = "",
+        table_comments: Optional[Dict[str, str]] = None,
     ) -> str:
         """
         Generate SQL query from natural language question.
@@ -102,12 +103,17 @@ class BaseLLMProvider(ABC):
         """
         pass
 
-    def format_schema_context(self, schema: Dict[str, List[Dict[str, Any]]]) -> str:
+    def format_schema_context(
+        self,
+        schema: Dict[str, List[Dict[str, Any]]],
+        table_comments: Optional[Dict[str, str]] = None,
+    ) -> str:
         """
         Format database schema into a readable string for prompts.
 
         Args:
             schema: Database schema (table name -> columns)
+            table_comments: Table descriptions (COMMENT ON TABLE), by table name
 
         Returns:
             Formatted schema as string
@@ -117,7 +123,9 @@ class BaseLLMProvider(ABC):
 
         schema_lines = []
         for table_name, columns in schema.items():
-            schema_lines.append(f"\nTable: {table_name}")
+            # The table's description lets "승인내역" in a question find v_approval.
+            described = (table_comments or {}).get(table_name)
+            schema_lines.append(f"\nTable: {table_name}" + (f" -- {described}" if described else ""))
             schema_lines.append("Columns:")
             for col in columns:
                 nullable = "NULL" if col.get("nullable", True) else "NOT NULL"

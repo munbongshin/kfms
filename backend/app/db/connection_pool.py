@@ -13,7 +13,15 @@ from uuid import UUID
 import asyncio
 
 from app.config import settings
-from app.db.column_display_names import DISPLAY_NAMES
+from app.db.catalog import (  # noqa: F401 — re-exported for callers and tests
+    CATALOG_SQL,
+    DEPENDENCY_SQL,
+    Catalog,
+    SchemaCache,
+    add_display_labels,
+    borrow_missing_comments,
+    build_catalog,
+)
 
 
 def _json_safe(value: Any) -> Any:
@@ -27,35 +35,6 @@ def _json_safe(value: Any) -> Any:
     return value
 
 
-def borrow_missing_comments(schema: Dict[str, List[Dict[str, Any]]]) -> None:
-    """Give uncommented columns the comment a same-named column has elsewhere.
-
-    PostgreSQL does not copy comments onto view columns, and the card views are
-    plain SELECTs over card_data, so their columns would otherwise have no
-    label. A column's own comment always wins.
-    """
-    known: Dict[str, str] = {}
-    for columns in schema.values():
-        for column in columns:
-            comment = (column.get("comment") or "").strip()
-            if comment:
-                known.setdefault(column["name"], comment)
-
-    for columns in schema.values():
-        for column in columns:
-            if not (column.get("comment") or "").strip():
-                column["comment"] = known.get(column["name"])
-
-
-def add_display_labels(schema: Dict[str, List[Dict[str, Any]]]) -> None:
-    """Set each column's on-screen `label`: a short display name if one is
-    defined, else the comment. The comment itself is left whole for the prompt.
-    """
-    for columns in schema.values():
-        for column in columns:
-            column["label"] = DISPLAY_NAMES.get(column["name"]) or column.get("comment")
-
-
 class DatabaseConnectionPool:
     """
     Manages multiple PostgreSQL database connections with connection pooling.
@@ -65,6 +44,9 @@ class DatabaseConnectionPool:
     def __init__(self):
         self._engines: Dict[str, AsyncEngine] = {}
         self._lock = asyncio.Lock()
+        # Catalogs are read in one query and kept a few minutes, so a question
+        # does not re-read every table's columns.
+        self._catalogs = SchemaCache(ttl_seconds=300)
 
     async def add_connection(
         self,
@@ -120,6 +102,7 @@ class DatabaseConnectionPool:
             )
 
             self._engines[connection_id] = engine
+            self._catalogs.invalidate(connection_id)
 
     async def remove_connection(self, connection_id: str) -> None:
         """
@@ -130,6 +113,7 @@ class DatabaseConnectionPool:
         """
         async with self._lock:
             engine = self._engines.pop(connection_id, None)
+            self._catalogs.invalidate(connection_id)
             if engine:
                 await engine.dispose()
 
@@ -166,6 +150,20 @@ class DatabaseConnectionPool:
         async with engine.begin() as conn:
             yield conn
 
+    @asynccontextmanager
+    async def get_write_connection(self, connection_id: str):
+        """A connection whose one transaction may write, even on a read-only
+        connection.
+
+        Only for server-built statements that manage KFMS's own tables (Excel
+        uploads). Read-only connections open every session with
+        default_transaction_read_only; SET TRANSACTION READ WRITE lifts that for
+        this transaction alone, so SQL from questions stays read-only.
+        """
+        async with self.get_connection(connection_id) as conn:
+            await conn.execute(text("SET TRANSACTION READ WRITE"))
+            yield conn
+
     async def test_connection(self, connection_id: str) -> Dict[str, Any]:
         """
         Test if a database connection is working.
@@ -197,68 +195,42 @@ class DatabaseConnectionPool:
                 "error": str(e)
             }
 
-    async def get_schema(self, connection_id: str) -> Dict[str, List[Dict[str, Any]]]:
-        """
-        Get database schema information (tables and columns).
+    async def get_catalog(self, connection_id: str, refresh: bool = False) -> Catalog:
+        """Tables (with kind and description) and their columns, cached.
 
         Args:
             connection_id: Connection identifier
-
-        Returns:
-            Dict mapping table names to column information
+            refresh: Read the catalog again instead of using the cached copy
 
         Raises:
             ValueError: If connection_id doesn't exist
         """
-        schema_info = {}
+        if not refresh:
+            cached = self._catalogs.get(connection_id)
+            if cached is not None:
+                return cached
 
         async with self.get_connection(connection_id) as conn:
-            # Get all tables in public schema
-            result = await conn.execute(text("""
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema = 'public'
-                AND table_type IN ('BASE TABLE', 'VIEW')
-                ORDER BY table_name
-            """))
+            result = await conn.execute(text(CATALOG_SQL))
+            rows = [dict(r._mapping) for r in result]
+            result = await conn.execute(text(DEPENDENCY_SQL))
+            dependencies = [dict(r._mapping) for r in result]
 
-            tables = [row[0] for row in result]
+        catalog = build_catalog(rows, dependencies)
+        self._catalogs.put(connection_id, catalog)
+        return catalog
 
-            # Get columns for each table
-            for table in tables:
-                result = await conn.execute(text(f"""
-                    SELECT
-                        column_name,
-                        data_type,
-                        is_nullable,
-                        column_default,
-                        col_description(
-                            format('%I.%I', table_schema, table_name)::regclass,
-                            ordinal_position
-                        )
-                    FROM information_schema.columns
-                    WHERE table_schema = 'public'
-                    AND table_name = :table_name
-                    ORDER BY ordinal_position
-                """), {"table_name": table})
+    async def get_schema(self, connection_id: str, refresh: bool = False) -> Dict[str, List[Dict[str, Any]]]:
+        """Table name -> columns, for every table and view the connection can read."""
+        return (await self.get_catalog(connection_id, refresh))[1]
 
-                columns = [
-                    {
-                        "name": row[0],
-                        "type": row[1],
-                        "nullable": row[2] == "YES",
-                        "default": row[3],
-                        # The business name (COMMENT ON COLUMN), e.g. 카드번호.
-                        "comment": row[4]
-                    }
-                    for row in result
-                ]
+    async def get_tables(self, connection_id: str, refresh: bool = False) -> Dict[str, Dict[str, Any]]:
+        """Table name -> schema, kind (table/view/...) and description."""
+        return (await self.get_catalog(connection_id, refresh))[0]
 
-                schema_info[table] = columns
-
-        borrow_missing_comments(schema_info)
-        add_display_labels(schema_info)
-        return schema_info
+    def invalidate_schema(self, connection_id: str) -> None:
+        """Forget the cached catalog, e.g. after tables were created or dropped."""
+        self._catalogs.invalidate(connection_id)
 
     async def execute_query(
         self,

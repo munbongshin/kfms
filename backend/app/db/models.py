@@ -81,6 +81,15 @@ class DatabaseConnection(Base):
         nullable=False,
         comment="Enforce read-only mode (SELECT only)"
     )
+    # Tables left out of analysis. An exclusion list rather than an inclusion
+    # list, so a table that appears later (an Excel upload) is analysed at once.
+    excluded_tables: Mapped[list] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+        server_default="[]",
+        comment="Tables excluded from text-to-SQL analysis"
+    )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=False,

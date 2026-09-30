@@ -1,7 +1,7 @@
 <template>
   <div class="help-view">
     <nav class="toc">
-      <div class="toc-title">도움말<small>2026-09-28 기준</small></div>
+      <div class="toc-title">도움말<small>2026-09-29 기준</small></div>
       <a
         v-for="s in sections"
         :key="s.id"
@@ -80,6 +80,8 @@
                 <strong>질의 화면에서만</strong> 표시됩니다. 연결을 펼치면 테이블이, 테이블을 펼치면
                 컬럼이 나옵니다. 컬럼은 <strong>한글명</strong>(예: 카드번호) 옆에 실제 컬럼명(cardno)과
                 형식이 작게 표시되고, 위 검색창에 한글명이나 컬럼명 어느 쪽을 넣어도 찾습니다.
+                테이블 옆에는 테이블 설명(예: 승인내역 테이블)이 보이고, 분석에서 뺀 테이블은 흐리게
+                <em>분석 제외</em>로 표시됩니다. 패널 위 ⟳는 데이터베이스에서 테이블 목록을 다시 읽습니다.
               </td>
             </tr>
             <tr><th>④ 접기</th><td>테이블 패널 위의 «를 누르거나, 질의 화면에서 <em>질의</em> 탭을 한 번 더 누르면 패널을 접고 펼칩니다. 접은 상태는 다음에도 유지됩니다.</td></tr>
@@ -210,7 +212,7 @@
           </div>
           <div class="layer">
             <b>데이터 접근</b>
-            <span>연결 풀(조회 대상 DB), 저장소(repositories), 테이블 모델(models)</span>
+            <span>연결 풀(조회 대상 DB), 메타정보 카탈로그(catalog), 저장소(repositories), 테이블 모델(models)</span>
           </div>
         </div>
 
@@ -225,7 +227,7 @@
             <tr><td><code>llm_settings</code></td><td>설정 화면에서 고른 LLM 플랫폼과 플랫폼별 주소·모델·API 키(암호화)</td></tr>
             <tr><td rowspan="3"><b>retail</b><br /><small>조회 대상</small></td><td><code>card_data</code> + 뷰 5개</td><td>법인카드 데이터 (승인·매입·청구·카드정보·사용부서)</td></tr>
             <tr><td><code>retail_sales</code></td><td>소매 판매 예제 데이터</td></tr>
-            <tr><td>엑셀 임시 테이블</td><td>엑셀 올리기로 만든 테이블</td></tr>
+            <tr><td><code>kfms_upload.*</code></td><td>엑셀 올리기로 만든 테이블 (전용 스키마)</td></tr>
           </tbody>
         </table>
         <div class="note">
@@ -328,10 +330,10 @@
               <text x="857" y="126" class="s">retail_sales · 엑셀 테이블</text>
               <line x1="775" y1="146" x2="940" y2="146" />
               <text x="857" y="170" class="t sm">시스템 카탈로그</text>
-              <text x="857" y="192" class="s">information_schema</text>
-              <text x="857" y="210" class="s">테이블 · 컬럼 · 형식</text>
-              <text x="857" y="236" class="s">COMMENT ON COLUMN</text>
-              <text x="857" y="254" class="s">컬럼 한글명</text>
+              <text x="857" y="192" class="s">pg_catalog · 모든 스키마</text>
+              <text x="857" y="210" class="s">테이블 · 뷰 · 컬럼 · 형식</text>
+              <text x="857" y="236" class="s">COMMENT ON TABLE/COLUMN</text>
+              <text x="857" y="254" class="s">테이블 설명 · 컬럼 한글명</text>
               <line x1="775" y1="276" x2="940" y2="276" />
               <text x="857" y="300" class="t sm">데이터</text>
               <text x="857" y="322" class="s">실제 거래 · 매출 행</text>
@@ -390,7 +392,7 @@
             </g>
           </svg>
           <figcaption>
-            ① 질문 전송 → ② DBMS에서 테이블·컬럼 구조와 한글명(COMMENT)을 읽음→
+            ① 질문 전송 → ② DBMS에서 테이블·컬럼 구조와 설명·한글명(COMMENT)을 읽음(5분간 재사용) →
             ③ 스키마·규칙·질문으로 프롬프트를 만들어 LLM에 보냄 → ④ LLM이 SQL을 돌려줌
             (SELECT만 허용, 최대 1,000행으로 제한해 검증) → ⑤ 화면에 SQL 표시 →
             ⑥ 사용자가 확인하고 실행 → ⑦ DBMS에서 읽기 전용으로 실행 →
@@ -401,9 +403,9 @@
         <div class="note">
           LLM에는 <strong>스키마(테이블·컬럼 이름, 형식, 한글명)와 질문만</strong> 전달됩니다.
           실제 거래 데이터 값은 LLM으로 보내지 않고, SQL 실행은 항상 API 서버가
-          DBMS에 직접 합니다. 연결의 모든 테이블을 보내고 LLM이 알맞은 테이블을 고르되,
-          통합 테이블 <code>card_data</code>는 다섯 뷰가 모든 컬럼을 이미 담고 있어 프롬프트에서
-          자동으로 뺍니다. 프롬프트가 3분의 1가량 줄고 결과 SQL은 같습니다.
+          DBMS에 직접 합니다. <strong>분석 대상</strong>으로 남긴 테이블을 설명과 함께 보내고 LLM이
+          알맞은 테이블을 고릅니다. 어떤 테이블을 보낼지는 코드가 아니라 연결마다 저장한
+          분석 대상 설정으로만 정해집니다.
         </div>
 
         <h3>예시로 보는 변환 과정</h3>
@@ -467,9 +469,10 @@ LIMIT 1000</pre>
 
         <h3>보안·안전 설계</h3>
         <ul>
-          <li><strong>이중 읽기 전용</strong> — SQL 검증기가 SELECT 외 명령을 막고, DB 세션 자체도 읽기 전용(<code>default_transaction_read_only</code>)으로 엽니다.</li>
+          <li><strong>이중 읽기 전용</strong> — SQL 검증기가 SELECT 외 명령을 막고, DB 세션 자체도 읽기 전용(<code>default_transaction_read_only</code>)으로 엽니다. 예외는 서버가 직접 만드는 엑셀 업로드·삭제 작업뿐이며, 그 트랜잭션만 쓰기 가능으로 엽니다.</li>
           <li><strong>결과 제한</strong> — 한 번에 최대 1,000행까지만 돌려줍니다.</li>
           <li><strong>이름 검증</strong> — 테이블 바로 보기의 테이블·컬럼 이름은 실제 스키마에 있는지 확인한 뒤에만 SQL에 넣습니다.</li>
+          <li><strong>권한 범위</strong> — 메타정보는 연결 계정이 읽을 수 있는(SELECT 권한이 있는) 테이블만 가져옵니다.</li>
           <li><strong>비밀 정보 암호화</strong> — 조회 대상 DB 비밀번호와 LLM API 키는 암호화(Fernet)해 저장하고, 화면으로는 다시 보내지 않습니다.</li>
           <li><strong>DB 분리·차단</strong> — 운영 정보(kfms)와 조회 대상(retail)을 서로 다른 DB로 나누고, 운영 정보 DB는 조회 대상으로 등록할 수 없게 막습니다.</li>
           <li><strong>LLM에 데이터 미전송</strong> — LLM에는 스키마와 질문만 보내고 실제 데이터 값은 보내지 않습니다.</li>
@@ -570,9 +573,45 @@ LIMIT 1000</pre>
           <li>KFMS 운영 정보 DB(kfms)는 접속 정보가 들어 있어 조회 대상으로 등록하거나 바꿀 수 없습니다.</li>
           <li>Active가 켜진 연결만 왼쪽 트리에 나타납니다.</li>
         </ul>
+        <h3>분석 대상 테이블</h3>
+        <ul>
+          <li>
+            연결마다 <em>분석 대상</em>을 누르면 그 DB의 모든 테이블·뷰·구체화 뷰·외부 테이블이 종류, 설명,
+            컬럼 수와 함께 나옵니다. <code>public</code> 밖의 스키마는 <code>스키마.테이블</code>로 표시됩니다.
+          </li>
+          <li>
+            <strong>체크한 테이블만 질문(Text-to-SQL)에 쓰입니다.</strong> 체크를 푼 테이블은 LLM에 보내지 않지만
+            질의 화면의 테이블 목록과 미리보기에는 남습니다. 모두 해제할 수는 없습니다.
+          </li>
+          <li>새로 생긴 테이블(엑셀 업로드 등)은 자동으로 분석 대상이 됩니다. 설정은 모든 사용자에게 적용됩니다.</li>
+          <li>
+            <strong>뷰로 대체 가능 · 제외 권장</strong> — DB의 뷰 정의를 분석해, 분석 대상인 뷰들이 어떤 테이블의
+            모든 컬럼을 이미 참조하면 그 테이블에 이 표시를 붙입니다. 예를 들어 <code>card_data</code>는 다섯 뷰
+            (<code>v_approval</code> 등)가 157개 컬럼을 모두 참조하므로 표시됩니다. 제외하면 LLM에 보내는 내용이
+            3분의 1가량 줄어 조금 빨라지지만, 통합 테이블을 직접 분석하거나 직접 만든 뷰의 원본으로 쓰려면
+            그대로 두세요. 권장일 뿐 자동으로 빼지는 않습니다. 뷰를 새로 만들거나 분석 대상에서 빼면 표시가 다시 계산됩니다.
+          </li>
+        </ul>
         <h3>엑셀 파일 올리기</h3>
         <ul>
-          <li>엑셀 파일을 올리면 임시 테이블로 만들어져 질문 대상이 됩니다.</li>
+          <li>
+            엑셀 파일을 올리면 대상 DB의 전용 스키마 <code>kfms_upload</code>에 테이블로 만들어져 바로 질문
+            대상이 됩니다. 원본 데이터(public)와 섞이지 않고, 같은 DB라 <code>card_data</code> 등과 함께 질문할 수 있습니다.
+          </li>
+          <li>
+            읽기 전용 연결에도 올릴 수 있습니다. 업로드와 삭제 때만 그 작업을 쓰기 가능으로 열고, 질문으로 만든 SQL은
+            계속 읽기 전용입니다. 연결 계정에 스키마·테이블 생성 권한이 있어야 합니다.
+          </li>
+          <li>엑셀 머리글은 한글·공백·괄호가 있어도 그대로 컬럼명이 됩니다.</li>
+          <li>
+            <strong>테이블 이름은 파일명</strong>으로 정해집니다. 파일을 고르면 '테이블 이름' 칸에 채워지고 바꿀 수 있습니다.
+            공백·기호는 <code>_</code>로 바뀌고, 영문은 소문자가 되며, 숫자로 시작하면 앞에 <code>t_</code>가 붙습니다.
+            예: <code>2024 제재 현황(최종).xlsx</code> → <code>kfms_upload.t_2024_제재_현황_최종</code>
+          </li>
+          <li>
+            같은 이름의 테이블이 이미 있으면(업로드 스키마나 원본 테이블) 빨갛게 표시되고 업로드 버튼이 꺼집니다.
+            다른 이름을 입력하면 바로 다시 확인합니다.
+          </li>
           <li>
             임시 테이블은 올린 뒤 <strong>24시간이 지나면 만료</strong>됩니다. 목록의 Expires에서
             만료 시각을 확인하세요. 만료된 테이블을 지우는 작업은 아직 자동으로 돌지 않으니,
@@ -675,6 +714,12 @@ LIMIT 1000</pre>
         <dl class="faq">
           <dt>버튼이 눌리지 않아요.</dt>
           <dd>상단 바의 연결 선택에서 데이터베이스를 먼저 고르세요. 연결이 선택되지 않으면 질문·점검 버튼이 꺼져 있습니다.</dd>
+
+          <dt>새로 만든 테이블이나 바꾼 설명이 안 보여요.</dt>
+          <dd>
+            테이블 정보는 5분간 재사용됩니다. 질의 화면 테이블 패널 위의 ⟳ 또는 분석 대상 창의
+            <em>새로고침</em>을 누르면 바로 다시 읽습니다. 엑셀을 올리거나 지우면 자동으로 다시 읽습니다.
+          </dd>
 
           <dt>트리에 "스키마를 불러올 수 없습니다"가 나와요.</dt>
           <dd>

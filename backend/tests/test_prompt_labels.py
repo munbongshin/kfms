@@ -7,9 +7,9 @@ give computed columns a Korean alias instead of PostgreSQL's bare "sum".
 from app.llm.base import SQL_RULES, BaseLLMProvider
 
 
-def format_schema(schema):
+def format_schema(schema, table_comments=None):
     # format_schema_context uses no instance state; skip the abstract class.
-    return BaseLLMProvider.format_schema_context(None, schema)
+    return BaseLLMProvider.format_schema_context(None, schema, table_comments)
 
 
 def col(name, comment=None):
@@ -44,3 +44,14 @@ def test_the_rules_ask_for_korean_aliases_on_computed_columns():
 
 def test_the_rules_keep_the_read_only_guard():
     assert "SELECT" in SQL_RULES
+
+
+def test_a_table_description_reaches_the_prompt():
+    # "승인내역" in a question should find v_approval by its description.
+    text = format_schema({"v_approval": [col("appramt")]}, {"v_approval": "승인내역 테이블"})
+    assert "Table: v_approval -- 승인내역 테이블" in text
+
+
+def test_a_table_without_a_description_is_listed_plainly():
+    text = format_schema({"t": [col("x")]}, {})
+    assert "Table: t" in text.splitlines()

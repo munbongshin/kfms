@@ -6,6 +6,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
   api,
+  type TableInfo,
   type DatabaseConnection,
   type DatabaseConnectionCreate,
   type DatabaseConnectionUpdate,
@@ -30,6 +31,10 @@ export const useDatabaseStore = defineStore('database', () => {
   const loading = ref(false)
   const schemas = ref<Record<number, Record<string, ColumnInfo[]>>>({})
   const schemaLoading = ref<Record<number, boolean>>({})
+  // Kind, description and analysis flag per table, alongside the columns.
+  const tableInfos = ref<Record<number, Record<string, TableInfo>>>({})
+  // Bumped when the catalog is re-read, so the lazy tree reloads its nodes.
+  const schemaVersion = ref(0)
   const schemaError = ref<Record<number, string | null>>({})
 
   // Computed
@@ -174,8 +179,10 @@ export const useDatabaseStore = defineStore('database', () => {
     schemaError.value = { ...schemaError.value, [connectionId]: null }
 
     try {
-      const info = await api.databases.getSchema(connectionId)
+      // force also asks the server to re-read the database, not its cache.
+      const info = await api.databases.getSchema(connectionId, force)
       schemas.value = { ...schemas.value, [connectionId]: info.schema as Record<string, ColumnInfo[]> }
+      tableInfos.value = { ...tableInfos.value, [connectionId]: info.tables || {} }
       return schemas.value[connectionId]
     } catch (error: any) {
       const message = error.response?.data?.detail || 'Failed to load schema'
@@ -212,6 +219,27 @@ export const useDatabaseStore = defineStore('database', () => {
     return out
   }
 
+  /** Re-read tables from the database (new tables, changed comments). */
+  async function refreshSchema(connectionId: number) {
+    await fetchSchema(connectionId, true)
+    schemaVersion.value++
+  }
+
+  /** Save which tables text-to-SQL leaves out, and mark them in place. */
+  async function setExcludedTables(connectionId: number, excluded: string[]) {
+    const result = await api.databases.setExcludedTables(connectionId, excluded)
+    const infos = tableInfos.value[connectionId] || {}
+    const dropped = new Set(result.excluded)
+    tableInfos.value = {
+      ...tableInfos.value,
+      [connectionId]: Object.fromEntries(
+        Object.entries(infos).map(([k, t]) => [k, { ...t, excluded: dropped.has(k) }])
+      ),
+    }
+    schemaVersion.value++
+    return result
+  }
+
   function invalidateSchema(connectionId: number) {
     const { [connectionId]: _s, ...restSchemas } = schemas.value
     const { [connectionId]: _l, ...restLoading } = schemaLoading.value
@@ -227,6 +255,8 @@ export const useDatabaseStore = defineStore('database', () => {
     activeConnectionId,
     loading,
     schemas,
+    tableInfos,
+    schemaVersion,
     schemaLoading,
     schemaError,
 
@@ -242,6 +272,8 @@ export const useDatabaseStore = defineStore('database', () => {
     deleteConnection,
     setActiveConnection,
     fetchSchema,
+    refreshSchema,
+    setExcludedTables,
     columnLabels,
     columnComments,
     invalidateSchema,

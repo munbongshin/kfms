@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.dependencies import get_db, get_db_pool
 from app.db.connection_pool import DatabaseConnectionPool
 from app.db.repositories.history import HistoryRepository
+from app.db.repositories.database_repo import DatabaseRepository
 from app.services.llm_service import get_llm_service
 from app.api.v1.llm_settings import current_llm_config
 from app.llm.settings_resolver import LLMConfig
@@ -52,6 +53,12 @@ class GenerateAndExecuteRequest(BaseModel):
     auto_approve: bool = Field(default=False, description="Skip user confirmation")
 
 
+async def excluded_tables_for(database_id: int, db: AsyncSession) -> list:
+    """The tables this connection leaves out of analysis (none if unknown)."""
+    conn = await DatabaseRepository(db).get_by_id(database_id)
+    return list(conn.excluded_tables or []) if conn else []
+
+
 def get_query_service(
     db: AsyncSession = Depends(get_db),
     pool: DatabaseConnectionPool = Depends(get_db_pool),
@@ -76,6 +83,7 @@ async def generate_sql(
     request: GenerateRequest,
     service: QueryService = Depends(get_query_service),
     llm_config: LLMConfig = Depends(current_llm_config),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Generate SQL from natural language question.
@@ -91,7 +99,8 @@ async def generate_sql(
         result = await service.generate_sql(
             question=request.question,
             database_id=str(request.database_id),
-            context=request.context
+            context=request.context,
+            excluded_tables=await excluded_tables_for(request.database_id, db),
         )
 
         return result
@@ -172,6 +181,7 @@ async def generate_and_execute(
     request: GenerateAndExecuteRequest,
     service: QueryService = Depends(get_query_service),
     llm_config: LLMConfig = Depends(current_llm_config),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Generate SQL and execute in one step.
@@ -187,7 +197,8 @@ async def generate_and_execute(
             question=request.question,
             database_id=str(request.database_id),
             context=request.context,
-            auto_approve=request.auto_approve
+            auto_approve=request.auto_approve,
+            excluded_tables=await excluded_tables_for(request.database_id, db),
         )
 
         return result

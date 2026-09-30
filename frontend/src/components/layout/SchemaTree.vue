@@ -39,7 +39,8 @@
              content; .node stretches to the full row so a double-click
              anywhere in it counts, not only on the label. -->
         <span class="node" :title="data.title" @dblclick="onNodeDblClick(data)">
-          <span class="node-label" :class="data.kind">{{ data.label }}</span>
+          <span class="node-label" :class="[data.kind, { excluded: data.excluded }]">{{ data.label }}</span>
+          <span v-if="data.excluded" class="excluded-tag">분석 제외</span>
           <span v-if="data.name" class="node-name">{{ data.name }}</span>
           <span v-if="data.meta" class="node-meta">{{ data.meta }}</span>
         </span>
@@ -65,6 +66,8 @@ export interface TreeNode {
   name?: string
   title?: string
   meta?: string
+  /** A table left out of text-to-SQL analysis. */
+  excluded?: boolean
   isLeaf?: boolean
   retry?: boolean
 }
@@ -81,8 +84,16 @@ const treeProps = { label: 'label', isLeaf: 'isLeaf' }
 watch(filterText, (v) => treeRef.value?.filter(v))
 
 const connectionsKey = computed(() =>
-  databaseStore.activeConnections.map((c) => `${c.id}:${c.name}:${c.database}`).join('|')
+  databaseStore.activeConnections.map((c) => `${c.id}:${c.name}:${c.database}`).join('|') +
+    `#${databaseStore.schemaVersion}`
 )
+
+const KIND_LABELS: Record<string, string> = {
+  table: '테이블',
+  view: '뷰',
+  materialized_view: '구체화 뷰',
+  foreign_table: '외부 테이블',
+}
 
 function filterNode(value: string, data: TreeNode) {
   if (!value) return true
@@ -126,14 +137,24 @@ async function loadNode(node: any, resolve: (nodes: TreeNode[]) => void) {
         return
       }
 
+      const infos = databaseStore.tableInfos[data.connectionId] || {}
       resolve(
-        tables.map((table) => ({
-          key: `tbl-${data.connectionId}-${table}`,
-          label: table,
-          kind: 'table' as const,
-          connectionId: data.connectionId,
-          table,
-        }))
+        tables.map((table) => {
+          const info = infos[table]
+          return {
+            key: `tbl-${data.connectionId}-${table}`,
+            label: table,
+            kind: 'table' as const,
+            connectionId: data.connectionId,
+            table,
+            // The table's description (승인내역 테이블) beside its name.
+            meta: info?.comment || undefined,
+            title: [KIND_LABELS[info?.kind || 'table'], info?.comment, info?.excluded ? '분석 제외 — 질문에 쓰이지 않음' : '']
+              .filter(Boolean)
+              .join(' · '),
+            excluded: info?.excluded,
+          }
+        })
       )
     } catch {
       resolve([{
@@ -232,6 +253,19 @@ async function onNodeDblClick(data: TreeNode) {
   font-weight: 600;
 }
 
+.node-label.excluded {
+  color: #a8abb2;
+}
+
+.excluded-tag {
+  padding: 0 5px;
+  border-radius: 8px;
+  background: #f0f2f5;
+  color: #8a94a3;
+  font-size: 10.5px;
+  flex-shrink: 0;
+}
+
 .node-label.message {
   color: #909399;
   font-style: italic;
@@ -256,6 +290,8 @@ async function onNodeDblClick(data: TreeNode) {
   flex-shrink: 0;
 }
 
+/* A table's description gives way before its name does. */
+.node-label.table ~ .node-meta,
 .node-name + .node-meta {
   flex-shrink: 1;
   min-width: 0;

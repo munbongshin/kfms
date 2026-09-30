@@ -83,6 +83,22 @@ export interface TestConnectionResponse {
   error?: string
 }
 
+/** One table or view as the catalog describes it. */
+export interface TableInfo {
+  /** `name` in public, otherwise `schema.name` — how SQL and the LLM refer to it. */
+  key: string
+  schema: string
+  name: string
+  kind: 'table' | 'view' | 'materialized_view' | 'foreign_table'
+  /** COMMENT ON TABLE, e.g. 승인내역 테이블. */
+  comment: string | null
+  /** Left out of text-to-SQL analysis for this connection. */
+  excluded: boolean
+  column_count: number
+  /** Views built on this table -> the columns of this table each one reads. */
+  derived_views: Record<string, string[]>
+}
+
 export interface SchemaInfo {
   connection_id: number
   connection_name: string
@@ -94,6 +110,7 @@ export interface SchemaInfo {
       default: string | null
     }>
   }
+  tables: Record<string, TableInfo>
 }
 
 export type LLMProviderName = 'ollama' | 'lmstudio' | 'vllm' | 'openai_compatible' | 'groq'
@@ -174,9 +191,17 @@ export const api = {
       return response.data
     },
 
-    async getSchema(connectionId: number): Promise<SchemaInfo> {
-      const response = await apiClient.get(`/databases/${connectionId}/schema`)
+    /** refresh re-reads the database catalog instead of the server's cached copy. */
+    async getSchema(connectionId: number, refresh = false): Promise<SchemaInfo> {
+      const response = await apiClient.get(`/databases/${connectionId}/schema`, {
+        params: refresh ? { refresh: true } : undefined,
+      })
       return response.data
+    },
+
+    async setExcludedTables(connectionId: number, excluded: string[]) {
+      const response = await apiClient.put(`/databases/${connectionId}/excluded-tables`, { excluded })
+      return response.data as { excluded: string[]; analysed: number; total: number }
     },
 
     async delete(connectionId: number): Promise<void> {
@@ -241,10 +266,13 @@ export const api = {
 
   // Excel operations
   excel: {
-    async upload(file: File, databaseId: number, ttlHours?: number) {
+    async upload(file: File, databaseId: number, ttlHours?: number, tableName?: string) {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('database_id', String(databaseId))
+      if (tableName) {
+        formData.append('table_name', tableName)
+      }
       if (ttlHours) {
         formData.append('ttl_hours', String(ttlHours))
       }
@@ -255,6 +283,20 @@ export const api = {
         }
       })
       return response.data
+    },
+
+    /** The table name an upload would get from `name`, and whether it is free. */
+    async checkTableName(databaseId: number, name: string) {
+      const response = await apiClient.get('/excel/table-name', {
+        params: { database_id: databaseId, name },
+      })
+      return response.data as {
+        requested: string
+        name: string
+        key: string
+        available: boolean
+        conflict_with: string | null
+      }
     },
 
     async list() {

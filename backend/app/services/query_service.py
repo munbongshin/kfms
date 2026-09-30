@@ -40,7 +40,8 @@ class QueryService:
         self,
         question: str,
         database_id: str,
-        context: str = ""
+        context: str = "",
+        excluded_tables: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Generate SQL from natural language question.
@@ -58,7 +59,8 @@ class QueryService:
             question=question,
             connection_pool=self.pool,
             database_id=database_id,
-            context=context
+            context=context,
+            excluded_tables=excluded_tables,
         )
 
         sql = llm_result["sql"]
@@ -208,7 +210,8 @@ class QueryService:
         question: str,
         database_id: str,
         context: str = "",
-        auto_approve: bool = False
+        auto_approve: bool = False,
+        excluded_tables: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Generate SQL and execute in one step.
@@ -226,7 +229,8 @@ class QueryService:
         gen_result = await self.generate_sql(
             question=question,
             database_id=database_id,
-            context=context
+            context=context,
+            excluded_tables=excluded_tables,
         )
 
         # If not safe and auto_approve is False, return for user confirmation

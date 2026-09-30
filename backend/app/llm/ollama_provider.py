@@ -2,7 +2,7 @@
 Ollama LLM Provider implementation.
 Connects to local Ollama server via HTTP API.
 """
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import httpx
 
 from app.llm.base import BaseLLMProvider, SQL_RULES
@@ -33,7 +33,8 @@ class OllamaProvider(BaseLLMProvider):
         self,
         question: str,
         schema: Dict[str, List[Dict[str, Any]]],
-        context: str = ""
+        context: str = "",
+        table_comments: Optional[Dict[str, str]] = None,
     ) -> str:
         """
         Generate SQL query using Ollama.
@@ -47,7 +48,7 @@ class OllamaProvider(BaseLLMProvider):
             Generated SQL query
         """
         # Build prompt
-        schema_context = self.format_schema_context(schema)
+        schema_context = self.format_schema_context(schema, table_comments)
 
         prompt = f"""You are a PostgreSQL expert. Generate SQL queries based on natural language questions.
 

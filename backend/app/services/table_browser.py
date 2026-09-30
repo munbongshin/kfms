@@ -6,11 +6,9 @@ caller supplies that schema; nothing here trusts a name from a request.
 """
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from app.db.catalog import quote, quote_relation  # noqa: F401 — quote re-exported
+
 MAX_PAGE_SIZE = 500
-
-
-def quote(identifier: str) -> str:
-    return '"' + identifier.replace('"', '""') + '"'
 
 
 def _columns_of(schema: Dict[str, Sequence[str]], table: str) -> List[str]:
@@ -25,7 +23,7 @@ def _columns_of(schema: Dict[str, Sequence[str]], table: str) -> List[str]:
 
 def build_count_query(schema: Dict[str, Sequence[str]], table: str) -> str:
     _columns_of(schema, table)
-    return f"SELECT COUNT(*) AS total FROM {quote(table)}"
+    return f"SELECT COUNT(*) AS total FROM {quote_relation(table)}"
 
 
 def build_rows_query(
@@ -81,7 +79,7 @@ def build_rows_query(
     ordering = ", ".join([f"{quote(order_by)} {direction}"] + tiebreakers)
 
     sql = (
-        f"SELECT {projection} FROM {quote(table)}"
+        f"SELECT {projection} FROM {quote_relation(table)}"
         f" ORDER BY {ordering}"
         f" LIMIT :limit OFFSET :offset"
     )

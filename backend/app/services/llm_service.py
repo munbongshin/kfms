@@ -2,7 +2,7 @@
 LLM Service for orchestrating LLM provider calls.
 Handles SQL generation and visualization recommendations.
 """
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
 
 from app.llm.factory import create_provider
 from app.llm.base import BaseLLMProvider
@@ -10,23 +10,21 @@ from app.llm.settings_resolver import LLMConfig
 from app.db.connection_pool import DatabaseConnectionPool
 
 
-# Union tables whose views together expose every column. The table is left out
-# of the prompt only while all of its views are present, since otherwise some
-# source would be reachable through the union table alone.
-UNION_TABLES_COVERED_BY_VIEWS: Dict[str, Tuple[str, ...]] = {
-    "card_data": ("v_approval", "v_acquire", "v_bill", "v_card_info", "v_card_dept"),
-}
-
-
-def prompt_schema(schema: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]:
-    """The schema the LLM is asked against: every table, minus union tables
-    that their views already cover (fewer tokens, same answers)."""
-    omit = {
-        table
-        for table, views in UNION_TABLES_COVERED_BY_VIEWS.items()
-        if table in schema and all(v in schema for v in views)
-    }
-    return {name: cols for name, cols in schema.items() if name not in omit}
+def analysis_schema(
+    schema: Dict[str, List[Dict[str, Any]]],
+    excluded: Optional[List[str]],
+) -> Dict[str, List[Dict[str, Any]]]:
+    """The schema a question is asked against: every table the connection can
+    read, minus those excluded from analysis on the data screen. Nothing else is
+    dropped automatically — a table its views cover may still be the one a
+    question needs. A stale exclusion (a dropped table) is harmless."""
+    dropped = set(excluded or [])
+    kept = {name: cols for name, cols in schema.items() if name not in dropped}
+    if not kept:
+        raise ValueError(
+            "분석 대상 테이블이 없습니다 — 데이터 화면의 '분석 대상'에서 테이블을 선택하세요"
+        )
+    return kept
 
 
 class LLMService:
@@ -50,7 +48,8 @@ class LLMService:
         question: str,
         connection_pool: DatabaseConnectionPool,
         database_id: str,
-        context: str = ""
+        context: str = "",
+        excluded_tables: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Generate SQL from natural language question.
@@ -60,6 +59,7 @@ class LLMService:
             connection_pool: Database connection pool
             database_id: Database connection ID
             context: Optional context (previous queries, hints)
+            excluded_tables: Tables excluded from analysis for this connection
 
         Returns:
             Dict with generated SQL and metadata:
@@ -83,14 +83,20 @@ class LLMService:
         if not schema:
             raise ValueError(f"No schema found for database {database_id}")
 
-        schema = prompt_schema(schema)
+        schema = analysis_schema(schema, excluded_tables)
+        tables = await connection_pool.get_tables(database_id)
+        table_comments = {
+            name: info["comment"] for name, info in tables.items()
+            if name in schema and info.get("comment")
+        }
 
         # Generate SQL using LLM
         try:
             sql = await self.provider.generate_sql(
                 question=question,
                 schema=schema,
-                context=context
+                context=context,
+                table_comments=table_comments,
             )
 
             return {
