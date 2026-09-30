@@ -24,6 +24,7 @@ from app.db.repositories.anomaly import AnomalyRepository
 
 logger = logging.getLogger(__name__)
 
+MAX_CATEGORIES = 500
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 # I2: only these transaction fields reach the browser. The rules keep the full
@@ -217,6 +218,33 @@ class AnomalyService:
                 }
             )
         return out
+
+    async def list_categories(self, database_id: str) -> List[Dict[str, Any]]:
+        """Merchant categories that occur in the data, most common first.
+
+        The watch list matches names exactly, so this is what the screen suggests
+        from and checks typed names against. A source that cannot be read is
+        skipped; the list is only ever a help.
+        """
+        counts: Dict[str, int] = {}
+        for source in SOURCES.values():
+            if CATEGORY not in source.columns:
+                continue
+            column = source.columns[CATEGORY]
+            try:
+                rows = await self.pool.execute_query(
+                    database_id,
+                    f"SELECT {column} AS name, COUNT(*) AS n FROM {source.view}"
+                    f" WHERE {column} IS NOT NULL GROUP BY {column}",
+                )
+            except Exception:
+                logger.exception("Category list failed for %s (database_id=%s)", source.view, database_id)
+                continue
+            for row in rows:
+                counts[row["name"]] = counts.get(row["name"], 0) + int(row["n"])
+
+        ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        return [{"name": name, "count": n} for name, n in ranked[:MAX_CATEGORIES]]
 
     async def get_transactions(
         self, database_id: str, source_key: str, keys: List[int]

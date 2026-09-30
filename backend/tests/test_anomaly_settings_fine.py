@@ -145,3 +145,31 @@ def test_real_changes_are_kept_and_the_rest_dropped():
 def test_a_changed_severity_and_map_are_kept():
     clean = {"HIGH_AMOUNT": {"severity": "low", "category_thresholds": {"영화관": 100000}}}
     assert without_defaults(TEMPLATES, clean) == clean
+
+
+# --- automatic public holidays ------------------------------------------------------------------
+
+def test_automatic_holidays_default_on_with_empty_extra_and_exception_lists():
+    off = params_of(TEMPLATES, "OFF_HOURS")
+    assert off["auto_holidays"] is True and off["holidays"] == [] and off["holiday_exceptions"] == []
+
+
+def test_the_screen_gets_the_three_holiday_settings():
+    info = describe(TEMPLATES, {})
+    assert one(info, "OFF_HOURS", "auto_holidays")["kind"] == "switch"
+    assert one(info, "OFF_HOURS", "holidays")["label"] == "추가 공휴일"
+    assert one(info, "OFF_HOURS", "holiday_exceptions")["kind"] == "list"
+
+
+def test_holiday_exceptions_are_validated_like_dates():
+    clean, errors = validate({"OFF_HOURS": {"holiday_exceptions": ["2026-10-05", "2026-10-05"], "auto_holidays": False}})
+    assert errors == [] and clean["OFF_HOURS"] == {"holiday_exceptions": ["2026-10-05"], "auto_holidays": False}
+    _, errors = validate({"OFF_HOURS": {"holiday_exceptions": ["2026-13-01"]}})
+    assert errors
+    _, errors = validate({"OFF_HOURS": {"auto_holidays": "yes"}})
+    assert errors
+
+
+def test_a_changed_auto_switch_and_exceptions_are_kept_and_defaults_dropped():
+    clean = {"OFF_HOURS": {"auto_holidays": True, "holiday_exceptions": ["2026-10-05"], "holidays": []}}
+    assert without_defaults(TEMPLATES, clean) == {"OFF_HOURS": {"holiday_exceptions": ["2026-10-05"]}}

@@ -302,6 +302,33 @@ class AnomalySettingHistory(Base):
     changes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
 
+class SyncedHoliday(Base):
+    """A holiday received by the sync (an announced 임시공휴일 among them). The
+    off-hours rule counts these next to the built-in calendar."""
+
+    __tablename__ = "synced_holidays"
+
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)  # YYYY-MM-DD
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    fetched_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class HolidaySync(Base):
+    """One row (id = 1): the encrypted service key and how the last sync went."""
+
+    __tablename__ = "holiday_sync"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    service_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="Fernet-encrypted")
+    last_synced_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    last_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    last_source: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+
 class SavedReport(Base):
     """A question kept as a report that runs on a schedule and keeps its last result."""
 

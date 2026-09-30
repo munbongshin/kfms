@@ -2,17 +2,20 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status as http_status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.anomaly.holidays_kr import calendar as holiday_calendar, check_day
 from app.anomaly.rules import RULES, SOURCES, TEMPLATES, build_rules
-from app.anomaly.settings import apply_overrides, describe, validate, without_defaults
+from app.anomaly.settings import apply_overrides, describe, validate, with_synced_holidays, without_defaults
 from app.anomaly.settings_history import changes as settings_changes
-from app.auth.deps import AUDITOR, CurrentUser, record
+from app.auth.deps import ADMIN, AUDITOR, CurrentUser, record
 from app.db.repositories.anomaly_settings import AnomalySettingsRepository
+from app.db.repositories.holidays import HolidayRepository
 from app.db.repositories.anomaly import AnomalyRepository
 from app.dependencies import get_db, get_db_pool
 from app.services.anomaly_service import AnomalyService
+from app.services.holiday_sync import run_sync, status_of
 
 router = APIRouter(prefix="/anomaly", tags=["Anomaly"])
 
@@ -26,7 +29,11 @@ async def get_anomaly_service(
     pool=Depends(get_db_pool),
 ) -> AnomalyService:
     overrides = await AnomalySettingsRepository(db).load()
-    rules = build_rules(SOURCES, apply_overrides(TEMPLATES, overrides)) if overrides else None
+    synced = await HolidayRepository(db).synced()
+    rules = None
+    if overrides or synced:
+        templates = apply_overrides(TEMPLATES, overrides)
+        rules = build_rules(SOURCES, with_synced_holidays(templates, synced) if synced else templates)
     return AnomalyService(pool, AnomalyRepository(db), rules)
 
 
@@ -115,6 +122,87 @@ async def restore_settings(
     return {"rules": describe(TEMPLATES, kept), "changes": changed}
 
 
+class HolidayPreview(BaseModel):
+    """The holiday settings as they stand on screen (saved or not)."""
+    year: int = Field(..., ge=2000, le=2100)
+    auto_holidays: bool = True
+    holidays: List[str] = []
+    holiday_exceptions: List[str] = []
+
+
+@router.post("/holidays")
+async def holiday_preview(body: HolidayPreview, db: AsyncSession = Depends(get_db)):
+    """The holidays that would apply in a year with these settings, so the
+    administrator can see what "자동" brought in before saving."""
+    clean, errors = validate({"OFF_HOURS": {"holidays": body.holidays, "holiday_exceptions": body.holiday_exceptions}})
+    if errors:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=" · ".join(errors))
+    off = clean.get("OFF_HOURS", {})
+    synced = await HolidayRepository(db).synced()
+    return {
+        "year": body.year,
+        "holidays": holiday_calendar(
+            body.year, body.auto_holidays, off.get("holidays", []), off.get("holiday_exceptions", []), synced
+        ),
+    }
+
+
+class HolidayCheck(BaseModel):
+    """One date to look up, under the settings as they stand on screen."""
+    date: str
+    auto_holidays: bool = True
+    holidays: List[str] = []
+    holiday_exceptions: List[str] = []
+
+
+@router.post("/holidays/check")
+async def holiday_check(body: HolidayCheck, db: AsyncSession = Depends(get_db)):
+    """Is this date counted as a holiday, and why (or why not)."""
+    clean, errors = validate({"OFF_HOURS": {"holidays": [body.date], "holiday_exceptions": body.holiday_exceptions}})
+    if errors:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="날짜는 YYYY-MM-DD 형식으로 입력하세요")
+    extra, _ = validate({"OFF_HOURS": {"holidays": body.holidays}})
+    synced = await HolidayRepository(db).synced()
+    return check_day(
+        body.date, body.auto_holidays, extra.get("OFF_HOURS", {}).get("holidays", []),
+        clean["OFF_HOURS"].get("holiday_exceptions", []), synced,
+    )
+
+
+@router.get("/holidays/status")
+async def holiday_status(db: AsyncSession = Depends(get_db)):
+    """Where the holiday list comes from and how the last sync went (never the key)."""
+    return await status_of(HolidayRepository(db))
+
+
+@router.post("/holidays/sync")
+async def holiday_sync_now(http_request: Request, user: CurrentUser = AUDITOR, db: AsyncSession = Depends(get_db)):
+    """Fetch announced holidays now, instead of waiting for the daily run."""
+    import httpx
+
+    async with httpx.AsyncClient() as client:
+        status = await run_sync(HolidayRepository(db), client)
+    await record(db, user, http_request, "holiday_sync", "", status=status["last_status"], source=status["last_source"])
+    return status
+
+
+class ServiceKey(BaseModel):
+    key: str = Field("", max_length=500)
+
+
+@router.put("/holidays/service-key")
+async def holiday_service_key(
+    body: ServiceKey, http_request: Request, admin: CurrentUser = ADMIN, db: AsyncSession = Depends(get_db)
+):
+    """Save the 공공데이터포털 service key (encrypted), or forget it when blank.
+
+    Administrators only: it is a secret. It is never sent back to the browser."""
+    repo = HolidayRepository(db)
+    await repo.set_key(body.key.strip() or None)
+    await record(db, admin, http_request, "holiday_key", "", saved=bool(body.key.strip()))
+    return await status_of(repo)
+
+
 class ReviewRequest(BaseModel):
     """I1: finding_key travels in the body, never the URL path.
 
@@ -142,6 +230,15 @@ async def list_sources(
     range returned here.
     """
     return {"sources": await service.list_sources(database_id)}
+
+
+@router.get("/categories")
+async def list_categories(
+    database_id: str = Query(...),
+    service: AnomalyService = Depends(get_anomaly_service),
+):
+    """The merchant categories in the data, to suggest and check 주의 업종 names."""
+    return {"categories": await service.list_categories(database_id)}
 
 
 @router.get("/findings")

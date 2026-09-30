@@ -39,8 +39,10 @@ EDITABLE: Dict[str, Dict[str, Tuple[str, str, str]]] = {
     "OFF_HOURS": {
         **_COMMON,
         "check_weekend": ("bool", "주말 점검", "토·일요일 결제를 시간 외로 봅니다"),
-        "check_holiday": ("bool", "공휴일 점검", "아래 공휴일 목록의 날짜 결제를 시간 외로 봅니다"),
-        "holidays": ("dates", "공휴일 목록", "날짜를 한 줄에 하나씩 (예: 2026-05-05)"),
+        "check_holiday": ("bool", "공휴일 점검", "공휴일 결제를 시간 외로 봅니다 (끄면 자동·추가 공휴일 모두 보지 않음)"),
+        "auto_holidays": ("bool", "법정 공휴일 자동 적용", "대한민국 법정 공휴일(설날·추석·대체공휴일·임시공휴일 포함)을 자동으로 넣습니다"),
+        "holidays": ("dates", "추가 공휴일", "자동 목록에 없는 날을 더합니다 (회사 휴무일 등, 예: 2026-05-05)"),
+        "holiday_exceptions": ("dates", "제외할 날짜", "자동 공휴일 중 근무일로 볼 날 (추가 공휴일에는 적용되지 않음)"),
         "check_night": ("bool", "심야 점검", "심야 시간대 결제를 시간 외로 봅니다"),
         "night_start": ("hour", "심야 시작(시)", "이 시각부터 심야 (0~23)"),
         "night_end": ("hour", "심야 종료(시)", "이 시각 전까지 심야 (0~23)"),
@@ -181,6 +183,21 @@ def validate(raw: Dict[str, Dict[str, Any]]) -> Tuple[Dict[str, Dict[str, Any]],
         errors.append("시간 외 사용: 주말·공휴일·심야 중 하나는 켜 두세요 (규칙을 쉬려면 '사용'을 끄세요)")
 
     return clean, errors
+
+
+def with_synced_holidays(templates, synced: Dict[str, str]):
+    """Templates whose off-hours rule also knows the holidays received by the sync.
+
+    They are not something an administrator edits, so they travel beside the
+    settings rather than through them.
+    """
+    out = []
+    for tpl in templates:
+        if tpl.template == "OFF_HOURS":
+            out.append(replace(tpl, params={**tpl.params, "synced_holidays": dict(synced)}))
+        else:
+            out.append(tpl)
+    return out
 
 
 def without_defaults(templates, clean: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:

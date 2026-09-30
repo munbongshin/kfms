@@ -191,3 +191,21 @@ CREATE TABLE anomaly_setting_history (
     after JSON NOT NULL DEFAULT '{}',
     changes JSON NOT NULL DEFAULT '[]'
 );
+
+-- Holidays received by the holiday sync (announced 임시공휴일 among them), and the
+-- one-row state of the sync: encrypted service key and the last outcome.
+CREATE TABLE synced_holidays (
+    day VARCHAR(10) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL DEFAULT '',
+    source VARCHAR(20) NOT NULL DEFAULT '',
+    fetched_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE holiday_sync (
+    id INTEGER PRIMARY KEY,
+    service_key TEXT,
+    last_synced_at TIMESTAMP WITH TIME ZONE,
+    last_status VARCHAR(20),
+    last_error TEXT,
+    last_source VARCHAR(20)
+);

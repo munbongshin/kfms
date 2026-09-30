@@ -53,7 +53,16 @@
 
             <div v-else-if="p.kind === 'map'" class="map">
               <div v-for="(row, i) in draft[rule.template][p.key]" :key="i" class="map-row">
-                <el-input v-model="row.name" size="small" placeholder="업종명" :disabled="!auth.isAuditor" style="width: 180px" />
+                <el-autocomplete
+                  v-model="row.name"
+                  size="small"
+                  placeholder="업종명"
+                  :disabled="!auth.isAuditor"
+                  :fetch-suggestions="suggestCategory"
+                  value-key="name"
+                  :trigger-on-focus="false"
+                  style="width: 200px"
+                />
                 <el-input-number
                   v-model="row.amount"
                   size="small"
@@ -70,18 +79,18 @@
               <span v-if="!draft[rule.template][p.key].length" class="none">모든 업종이 위의 기준 금액을 씁니다</span>
             </div>
 
-            <el-input
+            <TagListEditor
               v-else
               v-model="draft[rule.template][p.key]"
-              type="textarea"
-              :rows="4"
               :disabled="!auth.isAuditor"
-              placeholder="한 줄에 하나씩"
-              style="width: 320px"
+              :placeholder="listPlaceholder(p)"
+              :suggestions="p.key === 'watch_mcc' ? categories : []"
+              :validate="p.unit === 'dates' ? checkDate : undefined"
             />
 
             <div class="meta">
               <span class="hint">{{ p.hint }}</span>
+              <button v-if="p.key === 'auto_holidays'" class="link show" @click="showHolidays = true">적용되는 공휴일 보기</button>
               <span v-if="changed(rule.template, p)" class="changed">
                 기본값: {{ display(p) }}
                 <button v-if="auth.isAuditor" class="link" @click="reset(rule.template, p)">되돌리기</button>
@@ -101,6 +110,14 @@
 
   <!-- Beside, not inside, the settings dialog: two open dialogs stack fine, a nested one stays hidden. -->
   <AnomalyHistoryDialog v-model="showHistory" @restored="afterRestore" />
+  <HolidayPreviewDialog
+    v-model="showHolidays"
+    :auto-holidays="draft.OFF_HOURS?.auto_holidays !== false"
+    :holidays="draft.OFF_HOURS?.holidays || []"
+    :exceptions="draft.OFF_HOURS?.holiday_exceptions || []"
+    @add-extra="addHoliday"
+    @remove-exception="dropException"
+  />
 </template>
 
 <script setup lang="ts">
@@ -109,6 +126,10 @@ import { ElMessage } from 'element-plus'
 import { api } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 import AnomalyHistoryDialog from './AnomalyHistoryDialog.vue'
+import TagListEditor, { type Suggestion } from './TagListEditor.vue'
+import HolidayPreviewDialog from './HolidayPreviewDialog.vue'
+import { useDatabaseStore } from '../../stores/database'
+import { isIsoDate } from '../../utils/listInput'
 
 interface Param {
   key: string
@@ -136,6 +157,29 @@ const draft = ref<Record<string, Record<string, any>>>({})
 const loading = ref(false)
 const saving = ref(false)
 const showHistory = ref(false)
+const showHolidays = ref(false)
+const databaseStore = useDatabaseStore()
+// Merchant categories in the data: suggested while typing, and used to flag names that match nothing.
+const categories = ref<Suggestion[]>([])
+
+const checkDate = (item: string) => (isIsoDate(item) ? '' : `'${item}'은(는) YYYY-MM-DD 형식의 날짜가 아닙니다`)
+const listPlaceholder = (p: Param) =>
+  p.unit === 'dates' ? '예: 2026-05-05' : p.key === 'watch_mcc' ? '업종명 (예: 영화관)' : '한 개씩 입력하고 Enter'
+
+function suggestCategory(query: string, cb: (items: Suggestion[]) => void) {
+  const q = query.trim().toLowerCase()
+  cb(categories.value.filter((c) => !q || c.name.toLowerCase().includes(q)).slice(0, 30))
+}
+
+async function loadCategories() {
+  const id = databaseStore.activeConnectionId
+  if (!id) return
+  try {
+    categories.value = await api.anomaly.categories(String(id))
+  } catch {
+    categories.value = [] // only a help; typing still works
+  }
+}
 
 const SEVERITY_NAMES: Record<string, string> = { high: '높음', medium: '보통', low: '낮음' }
 const severityName = (s: string) => SEVERITY_NAMES[s] || s
@@ -155,15 +199,15 @@ function limits(p: Param) {
   }
 }
 
-/** Lists edit as one item per line, tables as rows; the rest as they are. */
+/** Lists edit as a list of items, tables as rows; the rest as they are. */
 function toEditable(p: Param, value: any) {
-  if (p.kind === 'list') return (value || []).join('\n')
+  if (p.kind === 'list') return [...(value || [])]
   if (p.kind === 'map') return Object.entries(value || {}).map(([name, amount]) => ({ name, amount }))
   return value
 }
 
 function fromEditable(p: Param, value: any) {
-  if (p.kind === 'list') return String(value || '').split('\n').map((s) => s.trim()).filter(Boolean)
+  if (p.kind === 'list') return [...(value || [])]
   if (p.kind === 'map') {
     const out: Record<string, number> = {}
     for (const row of value || []) {
@@ -196,6 +240,7 @@ const dirty = computed(() =>
 )
 
 async function load() {
+  loadCategories()
   loading.value = true
   try {
     const data = await api.anomaly.getSettings()
@@ -244,6 +289,17 @@ async function save() {
 }
 
 /** The history dialog put an earlier state back; show it and refresh the findings. */
+/** From the holiday check: a date the list lacks goes into the extra days. */
+function addHoliday(day: string) {
+  const list: string[] = draft.value.OFF_HOURS.holidays
+  if (!list.includes(day)) list.push(day)
+  list.sort()
+}
+
+function dropException(day: string) {
+  draft.value.OFF_HOURS.holiday_exceptions = draft.value.OFF_HOURS.holiday_exceptions.filter((d: string) => d !== day)
+}
+
 async function afterRestore() {
   await load()
   emit('saved')
@@ -378,6 +434,10 @@ async function afterRestore() {
 }
 
 .link.add {
+  margin-left: 0;
+}
+
+.link.show {
   margin-left: 0;
 }
 

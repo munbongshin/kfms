@@ -696,6 +696,37 @@ export const api = {
       return (await apiClient.put('/anomaly/settings', { overrides })).data
     },
 
+    /** The holidays that apply in a year under the given (possibly unsaved) settings. */
+    async holidayPreview(body: { year: number; auto_holidays: boolean; holidays: string[]; holiday_exceptions: string[] }) {
+      return (await apiClient.post('/anomaly/holidays', body)).data
+    },
+
+    /** Is one date counted as a holiday under the given (possibly unsaved) settings, and why. */
+    async holidayCheck(body: { date: string; auto_holidays: boolean; holidays: string[]; holiday_exceptions: string[] }) {
+      return (await apiClient.post('/anomaly/holidays/check', body)).data
+    },
+
+    /** Where the holiday list comes from and how the last sync went. Never the key. */
+    async holidayStatus() {
+      return (await apiClient.get('/anomaly/holidays/status')).data
+    },
+
+    /** Fetch announced holidays now. */
+    async holidaySync() {
+      return (await apiClient.post('/anomaly/holidays/sync')).data
+    },
+
+    /** Save the 공공데이터포털 service key (admin); blank forgets it. */
+    async holidayKey(key: string) {
+      return (await apiClient.put('/anomaly/holidays/service-key', { key })).data
+    },
+
+    /** Merchant categories present in the data (name, count), most common first. */
+    async categories(databaseId: string): Promise<{ name: string; count: number }[]> {
+      const response = await apiClient.get('/anomaly/categories', { params: { database_id: databaseId } })
+      return response.data.categories
+    },
+
     /** Recent changes to the thresholds, newest first. */
     async settingsHistory(): Promise<AnomalySettingHistory[]> {
       return (await apiClient.get('/anomaly/settings/history')).data

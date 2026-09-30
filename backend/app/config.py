@@ -51,6 +51,9 @@ class Settings(BaseSettings):
 
     # Query Execution
     QUERY_RESULT_LIMIT: int = 1000
+
+    # Daily fetch of announced holidays (임시공휴일). Turn off where the server cannot reach the internet.
+    HOLIDAY_SYNC_ENABLED: bool = True
     QUERY_TIMEOUT: int = 30
 
     # Security

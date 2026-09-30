@@ -14,6 +14,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any, Callable, Dict, List, Tuple
 
+from app.anomaly.holidays_kr import holiday_of
 from app.anomaly.models import Finding
 
 Row = Dict[str, Any]
@@ -182,7 +183,12 @@ def detect_off_hours(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
     check_weekend = params.get("check_weekend", True)
     check_night = params.get("check_night", True)
     check_holiday = params.get("check_holiday", True)
-    holidays = set(params.get("holidays") or [])
+    # Official holidays apply by themselves; the lists add days and remove days.
+    auto_holidays = params.get("auto_holidays", True)
+    extra_holidays = params.get("holidays") or []
+    removed_holidays = params.get("holiday_exceptions") or []
+    # Days received by the sync (announced temporary holidays); not edited on screen.
+    synced_holidays = params.get("synced_holidays") or {}
     findings = []
     for r in approvals(rows, params):
         day = val(r, params, DATE)
@@ -191,12 +197,15 @@ def detect_off_hours(rows: List[Row], params: Dict[str, Any]) -> List[Finding]:
             continue
         occurred = date.fromisoformat(day)
         hour = clock[:2]
-        is_holiday = check_holiday and day in holidays
+        holiday_name = holiday_of(day, auto_holidays, extra_holidays, removed_holidays, synced_holidays) if check_holiday else None
+        is_holiday = holiday_name is not None
         is_weekend = check_weekend and occurred.weekday() >= 5
         is_night = check_night and (hour >= night_start or hour < night_end)
         if not (is_holiday or is_weekend or is_night):
             continue
         label = "공휴일" if is_holiday else "주말" if is_weekend else "심야"
+        if is_holiday and holiday_name:
+            label = f"공휴일({holiday_name})"
         findings.append(
             Finding(
                 rule_code=params["code"],
@@ -340,7 +349,7 @@ TEMPLATES: List[RuleTemplate] = [
         params={
             "night_start": "23", "night_end": "06",
             "check_weekend": True, "check_holiday": True, "check_night": True,
-            "holidays": [], "enabled": True,
+            "auto_holidays": True, "holidays": [], "holiday_exceptions": [], "enabled": True,
         },
     ),
     RuleTemplate(
